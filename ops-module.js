@@ -1455,3 +1455,49 @@ buildAllAlerts = function() {
 
 // 載入完畢後立即重繪畫面啟用第二期模組
 renderCurrentView();
+// ----------------------------------------------------------------------------
+// 6. 外部《溪埔國中電費整理》Google 試算表一鍵連結同步介面
+// ----------------------------------------------------------------------------
+const _baseRenderUtilitiesViewHTML = renderUtilitiesViewHTML;
+renderUtilitiesViewHTML = function() {
+  const html = _baseRenderUtilitiesViewHTML();
+  return html.replace(
+    '<button class="btn-sm" onclick="printUtilitiesPDF()">🖨️ 輸出水電報表 PDF</button>',
+    '<button class="btn-sm" onclick="openSyncExternalElecModal()">🔄 連結／同步原電費表</button><button class="btn-sm" onclick="printUtilitiesPDF()">🖨️ 輸出水電報表 PDF</button>'
+  );
+};
+
+function openSyncExternalElecModal() {
+  openModal('🔄 連結並同步《溪埔國中電費整理》Google 試算表', `
+    <div class="gate-banner green" style="margin-bottom:12px">
+      <strong>運作方式：</strong>貼上你原本的 Google 試算表網址後，系統會自動抓取 <code>2017年</code>～<code>2026年</code>（含未來新年度分頁）的所有月度電費、度數、契約容量與最高需量。<br>
+      日後你在原試算表登記新月份後，按一下即可更新，<strong>不會重複匯入，也不會覆蓋你填過的核銷狀態與查修備註</strong>。
+    </div>
+    <div class="field full">
+      <label>原電費試算表網址（或試算表 ID）*</label>
+      <input id="ext-elec-url" type="text" value="${esc(appConfig.extElecUrl || '')}" placeholder="https://docs.google.com/spreadsheets/d/你的試算表ID/edit">
+    </div>
+  `, `
+    <button onclick="closeModal()">取消</button>
+    <button class="btn-primary" onclick="runSyncExternalElec()">⚡ 立即同步全部年度電費</button>
+  `);
+}
+
+async function runSyncExternalElec() {
+  const sheetId = (document.getElementById('ext-elec-url')?.value || '').trim();
+  if (!sheetId) return toast('請貼上《溪埔國中電費整理》的 Google 試算表網址');
+  saveConfig({ extElecUrl: sheetId });
+  closeModal();
+  toast('⏳ 正在從原電費試算表同步 2017～2026 年資料，請稍候...');
+
+  const res = await pushToCloud({ action: 'syncExternalElec', sheetId });
+  if (res && res.ok && !res.localOnly) {
+    await syncFromCloud(false);
+    opsUtilTypeFilter = '電費';
+    opsUtilMeterFilter = 'MTR-E01';
+    renderCurrentView();
+    toast(`✅ 已同步《${res.sheetName}》共 ${res.syncedCount} 期（最新 ${res.latestYm}，契約 ${res.latestCap}kW）`);
+  }
+}
+
+renderCurrentView();
