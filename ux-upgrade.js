@@ -1116,6 +1116,16 @@ openSettingsModal = function() {
   bd.appendChild(wrap);
 };
 
+function makeSeededRand(seed) {
+  let a = seed >>> 0;
+  return function() {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function runClaudeVerificationSuite() {
   const snapData = JSON.stringify(appData);
   const snapTab = currentTab;
@@ -1133,6 +1143,7 @@ function runClaudeVerificationSuite() {
   };
 
   try {
+    // 1. Differential Test (R-05)
     const curRoc = new Date().getFullYear() - 1911;
     const legacySamples = [
       { recurrence_type: '每季', due_rule: 'Q-END-25', lead_days: 14, last_done_cycle: `${curRoc - 1}-Q4` },
@@ -1146,6 +1157,7 @@ function runClaudeVerificationSuite() {
       return a.cycle === b.cycle && a.dueDate === b.dueDate && a.isVisible === b.isVisible;
     }), 'R-05 差分測試：既有 5 種例行規則輸出 100% 一致');
 
+    // 2. 例行週期 Round-trip 與合法日曆日期不變量 (300 組)
     let rtPass = 0;
     const types = ['每年', '每兩年', '自訂每N年', '每學期', '每季', '每雙月', '每月', '自訂每N個月'];
     for (let i = 0; i < 300; i++) {
@@ -1163,20 +1175,93 @@ function runClaudeVerificationSuite() {
     }
     assert(rtPass === 300, `屬性測試：例行週期 Round-trip 與合法日期不變量 (${rtPass}/300)`);
 
-    const maintStages = buildStandardStages({ tier: '小額(15萬以下)', type: '勞務', awardMethod: '逕洽', flags: { is_maintenance: true, maint_periods: 4 }, startDate: '2026-01-01', endDate: '2026-12-31' });
-    assert(maintStages.length === 5 && maintStages[4].stage_name.includes('第 4 期'), 'E2E：15萬以下年度保養契約正確展開「訂約＋4期保養節點」');
+    // 3. 每兩年週期跳轉與冪等性
+    const biTest = { recurrence_type: '每兩年', due_rule: 'EVERY-2Y@115:06-30', lead_days: 30, last_done_cycle: '' };
+    const bi1 = computeRoutineSchedule(biTest, '2026-06-15');
+    biTest.last_done_cycle = '115';
+    const bi2 = computeRoutineSchedule(biTest, '2026-06-15');
+    const bi2Again = computeRoutineSchedule(biTest, '2026-06-15');
+    assert(bi1.dueDate === '2026-06-30' && bi2.dueDate === '2028-06-30' && bi2.dueDate === bi2Again.dueDate,
+      '每兩年週期跳轉與冪等性（115年完成 → 2028-06-30）');
 
+    // 4. 跨年逾期不遺漏
+    const crossYear = computeRoutineSchedule({ recurrence_type: '每季', due_rule: 'Q-END-25', lead_days: 14, last_done_cycle: '115-Q3' }, '2027-01-05');
+    assert(crossYear.cycle === '115-Q4' && crossYear.dueDate === '2026-12-25' && crossYear.diffDays === -11,
+      '跨年逾期不遺漏（2027-01-05 仍保留逾期 11 天之 115-Q4）');
+
+    // 5. 採購法級距與合規決標不變量（固定亂數種子 seed=20261121，可 100% 重現）
+    const rng = makeSeededRand(20261121);
+    const testBudgets = [1, 149999, 150000, 150001, 500000, 1499999, 1500000, 1500001, 5000000];
+    for (let i = 0; i < 491; i++) testBudgets.push(Math.floor(rng() * 4000000) + 1);
+    let invPass = 0;
+    testBudgets.forEach(b => {
+      const tier = getTierFromBudget(b);
+      const okTier = (b <= 150000 && tier === '小額(15萬以下)')
+        || (b > 150000 && b < 1500000 && tier === '未達(15-150萬)')
+        || (b >= 1500000 && tier === '公開(150萬以上)');
+      const legal = AWARD_OPTIONS_BY_TIER[tier].map(o => o.value);
+      const okAwards = ['逕洽', '取最有利標精神', '共同供應契約', '最有利標'].every(a => legal.includes(resolveAwardForTier(tier, a)));
+      if (okTier && okAwards) invPass++;
+    });
+    assert(invPass === testBudgets.length, `屬性測試：採購級距＋合規決標不變量 (固定種子 ${invPass}/${testBudgets.length})`);
+
+    // 6. 年度保養分期 1–12 期不變量
+    let maintPass = 0;
+    for (let n = 1; n <= 12; n++) {
+      const st = buildStandardStages({ tier: '小額(15萬以下)', type: '勞務', awardMethod: '逕洽', flags: { is_maintenance: true, maint_periods: n }, startDate: '2026-01-01', endDate: '2026-12-31' });
+      const st2 = buildStandardStages({ tier: '小額(15萬以下)', type: '勞務', awardMethod: '逕洽', flags: { is_maintenance: true, maint_periods: n }, startDate: '2026-01-01', endDate: '2026-12-31' });
+      const datesAsc = st.every((s, idx) => /^\d{4}-\d{2}-\d{2}$/.test(s.plan_start) && s.plan_start <= s.plan_end && (idx === 0 || s.plan_start >= st[idx - 1].plan_start));
+      if (st.length === n + 1 && datesAsc && JSON.stringify(st) === JSON.stringify(st2)) maintPass++;
+    }
+    assert(maintPass === 12, `屬性測試：年度保養分期 1–12 期階段數、遞增日期與冪等性 (${maintPass}/12)`);
+
+    // 7. 共同供應契約專屬 4 階段
+    const jcStages = buildStandardStages({ tier: '小額(15萬以下)', type: '財物', awardMethod: '共同供應契約', flags: { is_green: true }, startDate: '2026-11-20' });
+    assert(jcStages.length === 4 && jcStages[0].stage_name.includes('共契'), 'E2E：共同供應契約自動組裝專屬 4 階段檢核流程');
+
+    // 8. 太陽能回饋率正規化等價性（涵蓋帶 %、全形 ％、整數 1 與小數）
+    if (typeof normFeedbackRate === 'function') {
+      const eq15 = ['15%', ' 15 % ', '15％', 15, '15', 0.15, '0.15'].every(v => normFeedbackRate(v) === 0.15);
+      const eq1 = normFeedbackRate('1%') === 0.01 && normFeedbackRate(1) === 0.01 && normFeedbackRate('100%') === 1 && normFeedbackRate(-5) === 0;
+      assert(eq15 && eq1, '屬性測試：回饋率正規化等價性（15% / 15 / 0.15 / "0.15" / 1% / 1）');
+    }
+
+    // 9. E2E：預算連動級距與過濾不合規決標原則
     openProjectWizard();
     const bIn = document.getElementById('wiz-budget'), tSel = document.getElementById('wiz-tier'), aSel = document.getElementById('wiz-award');
     bIn.value = '120000'; onWizardBudgetChange();
     const ok1 = tSel.value === '小額(15萬以下)' && aSel.value === '逕洽';
+    bIn.value = '850000'; onWizardBudgetChange();
+    const ok2 = tSel.value === '未達(15-150萬)' && aSel.value === '最低標';
     bIn.value = '2500000'; onWizardBudgetChange();
-    const ok2 = tSel.value === '公開(150萬以上)' && !Array.from(aSel.options).some(o => o.value === '逕洽');
-    assert(ok1 && ok2, 'E2E：預算金額即時連動級距與合規決標原則');
+    const ok3 = tSel.value === '公開(150萬以上)' && !Array.from(aSel.options).some(o => o.value === '逕洽' || o.value === '取最有利標精神');
+    assert(ok1 && ok2 && ok3, 'E2E：預算金額即時連動級距與合規決標原則（12萬／85萬／250萬）');
 
+    // 10. E2E：例行視覺化表單「每兩年 5/31」編碼與中文預覽
+    openRoutineModal();
+    document.getElementById('rt-cat').value = '共同供應契約';
+    document.getElementById('rt-rec').value = '每兩年';
+    onRoutineRecurrenceChange();
+    document.getElementById('rb-ay').value = '115';
+    document.getElementById('rb-m').value = '5';
+    document.getElementById('rb-d').value = '31';
+    updateRoutineRulePreview();
+    const encRule = document.getElementById('rt-rule').value;
+    const prevTxt = document.getElementById('rb-preview').textContent || '';
+    assert(encRule === 'EVERY-2Y@115:05-31' && prevTxt.includes('每 2 年 5 月 31 日'), 'E2E：例行表單「每兩年 5/31」正確編碼與即時中文預覽');
+
+    // 11. E2E：一屏適配切換鈕與「採購與履約管理」正名
     const fitBtnExists = !!document.getElementById('btn-fit-mode');
     const renamedOk = (document.querySelector('#nav-tabs [data-tab="projects"]')?.textContent || '').includes('採購與履約管理');
     assert(fitBtnExists && renamedOk, 'E2E：一屏適配切換鈕與「採購與履約管理」正名就位');
+
+    // 12. R-04 資安檢查：不含 API Token、資料表不含底價欄位
+    const dumpStr = JSON.stringify(appData);
+    const noToken = !appConfig.token || !dumpStr.includes(appConfig.token);
+    const noFloorKey = Object.values(appData.tables || {}).every(rows =>
+      (rows || []).every(r => !Object.keys(r || {}).some(k => /reserve|base_price|底價/i.test(k)))
+    );
+    assert(noToken && noFloorKey, 'R-04 資安檢查：appData 不含 API Token 且資料表無底價欄位');
 
     closeModal();
   } catch (err) {
@@ -1191,14 +1276,15 @@ function runClaudeVerificationSuite() {
     renderCurrentView();
   }
 
-  const stamp = failed === 0 ? 'verified: [browser-dom-e2e, property-test(300), differential-test, autofit-ui]' : `FAILED (${failed})`;
+  const stamp = failed === 0
+    ? 'verified: [browser-dom-e2e, property-test(seeded-812), differential-test, autofit-ui, security-r04]'
+    : `FAILED (${failed})`;
   openModal('🧪 Claude Code 實證驗證報告', `
     <div class="gate-banner ${failed === 0 ? 'green' : 'red'}" style="margin-bottom:10px">
       <strong>Verification Stamp：</strong><code>${esc(stamp)}</code><br>
       通過 <span class="verify-pass">${passed}</span> 項 ／ 失敗 <span class="${failed ? 'verify-fail' : ''}">${failed}</span> 項
     </div>
     <div class="verify-log">${esc(logs.join('\n'))}</div>
-  `, `<button class="btn-primary" onclick="closeModal()">關閉報告</button>`);
+  `, `<button class="btn-primary" onclick="closeModal()">關閉</button>`);
 }
-
 renderCurrentView();
