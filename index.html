@@ -327,14 +327,6 @@
 const STORAGE_CFG = 'ga_assistant_cfg_v1';
 const STORAGE_DATA = 'ga_assistant_cache_v1';
 
-let appConfig = loadConfig();
-let appData = loadCache();
-let currentTab = 'dashboard';
-let selectedProjectId = null;
-let selectedProjectSubtab = 'checklist'; // checklist | gantt
-let showDoneMemos = false;
-let annualGanttYear = new Date().getFullYear() - 1911;
-
 const DEFAULT_PORTALS = [
   { name: '政府電子採購網', url: 'https://web.pcc.gov.tw/', icon: '🏛️' },
   { name: '機關綠色採購網', url: 'https://greenliving.moenv.gov.tw/', icon: '🌿' },
@@ -343,40 +335,13 @@ const DEFAULT_PORTALS = [
   { name: '台灣電力電子帳單', url: 'https://ebpps2.taipower.com.tw/', icon: '⚡' }
 ];
 
-function loadConfig() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_CFG)) || { gasUrl: '', token: '', schoolName: '高雄市立溪埔國民中學' };
-  } catch { return { gasUrl: '', token: '', schoolName: '高雄市立溪埔國民中學' }; }
-}
-
-function saveConfig(cfg) {
-  appConfig = { ...appConfig, ...cfg };
-  localStorage.setItem(STORAGE_CFG, JSON.stringify(appConfig));
-}
-
-function emptyData() {
-  return {
-    schoolName: appConfig.schoolName || '高雄市立溪埔國民中學',
-    serverTime: '',
-    portals: DEFAULT_PORTALS,
-    tables: {
-      Projects: [], Project_Tasks: [], Templates: [],
-      Project_Materials: [], Project_ChangeOrders: [], Project_Billings: [], Project_Responsibilities: [],
-      Solar_Contracts: [], Solar_Records: [], Utilities_Meters: [], Utilities_Bills: [],
-      Annual_Routines: [], Quick_Memos: []
-    }
-  };
-}
-
-function loadCache() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_DATA));
-    if (raw && raw.tables) {
-      return { ...emptyData(), ...raw, tables: { ...emptyData().tables, ...raw.tables } };
-    }
-  } catch {}
-  return createDemoSeed();
-}
+let appConfig = loadConfig();
+let appData = loadCache();
+let currentTab = 'dashboard';
+let selectedProjectId = null;
+let selectedProjectSubtab = 'checklist'; // checklist | gantt
+let showDoneMemos = false;
+let annualGanttYear = new Date().getFullYear() - 1911;
 
 function persistCache() {
   localStorage.setItem(STORAGE_DATA, JSON.stringify(appData));
