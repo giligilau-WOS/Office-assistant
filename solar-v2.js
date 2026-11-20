@@ -1175,6 +1175,8 @@ function runSolarV2UnitTests() {
   const p = [0, '2026-11-10', '2026-11-27', '2026-12-27', '2027-01-27', '2027-02-27'].map(d => d ? calcOverduePenaltyV2(100000, '2026-10-27', d) : calcOverduePenaltyV2(100000, '2026-10-27', '2026-10-27'));
   ok(p[0].ratePct===0 && p[1].ratePct===2 && p[2].ratePct===4 && p[3].ratePct===8 && p[4].ratePct===10 && !p[4].canTerminate && p[5].canTerminate, '逾期違約金 0→2→4→8→10% 及滿4月得終止警示');
   ok(350190 - roundMoney(350190 / 8) === 306416, '保證金 350,190 退還 1/8 (-43,774) = 餘額 306,416 元');
+  ok(['15%', '15％', 15, 0.15, '0.15'].every(v => normFeedbackRate(v) === 0.15) && normFeedbackRate(1) === 0.01 && normFeedbackRate('1%') === 0.01,
+    '回饋率正規化等價性（15% / 15 / 0.15 / "0.15" / 1% / 1）');
 
   openModal('🧪 太陽能 V2 核心計算引擎驗算報告', `
     <div class="gate-banner ${fail===0?'green':'red'}" style="margin-bottom:10px"><strong>Verification Stamp：</strong><code>${fail===0?'verified: [solar-v2-math, overdue-penalty, bond-ledger, amendment-sync]':'FAILED'}</code><br>通過 ${pass} 項 ／ 失敗 ${fail} 項</div>
