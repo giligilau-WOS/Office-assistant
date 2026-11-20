@@ -327,6 +327,14 @@
 const STORAGE_CFG = 'ga_assistant_cfg_v1';
 const STORAGE_DATA = 'ga_assistant_cache_v1';
 
+const DEFAULT_PORTALS = [
+  { name: '政府電子採購網', url: 'https://web.pcc.gov.tw/', icon: '🏛️' },
+  { name: '機關綠色採購網', url: 'https://greenliving.moenv.gov.tw/', icon: '🌿' },
+  { name: '優先採購平台', url: 'https://ptp.sfaa.gov.tw/', icon: '🤝' },
+  { name: '節約用水填報網', url: 'https://www.wcis.org.tw/', icon: '💧' },
+  { name: '台灣電力電子帳單', url: 'https://ebpps2.taipower.com.tw/', icon: '⚡' }
+];
+
 let appConfig = loadConfig();
 let appData = loadCache();
 let currentTab = 'dashboard';
