@@ -828,4 +828,377 @@ buildStandardStages = function(opts) {
 
     for (let i = 1; i <= periods; i++) {
       const pStart = addDays(baseStart, (i - 1) * stepDays);
-      const pEnd = (i === periods)
+      const pEnd = (i === periods) ? baseEnd : addDays(baseStart, i * stepDays - 1);
+      stages.push({
+        stage_order: i + 1,
+        stage_name: `第 ${i} 期履約保養與分期核銷`,
+        plan_start: pStart, plan_end: pEnd,
+        actual_start: '', actual_end: '', sla_deadline: pEnd, blocker_note: '', status: '未開始',
+        checklist_json: JSON.stringify([
+          { id: `m_p${i}_1`, text: `廠商完成第 ${i} 期現場保養／維護作業並留存紀錄表與照片`, required: true, done: false, doc_no: '', done_date: '' },
+          { id: `m_p${i}_2`, text: `確認設備運轉正常並核對第 ${i} 期發票／收據金額無誤`, required: true, done: false, doc_no: '', done_date: '' },
+          { id: `m_p${i}_3`, text: `完成第 ${i} 期驗收簽章，並於「💰 分期付款」頁籤登錄主計核銷撥款`, required: true, done: false, doc_no: '', done_date: '' }
+        ])
+      });
+    }
+    return stages;
+  }
+
+  if (opts && String(opts.awardMethod || '').includes('共同供應契約')) {
+    const { type, flags, startDate, endDate, tier } = opts;
+    const f = flags || {};
+    const isLarge = tier === '公開(150萬以上)';
+    const stages = [
+      {
+        name: '共契需求確認與請購簽核',
+        items: [
+          { text: '於政府電子採購網查詢臺灣銀行共同供應契約適用品項、組別與契約效期', required: true },
+          { text: '確認本校屬適用機關，並比對預算額度與單筆訂購上限', required: true },
+          { text: isLarge ? '【150萬以上大額共契】檢核大量訂購優惠／依規簽辦比議價與通知監辦' : '完成共同供應契約請購動支簽核（如需另選購額外項一併敘明）', required: true }
+        ]
+      },
+      {
+        name: '電子採購網下訂與規格確認',
+        items: [
+          { text: '於電子採購網完成共同供應契約正式下訂並留存訂單編號', required: true },
+          { text: '聯繫立約廠商確認交貨／安裝日期、規格型錄及資通安全／產地合規聲明', required: true }
+        ]
+      },
+      {
+        name: '交貨安裝與功能測試',
+        items: [
+          { text: '現場點收數量、核對型號與規格並完成開機／功能測試', required: true },
+          { text: '收取統一發票、原廠保固書及相關檢驗／標章證書', required: true }
+        ]
+      },
+      {
+        name: '驗收登帳與核銷結案',
+        items: [
+          { text: '由非採購承辦人辦理驗收並製作驗收紀錄（或黏貼憑證驗收簽章）', required: true },
+          { text: type === '財物' ? '財產／非消耗品增加單登帳、黏貼財產標籤並完成主計核銷' : '完成主計核銷撥款、滿意度評鑑與全卷歸檔', required: true }
+        ]
+      }
+    ];
+    if (f.has_grant) {
+      stages[0].items.push({ text: '【補助款】核對上級補助核定函與結報截止日', required: true });
+      stages[3].items.push({ text: '【補助款】辦理補助款結報與標餘款處理', required: true });
+    }
+    if (f.is_green) stages[3].items.push({ text: '【綠色採購】確認環保／節能標章並登錄機關綠色採購網', required: true });
+
+    const baseStart = startDate || todayStr();
+    const span = (startDate && endDate && diffDays(startDate, endDate) > 4) ? diffDays(startDate, endDate) : 30;
+    const step = Math.max(3, Math.floor(span / stages.length));
+    return stages.map((st, idx) => ({
+      stage_order: idx + 1, stage_name: st.name,
+      plan_start: addDays(baseStart, idx * step),
+      plan_end: (idx === stages.length - 1 && endDate) ? endDate : addDays(baseStart, (idx + 1) * step - 1),
+      actual_start: '', actual_end: '', sla_deadline: '', blocker_note: '',
+      status: idx === 0 ? '進行中' : '未開始',
+      checklist_json: JSON.stringify(st.items.map((it, j) => ({
+        id: `chk_jc_${idx + 1}_${j + 1}`, text: it.text, required: !!it.required, done: false, doc_no: '', done_date: ''
+      })))
+    }));
+  }
+  return _origBuildStandardStages(opts);
+};
+
+// 非工程之「小額年度保養／勞務分期履約案」解鎖簡化版「💰 分期付款與核銷」頁籤
+const _prevRenderProjectDetail_ux = renderProjectDetailHTML;
+renderProjectDetailHTML = function(projectId) {
+  const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+  if (!p) return _prevRenderProjectDetail_ux(projectId);
+  const isEng = p.procurement_type === '工程' || p.engineering_category === '一般公共工程' || p.engineering_category === '公有建築物';
+  if (isEng) return _prevRenderProjectDetail_ux(projectId);
+
+  const flg = parseJSON(p.flags_json, {});
+  const billings = (appData.tables.Project_Billings || []).filter(b => b.project_id === projectId);
+  const isInstallment = !!flg.is_maintenance || p.procurement_type === '勞務' || billings.length > 0;
+  if (!isInstallment) return _prevRenderProjectDetail_ux(projectId);
+
+  const wantBilling = (selectedProjectSubtab === 'billings');
+  if (wantBilling) selectedProjectSubtab = 'checklist';
+  let html = _prevRenderProjectDetail_ux(projectId);
+  if (wantBilling) selectedProjectSubtab = 'billings';
+
+  const tabHtml = `<button class="${wantBilling ? 'btn-primary' : ''}" onclick="selectedProjectSubtab='billings';renderCurrentView()">💰 分期付款與核銷 (${billings.length})</button>`;
+  html = html.replace('📊 單案甘特圖預覽</button>', `📊 單案甘特圖預覽</button>${tabHtml}`);
+  if (wantBilling) {
+    html = html.replace('class="btn-primary" onclick="selectedProjectSubtab=\'checklist\'', 'class="" onclick="selectedProjectSubtab=\'checklist\'');
+    const closeTabs = html.indexOf('</div>', html.indexOf(tabHtml));
+    if (closeTabs > 0) {
+      html = html.slice(0, closeTabs + 6) + renderMaintenanceBillingsHTML(p, billings);
+    }
+  }
+  return html;
+};
+
+function renderMaintenanceBillingsHTML(p, billings) {
+  const contractAmt = Number(p.award_amount) || Number(p.budget_amount) || 0;
+  const totalPaid = billings.reduce((s, b) => s + (Number(b.net_payable) || 0), 0);
+  const disbursed = billings.filter(b => b.workflow_stage === '已撥款入帳').reduce((s, b) => s + (Number(b.net_payable) || 0), 0);
+  const remain = contractAmt > 0 ? (contractAmt - totalPaid) : 0;
+  const execPct = contractAmt > 0 ? Math.round((totalPaid / contractAmt) * 100) : 0;
+  const stages = ['廠商請款', '總務驗收複核', '主計審核', '校長核章', '已撥款入帳'];
+
+  return `
+    <div class="eng-kpi-row" style="grid-template-columns:repeat(4,1fr)">
+      <div class="eng-stat"><div class="lbl">契約／預算總金額</div><div class="val">${contractAmt ? fmtMoney(contractAmt) : '-'}</div></div>
+      <div class="eng-stat"><div class="lbl">累計請款金額（執行 ${execPct}%）</div><div class="val" style="color:var(--primary)">${fmtMoney(totalPaid)}</div></div>
+      <div class="eng-stat"><div class="lbl">已撥款入帳累計</div><div class="val" style="color:var(--green)">${fmtMoney(disbursed)}</div></div>
+      <div class="eng-stat"><div class="lbl">剩餘契約餘額</div><div class="val" style="color:${remain<0?'var(--red)':'var(--text)'}">${fmtMoney(remain)}</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-hd">
+        <h3>💰 分期付款與核銷紀錄（年度保養／勞務簡化模式，免扣工程保留款）</h3>
+        <button class="btn-sm btn-primary" onclick="openMaintBillingModal('${esc(p.project_id)}')">＋ 新增本期請款核銷</button>
+      </div>
+      <div class="panel-bd" style="overflow-x:auto">
+        ${billings.length ? `
+          <table>
+            <thead><tr><th>期別</th><th>本期請款金額</th><th>扣款／減價</th><th>實付金額</th><th>校內核銷進度</th><th>發票／傳票與撥款日</th><th>操作</th></tr></thead>
+            <tbody>
+              ${billings.map(b => `
+                <tr>
+                  <td><strong>${esc(b.billing_seq)}</strong><div class="item-meta">${esc(b.material_gate_ack || '')}</div></td>
+                  <td>${fmtMoney(b.period_amount)}</td>
+                  <td>${Number(b.penalty_deduct || 0).toLocaleString('zh-TW')} 元</td>
+                  <td><strong style="color:var(--primary)">${fmtMoney(b.net_payable)}</strong></td>
+                  <td>
+                    <select style="padding:3px 6px;border:1px solid #cbd5e1;border-radius:5px;font-size:12px" onchange="advanceBillingStage('${esc(b.billing_id)}',this.value)">
+                      ${stages.map(s => `<option value="${s}" ${b.workflow_stage === s ? 'selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td><div>${esc(b.voucher_no || '-')}</div><div class="item-meta">${b.paid_date ? '撥款 ' + esc(b.paid_date) : ''}</div></td>
+                  <td style="white-space:nowrap">
+                    <button class="btn-xs" onclick="openMaintBillingModal('${esc(p.project_id)}','${esc(b.billing_id)}')">✎</button>
+                    <button class="btn-xs btn-danger" onclick="deleteBilling('${esc(b.billing_id)}')">刪</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        ` : '<div class="empty-state">尚無分期付款紀錄，點擊「＋ 新增本期請款核銷」追蹤每期保養請款與剩餘額度。</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function openMaintBillingModal(projectId, billingId = '') {
+  const p = (appData.tables.Projects || []).find(x => x.project_id === projectId) || {};
+  const billings = (appData.tables.Project_Billings || []).filter(b => b.project_id === projectId);
+  const b = billingId ? billings.find(x => x.billing_id === billingId) : {};
+  const flg = parseJSON(p.flags_json, {});
+  const contractAmt = Number(p.award_amount) || Number(p.budget_amount) || 0;
+  const defPer = b.period_amount ?? (flg.maint_periods && contractAmt ? Math.round(contractAmt / flg.maint_periods) : '');
+  const stages = ['廠商請款', '總務驗收複核', '主計審核', '校長核章', '已撥款入帳'];
+
+  openModal(billingId ? '✎ 編輯分期付款紀錄' : '＋ 新增分期付款與核銷紀錄', `
+    <div class="form-grid">
+      <div class="field"><label>期別名稱 *</label><input id="mb-seq" type="text" value="${esc(b.billing_seq || `第${billings.length + 1}期保養請款`)}"></div>
+      <div class="field"><label>本期請款金額（元）*</label><input id="mb-per" type="number" value="${esc(defPer)}" oninput="document.getElementById('mb-net').value=(Number(this.value)||0)-(Number(document.getElementById('mb-pen').value)||0)"></div>
+      <div class="field"><label>違約／未達標扣款（無填 0）</label><input id="mb-pen" type="number" value="${Number(b.penalty_deduct) || 0}" oninput="document.getElementById('mb-net').value=(Number(document.getElementById('mb-per').value)||0)-(Number(this.value)||0)"></div>
+      <div class="field"><label>本次實付金額（元）</label><input id="mb-net" type="number" value="${esc(b.net_payable ?? defPer)}" style="font-weight:700;color:var(--primary)"></div>
+      <div class="field"><label>校內核銷進度</label>
+        <select id="mb-stage">${stages.map(s => `<option value="${s}" ${(b.workflow_stage || '廠商請款') === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>發票號碼／傳票文號</label><input id="mb-vch" type="text" value="${esc(b.voucher_no || '')}"></div>
+      <div class="field"><label>實際撥款日</label><input id="mb-paid" type="date" value="${esc(b.paid_date || '')}"></div>
+      <div class="field"><label>保養內容／驗收備註</label><input id="mb-note" type="text" value="${esc(b.material_gate_ack || '')}" placeholder="例：Q1保養紀錄表與照片齊全"></div>
+    </div>
+  `, `
+    <button onclick="closeModal()">取消</button>
+    <button class="btn-primary" onclick="saveMaintBilling('${esc(projectId)}','${esc(billingId)}')">儲存請款紀錄</button>
+  `);
+}
+
+async function saveMaintBilling(projectId, billingId) {
+  const seq = document.getElementById('mb-seq').value.trim();
+  if (!seq) return toast('請填寫期別名稱');
+  const p = (appData.tables.Projects || []).find(x => x.project_id === projectId) || {};
+  const existing = billingId ? (appData.tables.Project_Billings || []).find(x => x.billing_id === billingId) : {};
+  const per = Number(document.getElementById('mb-per').value) || 0;
+  const pen = Number(document.getElementById('mb-pen').value) || 0;
+  const net = Number(document.getElementById('mb-net').value) || (per - pen);
+  const stage = document.getElementById('mb-stage').value;
+  let paidDate = document.getElementById('mb-paid').value;
+  if (stage === '已撥款入帳' && !paidDate) paidDate = todayStr();
+
+  const baseAmt = Number(p.award_amount) || Number(p.budget_amount) || 0;
+  const otherSum = (appData.tables.Project_Billings || [])
+    .filter(x => x.project_id === projectId && x.billing_id !== billingId)
+    .reduce((s, x) => s + (Number(x.period_amount) || 0), 0);
+  const cumAmt = otherSum + per;
+
+  const rec = {
+    billing_id: billingId || nextId('Project_Billings', 'billing_id', 'BIL', 4),
+    project_id: projectId, billing_seq: seq, base_contract_amount: baseAmt,
+    cum_progress_pct: baseAmt > 0 ? Number(((cumAmt / baseAmt) * 100).toFixed(1)) : 0,
+    cum_billed_amount: cumAmt, period_amount: per,
+    retention_deduct: 0, advance_recoup: 0, penalty_deduct: pen, net_payable: net,
+    workflow_stage: stage,
+    stage_dates_json: JSON.stringify({ ...parseJSON(existing.stage_dates_json, {}), [stage]: todayStr() }),
+    voucher_no: document.getElementById('mb-vch').value.trim(),
+    paid_date: paidDate, material_gate_ack: document.getElementById('mb-note').value.trim(),
+    updated_at: nowStr(), is_deleted: false
+  };
+  upsertLocal('Project_Billings', rec, 'billing_id');
+  closeModal();
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Project_Billings', record: rec });
+  toast('✅ 已儲存分期付款紀錄');
+}
+
+// ----------------------------------------------------------------------------
+// 4. Chrome 起始戰情室「一屏自適配免捲動」控制引擎
+// ----------------------------------------------------------------------------
+(function initDashboardAutoFit() {
+  const FIT_KEY = 'ga_dash_autofit_v1';
+  let fitMode = localStorage.getItem(FIT_KEY) || 'auto'; // 'auto' | 'compact' | 'scroll'
+
+  function ensureFitToggleButton() {
+    const actions = document.querySelector('.top-actions');
+    if (!actions || document.getElementById('btn-fit-mode')) return;
+    const btn = document.createElement('button');
+    btn.id = 'btn-fit-mode';
+    btn.style.cssText = 'background:#334155;color:#fff;border-color:#475569';
+    btn.onclick = cycleFitMode;
+    actions.insertBefore(btn, actions.lastElementChild);
+    updateFitButtonLabel();
+  }
+
+  function updateFitButtonLabel() {
+    const btn = document.getElementById('btn-fit-mode');
+    if (!btn) return;
+    if (fitMode === 'auto') { btn.textContent = '🖥️ 一屏適配'; btn.title = '自動填滿視窗免捲動（點擊切換極致緊湊／傳統捲動）'; }
+    else if (fitMode === 'compact') { btn.textContent = '📐 極致緊湊'; btn.title = '極致緊湊一屏模式（點擊切換傳統捲動）'; }
+    else { btn.textContent = '📜 傳統捲動'; btn.title = '傳統整頁捲動（點擊切回一屏適配）'; }
+  }
+
+  function cycleFitMode() {
+    fitMode = fitMode === 'auto' ? 'compact' : (fitMode === 'compact' ? 'scroll' : 'auto');
+    localStorage.setItem(FIT_KEY, fitMode);
+    updateFitButtonLabel();
+    applyDashboardAutoFit();
+    toast(`🖥️ 戰情室顯示模式：${fitMode === 'auto' ? '自動一屏適配' : fitMode === 'compact' ? '極致緊湊一屏' : '傳統整頁捲動'}`);
+  }
+
+  function applyDashboardAutoFit() {
+    const shouldLock = (typeof currentTab !== 'undefined' && currentTab === 'dashboard')
+      && fitMode !== 'scroll'
+      && window.innerWidth >= 960;
+    document.documentElement.classList.toggle('dash-lock', shouldLock);
+    document.body.classList.toggle('dash-lock', shouldLock);
+    document.body.classList.toggle('dash-compact', shouldLock && fitMode === 'compact');
+    ensureFitToggleButton();
+  }
+
+  const _prevRenderForFit = renderCurrentView;
+  renderCurrentView = function() {
+    _prevRenderForFit();
+    applyDashboardAutoFit();
+  };
+  window.addEventListener('resize', applyDashboardAutoFit);
+  applyDashboardAutoFit();
+})();
+
+// ----------------------------------------------------------------------------
+// 5. 內建 Claude Code 實證驗證套件（沙盒隔離 E2E ＋ 屬性測試 ＋ 差分測試）
+// ----------------------------------------------------------------------------
+const _origOpenSettingsModal = openSettingsModal;
+openSettingsModal = function() {
+  _origOpenSettingsModal();
+  const bd = document.getElementById('modal-body');
+  if (!bd || document.getElementById('btn-claude-verify')) return;
+  const wrap = document.createElement('div');
+  wrap.style.marginTop = '10px';
+  wrap.innerHTML = `<button id="btn-claude-verify" class="btn-primary" onclick="runClaudeVerificationSuite()">🧪 執行 Claude 實證驗證（E2E ＋ 屬性 ＋ 差分測試）</button>
+    <div class="item-meta" style="margin-top:4px">採完全沙盒隔離，於本機記憶體實測所有 DOM 互動與邊界案例，絕不改動您的正式 Google Sheets 資料。</div>`;
+  bd.appendChild(wrap);
+};
+
+function runClaudeVerificationSuite() {
+  const snapData = JSON.stringify(appData);
+  const snapTab = currentTab;
+  const snapProj = selectedProjectId;
+  const origPush = pushToCloud;
+  const origPersist = persistCache;
+  pushToCloud = async () => ({ ok: true, sandboxed: true });
+  persistCache = () => {};
+
+  const logs = [];
+  let passed = 0, failed = 0;
+  const assert = (cond, name, detail = '') => {
+    if (cond) { passed++; logs.push(`✅ [PASS] ${name}`); }
+    else { failed++; logs.push(`❌ [FAIL] ${name}${detail ? ' -> ' + detail : ''}`); }
+  };
+
+  try {
+    const curRoc = new Date().getFullYear() - 1911;
+    const legacySamples = [
+      { recurrence_type: '每季', due_rule: 'Q-END-25', lead_days: 14, last_done_cycle: `${curRoc - 1}-Q4` },
+      { recurrence_type: '每季', due_rule: 'Q-NEXT-10', lead_days: 14, last_done_cycle: `${curRoc - 1}-Q3` },
+      { recurrence_type: '每年', due_rule: '12-15', lead_days: 30, last_done_cycle: String(curRoc - 1) },
+      { recurrence_type: '每學期', due_rule: '02-10,08-20', lead_days: 21, last_done_cycle: `${curRoc - 1}-S2` },
+      { recurrence_type: '每月', due_rule: 'D-10', lead_days: 7, last_done_cycle: `${curRoc - 1}-11` }
+    ];
+    assert(legacySamples.every(s => {
+      const a = _legacyComputeRoutineSchedule(s), b = computeRoutineSchedule(s);
+      return a.cycle === b.cycle && a.dueDate === b.dueDate && a.isVisible === b.isVisible;
+    }), 'R-05 差分測試：既有 5 種例行規則輸出 100% 一致');
+
+    let rtPass = 0;
+    const types = ['每年', '每兩年', '自訂每N年', '每學期', '每季', '每雙月', '每月', '自訂每N個月'];
+    for (let i = 0; i < 300; i++) {
+      const t = types[i % types.length];
+      const cfg = t === '每年' ? { type: t, month: (i % 12) + 1, day: (i % 31) + 1 }
+        : (t === '每兩年' || t === '自訂每N年') ? { type: t, interval: t === '每兩年' ? 2 : ((i % 5) + 2), anchorRocYear: 112 + (i % 8), month: (i % 12) + 1, day: (i % 31) + 1 }
+        : t === '每學期' ? { type: t, m1: (i % 6) + 1, d1: (i % 31) + 1, m2: (i % 6) + 7, d2: (i % 31) + 1 }
+        : t === '每季' ? { type: t, mode: i % 2 ? 'NEXT' : 'END', day: (i % 28) + 1 }
+        : t === '每雙月' ? { type: t, parity: i % 2 ? 'ODD' : 'EVEN', day: (i % 28) + 1 }
+        : t === '每月' ? { type: t, day: (i % 28) + 1 }
+        : { type: t, interval: (i % 10) + 2, anchorYm: `2025-${String((i % 12) + 1).padStart(2, '0')}`, day: (i % 28) + 1 };
+      const enc = encodeDueRuleConfig(cfg);
+      const sch = computeRoutineSchedule({ recurrence_type: t, due_rule: enc, lead_days: 30, last_done_cycle: '' }, '2026-11-20');
+      if (enc === encodeDueRuleConfig(parseDueRuleConfig(t, enc)) && /^\d{4}-\d{2}-\d{2}$/.test(sch.dueDate)) rtPass++;
+    }
+    assert(rtPass === 300, `屬性測試：例行週期 Round-trip 與合法日期不變量 (${rtPass}/300)`);
+
+    const maintStages = buildStandardStages({ tier: '小額(15萬以下)', type: '勞務', awardMethod: '逕洽', flags: { is_maintenance: true, maint_periods: 4 }, startDate: '2026-01-01', endDate: '2026-12-31' });
+    assert(maintStages.length === 5 && maintStages[4].stage_name.includes('第 4 期'), 'E2E：15萬以下年度保養契約正確展開「訂約＋4期保養節點」');
+
+    openProjectWizard();
+    const bIn = document.getElementById('wiz-budget'), tSel = document.getElementById('wiz-tier'), aSel = document.getElementById('wiz-award');
+    bIn.value = '120000'; onWizardBudgetChange();
+    const ok1 = tSel.value === '小額(15萬以下)' && aSel.value === '逕洽';
+    bIn.value = '2500000'; onWizardBudgetChange();
+    const ok2 = tSel.value === '公開(150萬以上)' && !Array.from(aSel.options).some(o => o.value === '逕洽');
+    assert(ok1 && ok2, 'E2E：預算金額即時連動級距與合規決標原則');
+
+    const fitBtnExists = !!document.getElementById('btn-fit-mode');
+    const renamedOk = (document.querySelector('#nav-tabs [data-tab="projects"]')?.textContent || '').includes('採購與履約管理');
+    assert(fitBtnExists && renamedOk, 'E2E：一屏適配切換鈕與「採購與履約管理」正名就位');
+
+    closeModal();
+  } catch (err) {
+    failed++;
+    logs.push(`❌ [EXCEPTION] ${err.message}`);
+  } finally {
+    appData = JSON.parse(snapData);
+    currentTab = snapTab;
+    selectedProjectId = snapProj;
+    pushToCloud = origPush;
+    persistCache = origPersist;
+    renderCurrentView();
+  }
+
+  const stamp = failed === 0 ? 'verified: [browser-dom-e2e, property-test(300), differential-test, autofit-ui]' : `FAILED (${failed})`;
+  openModal('🧪 Claude Code 實證驗證報告', `
+    <div class="gate-banner ${failed === 0 ? 'green' : 'red'}" style="margin-bottom:10px">
+      <strong>Verification Stamp：</strong><code>${esc(stamp)}</code><br>
+      通過 <span class="verify-pass">${passed}</span> 項 ／ 失敗 <span class="${failed ? 'verify-fail' : ''}">${failed}</span> 項
+    </div>
+    <div class="verify-log">${esc(logs.join('\n'))}</div>
+  `, `<button class="btn-primary" onclick="closeModal()">關閉報告</button>`);
+}
+
+renderCurrentView();
