@@ -1,0 +1,2311 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>總務行政戰情助理</title>
+<style>
+  :root {
+    --bg: #f1f5f9;
+    --surface: #ffffff;
+    --surface-alt: #f8fafc;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --primary: #1d4ed8;
+    --primary-soft: #dbeafe;
+    --red: #dc2626;
+    --red-soft: #fee2e2;
+    --amber: #d97706;
+    --amber-soft: #fef3c7;
+    --green: #059669;
+    --green-soft: #d1fae5;
+    --blue-soft: #e0f2fe;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(15, 23, 42, .08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.5;
+  }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button, input, select, textarea { font-family: inherit; font-size: 13px; }
+  button {
+    cursor: pointer; border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); border-radius: 6px; padding: 6px 11px; font-weight: 600;
+    transition: .15s;
+  }
+  button:hover { background: var(--surface-alt); border-color: #cbd5e1; }
+  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn-primary:hover { background: #1e40af; }
+  .btn-danger { background: var(--red-soft); color: var(--red); border-color: #fecaca; }
+  .btn-danger:hover { background: #fecaca; }
+  .btn-success { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn-success:hover { background: #047857; }
+  .btn-sm { padding: 3px 8px; font-size: 12px; }
+  .btn-xs { padding: 2px 6px; font-size: 11px; }
+
+  /* 頂部列與導覽 */
+  .topbar {
+    background: #0f172a; color: #f8fafc; padding: 10px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; }
+  .brand small { font-size: 12px; font-weight: 400; color: #94a3b8; }
+  .top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sync-pill {
+    font-size: 12px; padding: 3px 9px; border-radius: 999px;
+    background: #1e293b; color: #cbd5e1; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: #94a3b8; }
+  .dot.ok { background: #10b981; }
+  .dot.syncing { background: #f59e0b; animation: pulse 1s infinite; }
+  .dot.err { background: #ef4444; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .portal-bar {
+    background: #1e293b; padding: 6px 18px; display: flex; align-items: center;
+    gap: 8px; overflow-x: auto; border-bottom: 1px solid #334155;
+  }
+  .portal-chip {
+    background: #334155; color: #f1f5f9; padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .portal-chip:hover { background: #475569; text-decoration: none; }
+
+  .nav-tabs {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 18px; display: flex; gap: 4px; overflow-x: auto;
+  }
+  .nav-tab {
+    padding: 10px 14px; border: none; background: transparent; border-radius: 0;
+    border-bottom: 3px solid transparent; color: var(--muted); font-weight: 600; white-space: nowrap;
+  }
+  .nav-tab:hover { color: var(--text); background: var(--surface-alt); }
+  .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .badge-soon {
+    font-size: 10px; background: #e2e8f0; color: #475569; padding: 1px 5px;
+    border-radius: 4px; margin-left: 4px; font-weight: 500;
+  }
+
+  .container { max-width: 1520px; margin: 0 auto; padding: 14px 18px 40px; }
+
+  /* KPI 列與一屏三欄戰情室 */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 15px; display: flex; justify-content: space-between; align-items: center;
+    box-shadow: var(--shadow); cursor: pointer;
+  }
+  .kpi-card:hover { border-color: #94a3b8; }
+  .kpi-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .kpi-val { font-size: 26px; font-weight: 800; line-height: 1.2; margin-top: 2px; }
+  .kpi-red .kpi-val { color: var(--red); }
+  .kpi-amber .kpi-val { color: var(--amber); }
+  .kpi-blue .kpi-val { color: var(--primary); }
+  .kpi-green .kpi-val { color: var(--green); }
+
+  .dash-grid { display: grid; grid-template-columns: 1.35fr 1.05fr 0.95fr; gap: 14px; align-items: start; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden; margin-bottom: 14px;
+  }
+  .panel-hd {
+    padding: 10px 14px; background: var(--surface-alt); border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .panel-hd h3 { margin: 0; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .panel-bd { padding: 12px 14px; }
+  .scroll-list { max-height: 360px; overflow-y: auto; }
+
+  /* 標籤與清單項 */
+  .tag {
+    display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 700;
+    white-space: nowrap;
+  }
+  .tag-red { background: var(--red-soft); color: var(--red); }
+  .tag-amber { background: var(--amber-soft); color: #b45309; }
+  .tag-green { background: var(--green-soft); color: #047857; }
+  .tag-blue { background: var(--primary-soft); color: var(--primary); }
+  .tag-gray { background: #e2e8f0; color: #334155; }
+
+  .alert-item, .routine-item, .memo-item {
+    padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 8px; background: #fff;
+  }
+  .alert-item.red { border-left: 4px solid var(--red); background: #fffafa; }
+  .alert-item.amber { border-left: 4px solid var(--amber); background: #fffdf5; }
+  .alert-item.blue { border-left: 4px solid var(--primary); }
+  .alert-item:hover { border-color: #94a3b8; }
+  .item-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .item-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  .mini-bar-wrap { background: #e2e8f0; height: 7px; border-radius: 99px; overflow: hidden; margin-top: 6px; }
+  .mini-bar { height: 100%; background: var(--primary); border-radius: 99px; }
+
+  /* Memo 快填區 */
+  .memo-quick {
+    display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border); margin-bottom: 10px;
+  }
+  .memo-quick-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .memo-quick input[type="text"] {
+    width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px;
+  }
+  .memo-item.urgent { border-left: 4px solid var(--red); background: #fffafa; }
+  .memo-item.due-hit { border-left: 4px solid var(--amber); background: #fffbeb; }
+  .memo-item.done { opacity: .6; text-decoration: line-through; background: var(--surface-alt); }
+
+  /* 表格與表單 */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+  th { background: var(--surface-alt); font-weight: 700; color: #334155; white-space: nowrap; }
+  tr:hover td { background: #f8fafc; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 14px; }
+  .form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 12px; font-weight: 700; color: #334155; }
+  .field input, .field select, .field textarea {
+    padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;
+  }
+  .field textarea { min-height: 68px; resize: vertical; }
+  .check-group { display: flex; gap: 14px; flex-wrap: wrap; padding: 6px 0; }
+  .check-group label { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; cursor: pointer; }
+
+  /* 標案詳情與階段檢核 */
+  .stage-card {
+    border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; background: #fff;
+  }
+  .stage-hd {
+    padding: 10px 14px; background: var(--surface-alt); border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .chk-row {
+    display: grid; grid-template-columns: 24px 1fr 165px 125px 28px;
+    gap: 8px; align-items: center; padding: 7px 14px; border-bottom: 1px solid #f1f5f9;
+  }
+  .chk-row:last-child { border-bottom: none; }
+  .chk-row input[type="text"], .chk-row input[type="date"] {
+    padding: 4px 6px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 12px; width: 100%;
+  }
+  .req-star { color: var(--red); font-weight: 800; margin-right: 3px; }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, .55);
+    display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 12px; width: 100%; max-width: 760px; max-height: 90vh;
+    display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.25);
+  }
+  .modal-hd {
+    padding: 13px 18px; border-bottom: 1px solid var(--border); background: var(--surface-alt);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-hd h3 { margin: 0; font-size: 16px; }
+  .modal-bd { padding: 16px 18px; overflow-y: auto; }
+  .modal-ft {
+    padding: 11px 18px; border-top: 1px solid var(--border); background: var(--surface-alt);
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 20px; right: 20px; background: #0f172a; color: #fff;
+    padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0,0,0,.2); opacity: 0; pointer-events: none;
+    transition: .25s; z-index: 2000;
+  }
+  #toast.show { opacity: 1; }
+
+  /* 甘特圖容器 */
+  .gantt-box { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 8px; }
+  .empty-state { text-align: center; padding: 28px 14px; color: var(--muted); font-size: 13px; }
+  .lessons-box {
+    background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 12px; font-size: 13px; white-space: pre-line;
+  }
+
+  /* 專屬列印區（螢幕隱藏、列印顯示） */
+  #print-area { display: none; }
+
+  @media (max-width: 1150px) {
+    .dash-grid { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .chk-row { grid-template-columns: 24px 1fr; }
+  }
+
+  @media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #app-shell, .modal-backdrop, #toast { display: none !important; }
+    #print-area { display: block !important; width: 100%; color: #0f172a; }
+    .print-header {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: 10px;
+    }
+    .print-meta {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+      background: #f8fafc; border: 1px solid #cbd5e1; padding: 7px 10px;
+      border-radius: 6px; font-size: 11.5px; margin-bottom: 10px;
+    }
+    .print-footer {
+      display: grid; grid-template-columns: 1.2fr 1.4fr 1fr; gap: 10px;
+      margin-top: 10px; font-size: 11.5px; page-break-inside: avoid;
+    }
+    .print-box { border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; }
+    .sign-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; height: 54px; text-align: center; }
+    .sign-cell { border: 1px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between; padding: 3px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app-shell">
+  <!-- 頂部列 -->
+  <div class="topbar">
+    <div class="brand">
+      <span>🏫 <span id="school-title">高雄市立溪埔國民中學</span> 總務行政戰情助理</span>
+      <small id="today-roc"></small>
+    </div>
+    <div class="top-actions">
+      <span class="sync-pill" id="sync-status" title="點擊強制重新同步" style="cursor:pointer" onclick="syncFromCloud(true)">
+        <span class="dot" id="sync-dot"></span>
+        <span id="sync-text">尚未設定雲端</span>
+      </span>
+      <input id="global-search" type="search" placeholder="🔍 搜尋標案／Memo／例行項..." style="padding:5px 10px;border-radius:6px;border:1px solid #334155;background:#1e293b;color:#fff;width:210px;" oninput="renderCurrentView()">
+      <button class="btn-primary" onclick="openProjectWizard()">＋ 開新標案</button>
+      <button style="background:#334155;color:#fff;border-color:#475569" onclick="openSettingsModal()">⚙️ 連線與備份</button>
+    </div>
+  </div>
+
+  <!-- 常用公務傳送門 -->
+  <div class="portal-bar" id="portal-bar"></div>
+
+  <!-- 主頁籤導覽 -->
+  <div class="nav-tabs" id="nav-tabs">
+    <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 起始戰情室</button>
+    <button class="nav-tab" data-tab="projects" onclick="switchTab('projects')">📋 招標與工程控管</button>
+    <button class="nav-tab" data-tab="annual-gantt" onclick="switchTab('annual-gantt')">📅 全校年度甘特圖</button>
+    <button class="nav-tab" data-tab="templates" onclick="switchTab('templates')">🗂️ 年度標案模板庫</button>
+    <button class="nav-tab" data-tab="routines" onclick="switchTab('routines')">🔁 年度固定例行事務</button>
+    <button class="nav-tab" data-tab="upcoming" onclick="switchTab('upcoming')">🔧 工程品管／太陽能／水電 <span class="badge-soon">下階段</span></button>
+  </div>
+
+  <!-- 主內容容器 -->
+  <div class="container" id="main-view"></div>
+</div>
+
+<!-- 專屬列印 PDF 容器 -->
+<div id="print-area"></div>
+
+<!-- 通用彈窗 -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="if(event.target===this) closeModal()">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3 id="modal-title">視窗</h3>
+      <button class="btn-sm" onclick="closeModal()">✕ 關閉</button>
+    </div>
+    <div class="modal-bd" id="modal-body"></div>
+    <div class="modal-ft" id="modal-footer"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================================
+// 1. 狀態儲存與本機快取（0.1 秒秒開引擎）
+// ============================================================================
+const STORAGE_CFG = 'ga_assistant_cfg_v1';
+const STORAGE_DATA = 'ga_assistant_cache_v1';
+
+let appConfig = loadConfig();
+let appData = loadCache();
+let currentTab = 'dashboard';
+let selectedProjectId = null;
+let selectedProjectSubtab = 'checklist'; // checklist | gantt
+let showDoneMemos = false;
+let annualGanttYear = new Date().getFullYear() - 1911;
+
+const DEFAULT_PORTALS = [
+  { name: '政府電子採購網', url: 'https://web.pcc.gov.tw/', icon: '🏛️' },
+  { name: '機關綠色採購網', url: 'https://greenliving.moenv.gov.tw/', icon: '🌿' },
+  { name: '優先採購平台', url: 'https://ptp.sfaa.gov.tw/', icon: '🤝' },
+  { name: '節約用水填報網', url: 'https://www.wcis.org.tw/', icon: '💧' },
+  { name: '台灣電力電子帳單', url: 'https://ebpps2.taipower.com.tw/', icon: '⚡' }
+];
+
+function loadConfig() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_CFG)) || { gasUrl: '', token: '', schoolName: '高雄市立溪埔國民中學' };
+  } catch { return { gasUrl: '', token: '', schoolName: '高雄市立溪埔國民中學' }; }
+}
+
+function saveConfig(cfg) {
+  appConfig = { ...appConfig, ...cfg };
+  localStorage.setItem(STORAGE_CFG, JSON.stringify(appConfig));
+}
+
+function emptyData() {
+  return {
+    schoolName: appConfig.schoolName || '高雄市立溪埔國民中學',
+    serverTime: '',
+    portals: DEFAULT_PORTALS,
+    tables: {
+      Projects: [], Project_Tasks: [], Templates: [],
+      Project_Materials: [], Project_ChangeOrders: [], Project_Billings: [], Project_Responsibilities: [],
+      Solar_Contracts: [], Solar_Records: [], Utilities_Meters: [], Utilities_Bills: [],
+      Annual_Routines: [], Quick_Memos: []
+    }
+  };
+}
+
+function loadCache() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_DATA));
+    if (raw && raw.tables) {
+      return { ...emptyData(), ...raw, tables: { ...emptyData().tables, ...raw.tables } };
+    }
+  } catch {}
+  return createDemoSeed();
+}
+
+function persistCache() {
+  localStorage.setItem(STORAGE_DATA, JSON.stringify(appData));
+}
+
+// 尚未綁定 GAS 時提供體驗範本資料，綁定後會自動以雲端資料覆蓋
+function createDemoSeed() {
+  const d = emptyData();
+  const today = todayStr();
+  d.tables.Templates = [
+    {
+      template_id: 'TPL-001', template_name: '年度校園保全警衛勞務採購案',
+      procurement_type: '勞務', threshold_tier: '未達(15-150萬)', award_method: '取最有利標精神',
+      anchor_label: '新契約生效日',
+      stages_offset_json: JSON.stringify([
+        { order: 1, name: '招標文件準備與簽核', offset_start: -60, offset_end: -45, checklist: [
+          { id: 'c1', text: '備妥投標須知、契約草案、保全人力勤務規範與評審須知', required: true },
+          { id: 'c2', text: '簽准未滿3家當場改採限制性招標及監辦方式', required: true }
+        ]},
+        { order: 2, name: '上網公告與等標', offset_start: -44, offset_end: -34, checklist: [
+          { id: 'c3', text: '政府電子採購網公告（等標期不少於5天）', required: true },
+          { id: 'c4', text: '開標前陳請校長密封核定底價（系統不存金額）', required: true }
+        ]},
+        { order: 3, name: '開標、評審與決標', offset_start: -33, offset_end: -20, checklist: [
+          { id: 'c5', text: '召開評審小組會議、辦理議價並決標', required: true },
+          { id: 'c6', text: '辦理決標公告或定期彙送', required: true }
+        ]},
+        { order: 4, name: '訂約與履約準備', offset_start: -19, offset_end: -1, checklist: [
+          { id: 'c7', text: '完成契約用印與派駐人員良民證查核', required: true }
+        ]}
+      ]),
+      default_materials_json: '[]',
+      lessons_learned: '1. 招標規範務必寫明國定假日、選舉日或颱風停班停課輪值計費方式。\n2. 派駐人員更換前須先提報良民證審查。'
+    }
+  ];
+  d.tables.Annual_Routines = [
+    {
+      routine_id: 'RTN-001', title: '機關綠色採購網路申報檢核', category: '法定填報',
+      recurrence_type: '每季', due_rule: 'Q-END-25', lead_days: 20,
+      portal_url: 'https://greenliving.moenv.gov.tw/', linked_template_id: '',
+      last_done_cycle: '', last_done_date: '', note: '彙整本季具環保與綠建材標章品項申報', is_active: true
+    },
+    {
+      routine_id: 'RTN-002', title: '年底資本門預算保留與補助款結報檢核', category: '預算核銷',
+      recurrence_type: '每年', due_rule: '12-10', lead_days: 35,
+      portal_url: '', linked_template_id: '',
+      last_done_cycle: '', last_done_date: '', note: '確認跨年度工程與補助款進度，提前送主計辦理保留', is_active: true
+    },
+    {
+      routine_id: 'RTN-003', title: '下年度校園保全警衛招標啟動', category: '例行招標預告',
+      recurrence_type: '每年', due_rule: '11-28', lead_days: 30,
+      portal_url: 'https://web.pcc.gov.tw/', linked_template_id: 'TPL-001',
+      last_done_cycle: '', last_done_date: '', note: '可直接點「套模板開案」自動排程', is_active: true
+    }
+  ];
+  d.tables.Quick_Memos = [
+    {
+      memo_id: 'MEM-0001', content: '點擊右上角「⚙️ 連線與備份」填入 GAS /exec 網址與通行金鑰即可啟用雲端同步',
+      source_tag: '系統提示', priority: '重要', remind_date: today, due_date: '', is_done: false, done_date: '', converted_ref: ''
+    }
+  ];
+  return d;
+}
+
+// ============================================================================
+// 2. 台灣政府採購法三級距 ＋ 外掛積木組裝引擎（從「招標文件準備」起跑）
+// ============================================================================
+function buildStandardStages(opts) {
+  const { tier, type, awardMethod, flags, startDate, endDate, engCat } = opts;
+  const f = flags || {};
+  const stages = [];
+
+  if (tier === '小額(15萬以下)') {
+    stages.push(
+      { name: '招標／請購文件準備與動支', items: [
+        { text: '確認未意圖規避採購法而分批辦理（採購法第14條）', required: true },
+        { text: '查詢共同供應契約有無適用品項（或敘明不適用理由）', required: true },
+        { text: '備妥規格需求說明並完成請購／經費動支簽核', required: true }
+      ]},
+      { name: '洽商詢價與下訂', items: [
+        { text: '取具合法廠商估價單（核對統編、規格、含稅總價）', required: true },
+        { text: '確認交貨／施作期限與保固條件後正式下訂', required: true }
+      ]},
+      { name: '履約交貨與施作', items: [
+        { text: '現場清點數量與規格相符（修繕留存施工前中後照片）', required: true },
+        { text: '核對發票／收據抬頭、日期與金額無誤', required: true }
+      ]},
+      { name: '驗收與核銷結案', items: [
+        { text: '由非採購承辦人辦理書面或實地驗收簽章', required: true },
+        { text: '完成黏貼憑證送主計審核、出納撥款並歸檔', required: true }
+      ]}
+    );
+  } else if (tier === '未達(15-150萬)') {
+    stages.push(
+      { name: '招標文件準備與簽核', items: [
+        { text: '備妥投標須知、契約草案與規格／預算書圖並簽奉核定', required: true },
+        { text: '【關鍵防呆】一併簽准第1次公告未滿3家當場改採限制性招標', required: true },
+        { text: '簽核開標與驗收之監辦方式（實地／書面／不派員）', required: true }
+      ]},
+      { name: '上網公告與等標', items: [
+        { text: '政府電子採購網刊登公告（等標期原則不少於5天）', required: true },
+        { text: '追蹤廠商疑義與更正公告', required: false },
+        { text: '開標前陳請校長密封核定底價（系統嚴禁記錄底價金額）', required: true }
+      ]},
+      { name: '開標、審標與決標', items: [
+        { text: '查驗投標家數（未滿3家依簽准轉限制性招標比議價）', required: true },
+        { text: '完成資格規格審查、拆封底價、比減／議價並宣布決標', required: true },
+        { text: '完成開／決標紀錄簽認並辦理決標公告或定期彙送', required: true }
+      ]},
+      { name: '訂約與履約準備', items: [
+        { text: '查驗履約保證金繳納（契約免收者註記免附）', required: true },
+        { text: '完成契約正副本用印與騎縫章核對', required: true }
+      ]},
+      { name: '履約執行控管', items: [
+        { text: '依契約節點督導履約進度並留存會議或查核紀錄', required: true }
+      ]},
+      { name: '驗收、核銷與保固', items: [
+        { text: '收受竣工／履約完成書面通知並確認是否逾期', required: true },
+        { text: '簽派主驗人（承辦人不得兼任）並通知監驗單位', required: true },
+        { text: '製作驗收紀錄、收繳保固金、退還履保金並完成核銷歸檔', required: true }
+      ]}
+    );
+  } else {
+    stages.push(
+      { name: '招標文件準備與前置核准', items: [
+        { text: '核定預算書圖、投標須知與契約草案（確認無不當限制競爭）', required: true },
+        { text: '確認預算科目、核銷期程並簽准招標方式與決標原則', required: true }
+      ]},
+      { name: '上網公告與監辦籌備', items: [
+        { text: '政府電子採購網公開招標公告（等標期14天以上；第2次起7天）', required: true },
+        { text: '書面通知主（會）計及有關單位屆時派員實地監辦', required: true },
+        { text: '開標前陳請校長密封核定底價（系統嚴禁記錄底價金額）', required: true }
+      ]},
+      { name: '開標、審標與決標公告', items: [
+        { text: '第1次開標檢核滿3家合格廠商（不足須流標重招）', required: true },
+        { text: '確認監辦到場簽認、完成審標與決標紀錄', required: true },
+        { text: '【法定死線】自決標日起30日內刊登政府電子採購網決標公告', required: true }
+      ]},
+      { name: '訂約與開工／履約啟動', items: [
+        { text: '收繳履約保證金、查驗保險單據並完成契約正副本用印', required: true },
+        { text: '完成開工／履約啟動申報與備查', required: true }
+      ]},
+      { name: '施工／履約控管', items: [
+        { text: '追蹤定期協調會議、日誌報表與契約進度管制', required: true }
+      ]},
+      { name: '初驗、正式驗收與結算', items: [
+        { text: '收受書面竣工報告 → 7日內會同確認竣工並作成紀錄', required: true },
+        { text: '確認竣工後30日內辦理初驗／驗收（簽派非承辦人為主驗人）', required: true },
+        { text: '驗收完畢後15日內填具「結算驗收證明書」', required: true }
+      ]},
+      { name: '核銷歸檔與保固移交', items: [
+        { text: '退還履保金、收繳保固金、完成主計核銷與歸檔', required: true },
+        { text: '轉入「保固追蹤中」，建立保固到期前30天會勘提醒', required: true }
+      ]}
+    );
+  }
+
+  // 外掛注入：採購性質
+  const lastIdx = stages.length - 1;
+  const execIdx = Math.max(0, stages.length - 2);
+  if (type === '工程') {
+    stages[0].items.push({ text: `【工程權責】納入附表二權責分工表（${engCat || '一般公共工程'}）並訂定四方完成期限與罰則`, required: true });
+    if (stages.length >= 5) {
+      stages[3].items.push({ text: '【工程開工前】檢核空污費、營造綜合險（監造核定/業主備查）及施工/品質/安衛/監造計畫核定', required: true });
+      stages[4].items.push({ text: '【工程施工中】管制材料資料/同等品/樣品送審、施工日誌、監造報表、變更設計與估驗計價', required: true });
+    }
+    stages[lastIdx].items.push({ text: '【工程結算】核對竣工圖說、結算明細表、試驗報告、保固切結書與點交紀錄齊全', required: true });
+  } else if (type === '勞務') {
+    stages[execIdx].items.push({ text: '【校園勞務】查核派駐人員名冊與警察刑事紀錄證明（良民證）', required: true });
+    stages[execIdx].items.push({ text: '【校園勞務】按期核對員工勞健保與勞退提繳證明及履約品質紀錄', required: true });
+  } else if (type === '財物') {
+    stages[lastIdx].items.push({ text: '【財物登帳】完成功能測試、財產／非消耗品增加單登帳、黏貼標籤與原廠保固建檔', required: true });
+  }
+
+  // 外掛注入：條件開關
+  if (f.use_committee || awardMethod === '最有利標' || awardMethod === '評分及格最低標' || awardMethod === '取最有利標精神') {
+    if (tier === '公開(150萬以上)' && awardMethod === '最有利標') {
+      stages[0].items.push({ text: '【最有利標】事前報請上級機關核准函文', required: true });
+    }
+    if (stages[1]) {
+      stages[1].items.push({ text: '【評選/評審】簽核成立評選委員會（或評審小組）與工作小組並做好名單保密', required: true });
+    }
+  }
+  if (f.has_grant) {
+    stages[0].items.push({ text: '【補助款】核對上級補助核定函、預算科目與結報死線', required: true });
+    stages[lastIdx].items.push({ text: '【補助款】核算標餘款與補助結報（跨年度提前辦理預算保留）', required: true });
+  }
+  if (f.is_green) {
+    stages[lastIdx].items.push({ text: '【綠色採購】查核環保／綠建材標章並登錄機關綠色採購網', required: true });
+  }
+  if (f.is_priority) {
+    stages[0].items.push({ text: '【優先採購】檢核身心障礙福利機構優先採購網路資訊平台', required: false });
+  }
+
+  // 分配預設預計日期區間
+  const baseStart = startDate || todayStr();
+  const totalSpan = (startDate && endDate && diffDays(startDate, endDate) > 5)
+    ? diffDays(startDate, endDate)
+    : (tier === '小額(15萬以下)' ? 21 : tier === '未達(15-150萬)' ? 75 : 120);
+  const stepDays = Math.max(3, Math.floor(totalSpan / stages.length));
+
+  return stages.map((st, idx) => {
+    const pStart = addDays(baseStart, idx * stepDays);
+    const pEnd = (idx === stages.length - 1 && endDate) ? endDate : addDays(baseStart, (idx + 1) * stepDays - 1);
+    return {
+      stage_order: idx + 1,
+      stage_name: st.name,
+      plan_start: pStart,
+      plan_end: pEnd,
+      actual_start: '',
+      actual_end: '',
+      sla_deadline: '',
+      blocker_note: '',
+      status: idx === 0 ? '進行中' : '未開始',
+      checklist_json: JSON.stringify(st.items.map((it, j) => ({
+        id: `chk_${idx + 1}_${j + 1}`,
+        text: it.text,
+        required: !!it.required,
+        done: false,
+        doc_no: '',
+        done_date: ''
+      })))
+    };
+  });
+}
+
+// ============================================================================
+// 3. 雲端 GAS API 同步層（Stale-While-Revalidate + 純文字防 CORS）
+// ============================================================================
+function setSyncUI(state, text) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  dot.className = 'dot ' + (state || '');
+  txt.textContent = text;
+}
+
+async function syncFromCloud(showMsg = false) {
+  if (!appConfig.gasUrl || !appConfig.token) {
+    setSyncUI('', '本機體驗模式（未連線）');
+    return;
+  }
+  setSyncUI('syncing', '同步中...');
+  try {
+    const url = `${appConfig.gasUrl}?action=bootstrap&token=${encodeURIComponent(appConfig.token)}&_t=${Date.now()}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.message || '同步失敗');
+
+    appData = {
+      schoolName: json.schoolName || appConfig.schoolName,
+      serverTime: json.serverTime,
+      portals: (json.portals && json.portals.length) ? json.portals : DEFAULT_PORTALS,
+      tables: { ...emptyData().tables, ...json.tables }
+    };
+    persistCache();
+    setSyncUI('ok', '已同步 ' + (json.serverTime || '').slice(11, 16));
+    renderHeaderAndPortals();
+    renderCurrentView();
+    if (showMsg) toast('✅ 已從 Google Sheets 同步最新資料');
+  } catch (err) {
+    setSyncUI('err', '同步失敗（使用快取）');
+    if (showMsg) toast('⚠️ 連線失敗：' + err.message);
+  }
+}
+
+async function pushToCloud(payload) {
+  persistCache();
+  if (!appConfig.gasUrl || !appConfig.token) {
+    toast('💾 已暫存於瀏覽器本機（設定 GAS 後可雲端同步）');
+    return { ok: true, localOnly: true };
+  }
+  setSyncUI('syncing', '寫入中...');
+  try {
+    const res = await fetch(appConfig.gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token: appConfig.token, ...payload })
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.message || '寫入失敗');
+    setSyncUI('ok', '已儲存 ' + (json.serverTime || '').slice(11, 16));
+    return json;
+  } catch (err) {
+    setSyncUI('err', '寫入失敗');
+    toast('⚠️ 雲端寫入失敗：' + err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
+// 本機樂觀更新輔助
+function upsertLocal(table, record, pkKey) {
+  const arr = appData.tables[table];
+  const idx = arr.findIndex(r => r[pkKey] === record[pkKey]);
+  if (idx >= 0) arr[idx] = { ...arr[idx], ...record };
+  else arr.push(record);
+}
+
+function nextId(table, pkKey, prefix, pad = 4) {
+  let max = 0;
+  (appData.tables[table] || []).forEach(r => {
+    const m = String(r[pkKey] || '').match(/(\d+)$/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  });
+  return `${prefix}-${String(max + 1).padStart(pad, '0')}`;
+}
+
+// ============================================================================
+// 4. 年度固定例行事項自動復活演算法 & 跨模組紅黃燈預警引擎
+// ============================================================================
+function computeRoutineSchedule(r) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const rocY = y - 1911;
+  const m = now.getMonth() + 1;
+  const today = todayStr();
+  const rule = String(r.due_rule || '').trim();
+  const candidates = [];
+
+  if (r.recurrence_type === '每年' && /^\d{2}-\d{2}$/.test(rule)) {
+    candidates.push({ cycle: String(rocY), date: `${y}-${rule}` });
+    candidates.push({ cycle: String(rocY + 1), date: `${y + 1}-${rule}` });
+  } else if (r.recurrence_type === '每學期') {
+    rule.split(',').map(s => s.trim()).forEach((md, idx) => {
+      if (/^\d{2}-\d{2}$/.test(md)) {
+        candidates.push({ cycle: `${rocY}-S${idx + 1}`, date: `${y}-${md}` });
+        candidates.push({ cycle: `${rocY + 1}-S${idx + 1}`, date: `${y + 1}-${md}` });
+      }
+    });
+  } else if (r.recurrence_type === '每季') {
+    const dayNum = parseInt((rule.match(/\d+$/) || ['15'])[0], 10);
+    const dd = String(Math.min(28, Math.max(1, dayNum))).padStart(2, '0');
+    const isNext = rule.startsWith('Q-NEXT');
+    const qMonths = isNext ? [1, 4, 7, 10] : [3, 6, 9, 12];
+    qMonths.forEach((qm, idx) => {
+      const qLabel = isNext ? (idx === 0 ? `${rocY - 1}-Q4` : `${rocY}-Q${idx}`) : `${rocY}-Q${idx + 1}`;
+      candidates.push({ cycle: qLabel, date: `${y}-${String(qm).padStart(2, '0')}-${dd}` });
+    });
+    candidates.push({ cycle: isNext ? `${rocY}-Q4` : `${rocY + 1}-Q1`, date: `${y + 1}-${String(qMonths[0]).padStart(2, '0')}-${dd}` });
+  } else if (r.recurrence_type === '每月' || r.recurrence_type === '每雙月') {
+    const dayNum = parseInt((rule.match(/\d+$/) || ['10'])[0], 10);
+    const dd = String(Math.min(28, Math.max(1, dayNum))).padStart(2, '0');
+    for (let offset = -1; offset <= 2; offset++) {
+      const dt = new Date(y, m - 1 + offset, 1);
+      const yy = dt.getFullYear(), mm = dt.getMonth() + 1;
+      if (r.recurrence_type === '每雙月' && mm % 2 !== 0) continue;
+      candidates.push({ cycle: `${yy - 1911}-${String(mm).padStart(2, '0')}`, date: `${yy}-${String(mm).padStart(2, '0')}-${dd}` });
+    }
+  }
+
+  candidates.sort((a, b) => a.date.localeCompare(b.date));
+  const lead = Number(r.lead_days) || 14;
+  // 找最近一期尚未完成，且未落後超過 45 天的期別
+  for (const c of candidates) {
+    if (c.cycle === r.last_done_cycle) continue;
+    const diff = diffDays(today, c.date);
+    if (diff >= -45) {
+      return { cycle: c.cycle, dueDate: c.date, diffDays: diff, isVisible: diff <= lead };
+    }
+  }
+  const fallback = candidates[candidates.length - 1] || { cycle: String(rocY), date: today };
+  return { cycle: fallback.cycle, dueDate: fallback.date, diffDays: diffDays(today, fallback.date), isVisible: false };
+}
+
+function buildAllAlerts() {
+  const today = todayStr();
+  const alerts = [];
+  const prjMap = {};
+  (appData.tables.Projects || []).forEach(p => { prjMap[p.project_id] = p; });
+
+  // 1. 標案補助死線 & 保固到期
+  (appData.tables.Projects || []).forEach(p => {
+    if (p.status === '已結案' || p.status === '廢標撤案') return;
+    if (p.grant_deadline) {
+      const d = diffDays(today, p.grant_deadline);
+      if (d <= 14) {
+        alerts.push({
+          level: 'red', badge: '補助死線', title: p.project_name,
+          detail: `補助核銷期限 ${p.grant_deadline}（${d < 0 ? '逾期 ' + Math.abs(d) + ' 天' : '剩 ' + d + ' 天'}）`,
+          sortKey: d, action: () => openProjectDetail(p.project_id)
+        });
+      }
+    }
+    if (p.status === '保固追蹤中' && p.warranty_end_date) {
+      const d = diffDays(today, p.warranty_end_date);
+      if (d <= 30) {
+        alerts.push({
+          level: d < 0 ? 'red' : 'amber', badge: '保固到期', title: p.project_name,
+          detail: `保固至 ${p.warranty_end_date}（${d < 0 ? '已到期' : '剩 ' + d + ' 天，請排會勘'}）`,
+          sortKey: d, action: () => openProjectDetail(p.project_id)
+        });
+      }
+    }
+  });
+
+  // 2. 階段法定死線 & 預計結束逾期
+  (appData.tables.Project_Tasks || []).forEach(t => {
+    const p = prjMap[t.project_id];
+    if (!p || p.status === '已結案' || p.status === '廢標撤案' || t.status === '已完成') return;
+    if (t.sla_deadline) {
+      const d = diffDays(today, t.sla_deadline);
+      if (d <= 14) {
+        alerts.push({
+          level: d < 0 ? 'red' : 'amber', badge: '法定死線', title: `${p.project_name}｜${t.stage_name}`,
+          detail: `法定期限 ${t.sla_deadline}（${d < 0 ? '逾期 ' + Math.abs(d) + ' 天' : '剩 ' + d + ' 天'}）`,
+          sortKey: d, action: () => openProjectDetail(p.project_id)
+        });
+      }
+    } else if (t.status === '進行中' && t.plan_end) {
+      const d = diffDays(today, t.plan_end);
+      if (d < 0) {
+        alerts.push({
+          level: 'amber', badge: '進度落後', title: `${p.project_name}｜${t.stage_name}`,
+          detail: `預計完成 ${t.plan_end}（落後 ${Math.abs(d)} 天）`,
+          sortKey: d + 5, action: () => openProjectDetail(p.project_id)
+        });
+      }
+    }
+  });
+
+  // 3. 臨時交辦 Memo 到期／指定提醒
+  (appData.tables.Quick_Memos || []).forEach(m => {
+    if (m.is_done) return;
+    if (m.due_date) {
+      const d = diffDays(today, m.due_date);
+      if (d <= 3) {
+        alerts.push({
+          level: d <= 0 ? 'red' : 'amber', badge: m.source_tag || '交辦到期', title: m.content,
+          detail: `交辦期限 ${m.due_date}（${d < 0 ? '逾期 ' + Math.abs(d) + ' 天' : d === 0 ? '今天到期' : '剩 ' + d + ' 天'}）`,
+          sortKey: d, action: () => { switchTab('dashboard'); }
+        });
+      }
+    } else if (m.remind_date && diffDays(today, m.remind_date) <= 0) {
+      alerts.push({
+        level: m.priority === '緊急' ? 'red' : 'amber', badge: 'Memo提醒', title: m.content,
+        detail: `指定提醒日 ${m.remind_date}（${m.source_tag || '自訂備忘'}）`,
+        sortKey: 0, action: () => { switchTab('dashboard'); }
+      });
+    }
+  });
+
+  // 4. 固定例行業務逾期或 7 天內到期
+  (appData.tables.Annual_Routines || []).filter(r => r.is_active !== false).forEach(r => {
+    const sch = computeRoutineSchedule(r);
+    if (sch.diffDays <= 7) {
+      alerts.push({
+        level: sch.diffDays < 0 ? 'red' : 'amber', badge: '例行業務', title: r.title,
+        detail: `期別 ${sch.cycle}｜期限 ${sch.dueDate}（${sch.diffDays < 0 ? '逾期 ' + Math.abs(sch.diffDays) + ' 天' : '剩 ' + sch.diffDays + ' 天'}）`,
+        sortKey: sch.diffDays, action: () => switchTab('routines')
+      });
+    }
+  });
+
+  // 5. 預留第二期：太陽能與水電紅黃燈自動彙整
+  (appData.tables.Solar_Contracts || []).filter(s => s.status !== '已期滿').forEach(s => {
+    [ ['保險續保', s.insurance_expiry], ['履約保證函', s.deposit_expiry] ].forEach(([lbl, dt]) => {
+      if (!dt) return;
+      const d = diffDays(today, dt);
+      if (d <= 30) {
+        alerts.push({ level: d < 0 ? 'red' : 'amber', badge: '太陽能' + lbl, title: s.building_name, detail: `到期日 ${dt}（剩 ${d} 天）`, sortKey: d });
+      }
+    });
+  });
+  (appData.tables.Utilities_Bills || []).forEach(b => {
+    if (b.alert_flags && b.alert_flags !== '正常' && b.paid_status !== '已撥款') {
+      alerts.push({ level: 'red', badge: '水電異常', title: `錶號 ${b.meter_id} (${b.billing_ym})`, detail: b.alert_flags, sortKey: -5 });
+    }
+  });
+
+  const rank = { red: 0, amber: 1, blue: 2 };
+  alerts.sort((a, b) => (rank[a.level] - rank[b.level]) || (a.sortKey - b.sortKey));
+  return alerts;
+}
+
+// ============================================================================
+// 5. 畫面渲染引擎
+// ============================================================================
+function renderHeaderAndPortals() {
+  document.getElementById('school-title').textContent = appData.schoolName || appConfig.schoolName;
+  const now = new Date();
+  const wk = ['日','一','二','三','四','五','六'][now.getDay()];
+  document.getElementById('today-roc').textContent = `民國 ${now.getFullYear() - 1911}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} (${wk})`;
+
+  const bar = document.getElementById('portal-bar');
+  const portals = appData.portals || DEFAULT_PORTALS;
+  bar.innerHTML = `<span style="color:#94a3b8;font-size:12px;white-space:nowrap;">常用傳送門：</span>` +
+    portals.map(p => `<a class="portal-chip" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.icon || '🔗')} ${esc(p.name)}</a>`).join('') +
+    `<button class="btn-xs" style="background:#0f172a;color:#cbd5e1;border-color:#475569;margin-left:auto" onclick="openPortalEditor()">✎ 自訂捷徑</button>`;
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  if (tab !== 'projects') selectedProjectId = null;
+  document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+  renderCurrentView();
+}
+
+function renderCurrentView() {
+  const el = document.getElementById('main-view');
+  if (currentTab === 'dashboard') el.innerHTML = renderDashboardHTML();
+  else if (currentTab === 'projects') el.innerHTML = selectedProjectId ? renderProjectDetailHTML(selectedProjectId) : renderProjectsListHTML();
+  else if (currentTab === 'annual-gantt') el.innerHTML = renderAnnualGanttHTML();
+  else if (currentTab === 'templates') el.innerHTML = renderTemplatesHTML();
+  else if (currentTab === 'routines') el.innerHTML = renderRoutinesHTML();
+  else el.innerHTML = renderUpcomingHTML();
+}
+
+// ---------- 視圖 1：Chrome 起始頁總控戰情室 ----------
+function renderDashboardHTML() {
+  const q = (document.getElementById('global-search')?.value || '').trim().toLowerCase();
+  const alerts = buildAllAlerts().filter(a => !q || (a.title + a.detail + a.badge).toLowerCase().includes(q));
+  const redCount = alerts.filter(a => a.level === 'red').length;
+  const amberCount = alerts.filter(a => a.level === 'amber').length;
+
+  const activeProjects = (appData.tables.Projects || []).filter(p => !['已結案', '廢標撤案'].includes(p.status))
+    .filter(p => !q || (p.project_name + p.project_id + p.vendor_name).toLowerCase().includes(q));
+
+  const routines = (appData.tables.Annual_Routines || [])
+    .filter(r => r.is_active !== false)
+    .map(r => ({ ...r, sch: computeRoutineSchedule(r) }))
+    .filter(r => r.sch.isVisible)
+    .filter(r => !q || (r.title + r.category + r.note).toLowerCase().includes(q))
+    .sort((a, b) => a.sch.diffDays - b.sch.diffDays);
+
+  const allMemos = (appData.tables.Quick_Memos || []).filter(m => !q || (m.content + m.source_tag).toLowerCase().includes(q));
+  const openMemos = allMemos.filter(m => !m.is_done);
+  const doneMemos = allMemos.filter(m => m.is_done);
+  const today = todayStr();
+
+  const sortedMemos = [...openMemos].sort((a, b) => {
+    const score = m => {
+      if (m.due_date && diffDays(today, m.due_date) <= 0) return 0;
+      if (m.remind_date && diffDays(today, m.remind_date) <= 0) return 1;
+      if (m.priority === '緊急') return 2;
+      if (m.priority === '重要') return 3;
+      return 4;
+    };
+    return score(a) - score(b) || (a.due_date || '9999').localeCompare(b.due_date || '9999');
+  });
+
+  // 掛載 alert 點擊事件索引
+  window._dashAlerts = alerts;
+
+  return `
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-red" onclick="switchTab('dashboard')">
+        <div><div class="kpi-label">🔴 緊急紅燈（立即處理）</div><div class="kpi-val">${redCount}</div></div>
+        <span style="font-size:24px">🚨</span>
+      </div>
+      <div class="kpi-card kpi-amber" onclick="switchTab('dashboard')">
+        <div><div class="kpi-label">🟡 近期追蹤（黃燈預警）</div><div class="kpi-val">${amberCount}</div></div>
+        <span style="font-size:24px">⏳</span>
+      </div>
+      <div class="kpi-card kpi-blue" onclick="switchTab('projects')">
+        <div><div class="kpi-label">📋 執行／保固中標案</div><div class="kpi-val">${activeProjects.length}</div></div>
+        <span style="font-size:24px">🏗️</span>
+      </div>
+      <div class="kpi-card kpi-green" onclick="document.getElementById('memo-input')?.focus()">
+        <div><div class="kpi-label">📌 未完成臨時交辦 Memo</div><div class="kpi-val">${openMemos.length}</div></div>
+        <span style="font-size:24px">📝</span>
+      </div>
+    </div>
+
+    <div class="dash-grid">
+      <!-- 左區：紅黃燈預警 ＋ 進行中標案 -->
+      <div>
+        <div class="panel">
+          <div class="panel-hd">
+            <h3>🚨 跨模組紅黃燈預警雷達</h3>
+            <span class="tag tag-gray">${alerts.length} 項提醒</span>
+          </div>
+          <div class="panel-bd scroll-list">
+            ${alerts.length ? alerts.map((a, i) => `
+              <div class="alert-item ${a.level}" style="cursor:pointer" onclick="window._dashAlerts[${i}]?.action?.()">
+                <div class="item-row">
+                  <div>
+                    <span class="tag ${a.level === 'red' ? 'tag-red' : 'tag-amber'}">${esc(a.badge)}</span>
+                    <strong style="margin-left:5px">${esc(a.title)}</strong>
+                  </div>
+                </div>
+                <div class="item-meta">${esc(a.detail)}</div>
+              </div>
+            `).join('') : '<div class="empty-state">🎉 目前沒有紅黃燈預警項目，進度都在掌控中！</div>'}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-hd">
+            <h3>📋 進行中標案進度總覽</h3>
+            <button class="btn-xs" onclick="switchTab('projects')">全部標案 →</button>
+          </div>
+          <div class="panel-bd scroll-list">
+            ${activeProjects.length ? activeProjects.map(p => {
+              const prog = calcProjectProgress(p.project_id);
+              return `
+                <div class="alert-item blue" style="cursor:pointer" onclick="openProjectDetail('${esc(p.project_id)}')">
+                  <div class="item-row">
+                    <div>
+                      <span class="tag tag-blue">${esc(p.procurement_type)}</span>
+                      <span class="tag tag-gray">${esc(p.status)}</span>
+                      <strong style="margin-left:4px">${esc(p.project_name)}</strong>
+                    </div>
+                    <span style="font-size:12px;font-weight:700;color:var(--primary)">${prog.pct}%</span>
+                  </div>
+                  <div class="item-meta">目前階段：${esc(prog.currentStage)} ｜ 檢核 ${prog.doneChecks}/${prog.totalChecks} ${p.orig_end_date ? '｜原訂完工 ' + esc(p.orig_end_date) : ''}</div>
+                  <div class="mini-bar-wrap"><div class="mini-bar" style="width:${prog.pct}%"></div></div>
+                </div>
+              `;
+            }).join('') : '<div class="empty-state">尚無進行中標案，點擊右上角「＋ 開新標案」啟動流程。</div>'}
+          </div>
+        </div>
+      </div>
+
+      <!-- 中區：年度固定例行事務自動通知 -->
+      <div class="panel">
+        <div class="panel-hd">
+          <h3>🔁 近期固定例行業務通知</h3>
+          <button class="btn-xs" onclick="switchTab('routines')">管理全部</button>
+        </div>
+        <div class="panel-bd" style="max-height:660px;overflow-y:auto">
+          ${routines.length ? routines.map(r => {
+            const d = r.sch.diffDays;
+            const cls = d < 0 ? 'tag-red' : d <= 7 ? 'tag-amber' : 'tag-blue';
+            const dTxt = d < 0 ? `逾期 ${Math.abs(d)} 天` : d === 0 ? '今天到期' : `剩 ${d} 天`;
+            return `
+              <div class="routine-item">
+                <div class="item-row">
+                  <div>
+                    <span class="tag ${cls}">${dTxt}</span>
+                    <span class="tag tag-gray">${esc(r.category)}</span>
+                    <div style="font-weight:700;margin-top:4px">${esc(r.title)}</div>
+                  </div>
+                </div>
+                <div class="item-meta">期別：${esc(r.sch.cycle)} ｜ 期限：${esc(r.sch.dueDate)}（${esc(r.recurrence_type)}）</div>
+                ${r.note ? `<div class="item-meta">💡 ${esc(r.note)}</div>` : ''}
+                <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+                  <button class="btn-xs btn-success" onclick="markRoutineDone('${esc(r.routine_id)}','${esc(r.sch.cycle)}')">✓ 本期完成</button>
+                  ${r.portal_url ? `<a class="btn-xs" style="border:1px solid var(--border);border-radius:5px;padding:2px 7px;background:#f8fafc" href="${esc(r.portal_url)}" target="_blank">🌐 去網站</a>` : ''}
+                  ${r.linked_template_id ? `<button class="btn-xs btn-primary" onclick="openProjectWizard('${esc(r.linked_template_id)}')">📋 套模板開案</button>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('') : '<div class="empty-state">近期待辦的固定例行事務皆已完成！<br><button class="btn-sm" style="margin-top:8px" onclick="switchTab(\'routines\')">檢視全年度例行清單</button></div>'}
+        </div>
+      </div>
+
+      <!-- 右區：臨時交辦 Memo 提醒匣 -->
+      <div class="panel">
+        <div class="panel-hd">
+          <h3>📌 臨時交辦 Memo 提醒匣</h3>
+          <button class="btn-xs" onclick="showDoneMemos=!showDoneMemos;renderCurrentView()">
+            ${showDoneMemos ? '隱藏已完成' : `已完成 (${doneMemos.length})`}
+          </button>
+        </div>
+        <div class="panel-bd">
+          <div class="memo-quick">
+            <input id="memo-input" type="text" placeholder="輸入交辦事項後按 Enter 快速存檔..." onkeydown="if(event.key==='Enter') quickAddMemo()">
+            <div class="memo-quick-row">
+              <select id="memo-tag" style="padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;flex:1">
+                <option value="校長交辦">校長交辦</option>
+                <option value="處室需求">處室需求</option>
+                <option value="廠商追蹤">廠商追蹤</option>
+                <option value="現場會勘">現場會勘</option>
+                <option value="自訂備忘">自訂備忘</option>
+              </select>
+              <select id="memo-prio" style="padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px">
+                <option value="一般">一般</option>
+                <option value="重要">重要</option>
+                <option value="緊急">🔴 緊急</option>
+              </select>
+            </div>
+            <div class="memo-quick-row" style="align-items:center">
+              <label style="font-size:11px;color:var(--muted)">提醒日<input id="memo-remind" type="date" style="margin-left:3px;padding:3px;border:1px solid #cbd5e1;border-radius:4px"></label>
+              <label style="font-size:11px;color:var(--muted)">期限<input id="memo-due" type="date" style="margin-left:3px;padding:3px;border:1px solid #cbd5e1;border-radius:4px"></label>
+              <button class="btn-sm btn-primary" style="margin-left:auto" onclick="quickAddMemo()">＋ 記錄</button>
+            </div>
+          </div>
+
+          <div style="max-height:470px;overflow-y:auto">
+            ${sortedMemos.map(m => renderMemoCardHTML(m, today)).join('')}
+            ${!sortedMemos.length ? '<div class="empty-state">目前沒有未完成的臨時交辦事項。</div>' : ''}
+            ${showDoneMemos && doneMemos.length ? `<div style="font-size:12px;color:var(--muted);margin:10px 0 6px;font-weight:700">已完成紀錄</div>` + doneMemos.slice(0, 20).map(m => renderMemoCardHTML(m, today)).join('') : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMemoCardHTML(m, today) {
+  const isDueHit = !m.is_done && ((m.due_date && diffDays(today, m.due_date) <= 3) || (m.remind_date && diffDays(today, m.remind_date) <= 0));
+  const cls = m.is_done ? 'done' : (m.priority === '緊急' ? 'urgent' : (isDueHit ? 'due-hit' : ''));
+  return `
+    <div class="memo-item ${cls}">
+      <div class="item-row">
+        <label style="display:flex;gap:7px;align-items:flex-start;cursor:pointer;flex:1">
+          <input type="checkbox" ${m.is_done ? 'checked' : ''} onchange="toggleMemoDone('${esc(m.memo_id)}', this.checked)" style="margin-top:3px">
+          <div>
+            <span class="tag ${m.priority === '緊急' ? 'tag-red' : m.priority === '重要' ? 'tag-amber' : 'tag-gray'}">${esc(m.source_tag || '備忘')}</span>
+            <span style="margin-left:4px;font-weight:600">${esc(m.content)}</span>
+          </div>
+        </label>
+      </div>
+      <div class="item-meta" style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;flex-wrap:wrap;gap:4px">
+        <span>
+          ${m.remind_date ? `⏰ 提醒 ${esc(m.remind_date)}` : ''}
+          ${m.due_date ? ` 📅 期限 ${esc(m.due_date)}` : ''}
+          ${m.converted_ref ? ` 🔗 已轉 ${esc(m.converted_ref)}` : ''}
+        </span>
+        <span style="display:flex;gap:4px">
+          ${!m.is_done ? `<button class="btn-xs" onclick="convertMemoToProject('${esc(m.memo_id)}')">轉標案</button>` : ''}
+          <button class="btn-xs btn-danger" onclick="deleteMemo('${esc(m.memo_id)}')">刪</button>
+        </span>
+      </div>
+    </div>
+  `;
+}
+
+// ---------- 視圖 2：標案清單與詳情（Checklist ＋ 甘特圖 PDF） ----------
+function renderProjectsListHTML() {
+  const q = (document.getElementById('global-search')?.value || '').trim().toLowerCase();
+  const list = (appData.tables.Projects || [])
+    .filter(p => !q || (p.project_name + p.project_id + p.vendor_name + p.procurement_type).toLowerCase().includes(q))
+    .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+
+  return `
+    <div class="panel">
+      <div class="panel-hd">
+        <h3>📋 學校招標與工程案件清單（共 ${list.length} 件）</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm" onclick="switchTab('annual-gantt')">📅 全校年度甘特圖</button>
+          <button class="btn-sm btn-primary" onclick="openProjectWizard()">＋ 開新標案</button>
+        </div>
+      </div>
+      <div class="panel-bd" style="overflow-x:auto">
+        ${list.length ? `
+          <table>
+            <thead>
+              <tr>
+                <th>案號／年度</th>
+                <th>標案名稱</th>
+                <th>性質與級距</th>
+                <th>預算／決標金額</th>
+                <th>進度與目前階段</th>
+                <th>狀態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(p => {
+                const prog = calcProjectProgress(p.project_id);
+                return `
+                  <tr>
+                    <td><strong>${esc(p.project_id)}</strong><div class="item-meta">${esc(p.fiscal_year)}年度</div></td>
+                    <td>
+                      <a href="javascript:void(0)" style="font-weight:700" onclick="openProjectDetail('${esc(p.project_id)}')">${esc(p.project_name)}</a>
+                      <div class="item-meta">${p.vendor_name ? '廠商：' + esc(p.vendor_name) : '尚未決標'} ${p.grant_deadline ? '｜補助死線：' + esc(p.grant_deadline) : ''}</div>
+                    </td>
+                    <td>
+                      <span class="tag tag-blue">${esc(p.procurement_type)}</span>
+                      <div class="item-meta">${esc(p.threshold_tier)}</div>
+                    </td>
+                    <td>
+                      <div>預：${fmtMoney(p.budget_amount)}</div>
+                      <div class="item-meta">決：${p.award_amount ? fmtMoney(p.award_amount) : '-'}</div>
+                    </td>
+                    <td style="min-width:170px">
+                      <div style="font-size:12px">${esc(prog.currentStage)} (${prog.pct}%)</div>
+                      <div class="mini-bar-wrap"><div class="mini-bar" style="width:${prog.pct}%"></div></div>
+                    </td>
+                    <td><span class="tag ${statusTagCls(p.status)}">${esc(p.status)}</span></td>
+                    <td style="white-space:nowrap">
+                      <button class="btn-xs btn-primary" onclick="openProjectDetail('${esc(p.project_id)}')">進入控管</button>
+                      <button class="btn-xs" onclick="printSingleProjectPDF('${esc(p.project_id)}')">🖨️ 甘特圖PDF</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        ` : '<div class="empty-state">目前尚無標案，點擊「＋ 開新標案」從招標文件準備起跑，或從模板庫一鍵複製。</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function openProjectDetail(projectId) {
+  selectedProjectId = projectId;
+  selectedProjectSubtab = 'checklist';
+  currentTab = 'projects';
+  document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === 'projects'));
+  renderCurrentView();
+}
+
+function renderProjectDetailHTML(projectId) {
+  const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+  if (!p) { selectedProjectId = null; return renderProjectsListHTML(); }
+
+  const tasks = getProjectTasks(projectId);
+  const prog = calcProjectProgress(projectId);
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <button class="btn-sm" onclick="selectedProjectId=null;renderCurrentView()">← 返回標案清單</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-sm" onclick="openEditProjectModal('${esc(p.project_id)}')">✎ 編輯基本資料與關鍵日期</button>
+        <button class="btn-sm" onclick="openSaveAsTemplateModal('${esc(p.project_id)}')">🗂️ 存為年度模板</button>
+        <button class="btn-sm btn-primary" onclick="printSingleProjectPDF('${esc(p.project_id)}')">🖨️ 輸出 A4 橫式甘特圖 PDF</button>
+        <button class="btn-sm btn-danger" onclick="deleteProject('${esc(p.project_id)}')">🗑️ 刪除標案</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-bd">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
+              <span class="tag tag-gray">${esc(p.project_id)}</span>
+              <span class="tag tag-blue">${esc(p.procurement_type)}</span>
+              <span class="tag tag-gray">${esc(p.threshold_tier)}</span>
+              <span class="tag tag-gray">${esc(p.award_method)}</span>
+              ${p.engineering_category && p.engineering_category !== '不適用' ? `<span class="tag tag-amber">附表二：${esc(p.engineering_category)}</span>` : ''}
+              <span class="tag ${statusTagCls(p.status)}">${esc(p.status)}</span>
+            </div>
+            <h2 style="margin:4px 0 6px;font-size:20px">${esc(p.project_name)}</h2>
+            <div class="item-meta">
+              預算：<strong>${fmtMoney(p.budget_amount)}</strong> ｜ 原決標：<strong>${p.award_amount ? fmtMoney(p.award_amount) : '未決標'}</strong>
+              ｜ 廠商：<strong>${esc(p.vendor_name || '尚未決標')}</strong>
+              ${p.start_date ? ` ｜ 開工／履約：${esc(p.start_date)} ~ ${esc(p.orig_end_date || '?')}` : ''}
+              ${p.grant_deadline ? ` ｜ <span style="color:var(--red);font-weight:700">補助死線：${esc(p.grant_deadline)}</span>` : ''}
+              ${p.warranty_end_date ? ` ｜ 保固至：${esc(p.warranty_end_date)}` : ''}
+              ${p.drive_folder_url ? ` ｜ <a href="${esc(p.drive_folder_url)}" target="_blank">📁 雲端資料夾</a>` : ''}
+            </div>
+          </div>
+          <div style="text-align:right;min-width:140px">
+            <div style="font-size:12px;color:var(--muted)">檢核完成率</div>
+            <div style="font-size:24px;font-weight:800;color:var(--primary)">${prog.pct}%</div>
+            <div class="item-meta">${prog.doneChecks} / ${prog.totalChecks} 項</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="${selectedProjectSubtab === 'checklist' ? 'btn-primary' : ''}" onclick="selectedProjectSubtab='checklist';renderCurrentView()">✅ 流程階段與 Checklist</button>
+      <button class="${selectedProjectSubtab === 'gantt' ? 'btn-primary' : ''}" onclick="selectedProjectSubtab='gantt';renderCurrentView()">📊 單案甘特圖預覽</button>
+    </div>
+
+    ${selectedProjectSubtab === 'checklist' ? renderProjectStagesHTML(p, tasks) : renderProjectGanttPreviewHTML(p, tasks)}
+  `;
+}
+
+function renderProjectStagesHTML(p, tasks) {
+  return tasks.map(t => {
+    const items = parseJSON(t.checklist_json, []);
+    const doneCnt = items.filter(i => i.done).length;
+    const missingReq = items.filter(i => i.required && !i.done).length;
+    return `
+      <div class="stage-card">
+        <div class="stage-hd">
+          <div>
+            <strong>第 ${t.stage_order} 階段：${esc(t.stage_name)}</strong>
+            <span class="tag ${t.status === '已完成' ? 'tag-green' : t.status === '缺件卡關' ? 'tag-red' : t.status === '進行中' ? 'tag-blue' : 'tag-gray'}" style="margin-left:6px">${esc(t.status)}</span>
+            <span class="item-meta" style="margin-left:8px">完成 ${doneCnt}/${items.length} ${missingReq > 0 ? `（尚缺 ${missingReq} 必備項）` : '✓ 必備項齊全'}</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <select style="padding:3px 6px;border:1px solid #cbd5e1;border-radius:5px;font-size:12px" onchange="updateTaskField('${esc(t.task_id)}','status',this.value)">
+              ${['未開始','進行中','缺件卡關','已完成'].map(s => `<option value="${s}" ${t.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+            <button class="btn-xs" onclick="openEditTaskDatesModal('${esc(t.task_id)}')">📅 期程／死線／卡關備忘</button>
+            <button class="btn-xs" onclick="addChecklistItem('${esc(t.task_id)}')">＋ 增項</button>
+          </div>
+        </div>
+        <div style="padding:6px 14px;background:#fcfdff;border-bottom:1px solid #f1f5f9;font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
+          <span>預計：${esc(t.plan_start || '-')} ~ ${esc(t.plan_end || '-')}</span>
+          <span>實際：${esc(t.actual_start || '-')} ~ ${esc(t.actual_end || '-')}</span>
+          ${t.sla_deadline ? `<span style="color:var(--red);font-weight:700">法定死線：${esc(t.sla_deadline)}</span>` : ''}
+          ${t.blocker_note ? `<span style="color:#b45309;font-weight:700">⚠️ 卡關：${esc(t.blocker_note)}</span>` : ''}
+        </div>
+        <div>
+          ${items.map((it, idx) => `
+            <div class="chk-row">
+              <input type="checkbox" ${it.done ? 'checked' : ''} onchange="toggleCheckItem('${esc(t.task_id)}', ${idx}, this.checked)">
+              <div style="${it.done ? 'color:var(--muted);text-decoration:line-through' : ''}">
+                ${it.required ? '<span class="req-star" title="必備檢核項">*</span>' : ''}${esc(it.text)}
+              </div>
+              <input type="text" placeholder="公文文號／備註" value="${esc(it.doc_no || '')}" onchange="updateCheckMeta('${esc(t.task_id)}', ${idx}, 'doc_no', this.value)">
+              <input type="date" value="${esc(it.done_date || '')}" onchange="updateCheckMeta('${esc(t.task_id)}', ${idx}, 'done_date', this.value)">
+              <button class="btn-xs" style="border:none;color:#94a3b8" title="刪除此項" onclick="removeCheckItem('${esc(t.task_id)}', ${idx})">✕</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderProjectGanttPreviewHTML(p, tasks) {
+  return `
+    <div class="panel">
+      <div class="panel-hd">
+        <h3>📊 單案進度甘特圖（向量 SVG）</h3>
+        <button class="btn-sm btn-primary" onclick="printSingleProjectPDF('${esc(p.project_id)}')">🖨️ 列印／另存 A4 橫式 PDF</button>
+      </div>
+      <div class="panel-bd">
+        <div class="gantt-box">${buildSingleGanttSVG(p, tasks)}</div>
+        <div class="item-meta" style="margin-top:8px">
+          圖例：<span style="color:#94a3b8">■ 預計期程</span> ｜ <span style="color:#1d4ed8">■ 實際進行</span> ｜ <span style="color:#059669">■ 階段完成</span> ｜ <span style="color:#dc2626">┆ 今日線</span> ｜ <span style="color:#475569">┆ 原訂完工日</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ---------- 視圖 3：全校年度跨案總覽甘特圖 ----------
+function renderAnnualGanttHTML() {
+  const projects = (appData.tables.Projects || []).filter(p => Number(p.fiscal_year) === Number(annualGanttYear) && p.status !== '廢標撤案');
+  const adYear = Number(annualGanttYear) + 1911;
+
+  // 統計每月開標／驗收負荷
+  const monthLoad = Array.from({ length: 12 }, () => 0);
+  projects.forEach(p => {
+    getProjectTasks(p.project_id).forEach(t => {
+      if (t.stage_name.includes('開標') || t.stage_name.includes('驗收')) {
+        const dt = t.plan_end || t.plan_start;
+        if (dt && dt.startsWith(String(adYear))) {
+          const m = parseInt(dt.slice(5, 7), 10) - 1;
+          if (m >= 0 && m < 12) monthLoad[m]++;
+        }
+      }
+    });
+  });
+
+  return `
+    <div class="panel">
+      <div class="panel-hd">
+        <h3>📅 全校年度跨案總覽甘特圖（民國 ${annualGanttYear} 年度）</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn-xs" onclick="annualGanttYear--;renderCurrentView()">◀ 前一年</button>
+          <strong>${annualGanttYear} 年度</strong>
+          <button class="btn-xs" onclick="annualGanttYear++;renderCurrentView()">後一年 ▶</button>
+          <button class="btn-sm btn-primary" onclick="printAnnualGanttPDF()">🖨️ 輸出年度總覽 PDF</button>
+        </div>
+      </div>
+      <div class="panel-bd">
+        <div class="gantt-box">${buildAnnualGanttSVG(annualGanttYear, projects, monthLoad)}</div>
+        <div class="item-meta" style="margin-top:8px">
+          說明：上方月份列顯示各月預計「開標／驗收」案次（達 3 案以上亮橘燈提醒錯開行政負荷）；點擊下方各案可進入檢視明細。
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ---------- 視圖 4：年度標案模板庫 ----------
+function renderTemplatesHTML() {
+  const list = appData.tables.Templates || [];
+  return `
+    <div class="panel">
+      <div class="panel-hd">
+        <h3>🗂️ 年度例行標案模板庫（共 ${list.length} 套）</h3>
+        <span class="item-meta">提示：任一標案詳情頁皆可按「存為年度模板」一鍵複製留存</span>
+      </div>
+      <div class="panel-bd">
+        ${list.length ? list.map(t => {
+          const stages = parseJSON(t.stages_offset_json, []);
+          return `
+            <div class="alert-item blue">
+              <div class="item-row">
+                <div>
+                  <span class="tag tag-blue">${esc(t.procurement_type)}</span>
+                  <span class="tag tag-gray">${esc(t.threshold_tier)}</span>
+                  <strong style="margin-left:5px;font-size:15px">${esc(t.template_name)}</strong>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn-sm btn-primary" onclick="openProjectWizard('${esc(t.template_id)}')">📋 套用此模板開新案</button>
+                  <button class="btn-sm btn-danger" onclick="deleteTemplate('${esc(t.template_id)}')">刪</button>
+                </div>
+              </div>
+              <div class="item-meta">基準日定義：<strong>${esc(t.anchor_label || '基準日')}</strong> ｜ 內含 ${stages.length} 個標準階段（採相對天數自動推算並避開週末）</div>
+              ${t.lessons_learned ? `<div class="lessons-box" style="margin-top:8px;margin-bottom:0"><strong>💡 上年度踩雷備忘錄：</strong>\n${esc(t.lessons_learned)}</div>` : ''}
+            </div>
+          `;
+        }).join('') : '<div class="empty-state">尚未建立模板。請先建立標案，再於標案內按「存為年度模板」。</div>'}
+      </div>
+    </div>
+  `;
+}
+
+// ---------- 視圖 5：年度固定例行事務管理 ----------
+function renderRoutinesHTML() {
+  const list = (appData.tables.Annual_Routines || []).map(r => ({ ...r, sch: computeRoutineSchedule(r) }))
+    .sort((a, b) => Number(b.is_active !== false) - Number(a.is_active !== false) || a.sch.diffDays - b.sch.diffDays);
+
+  return `
+    <div class="panel">
+      <div class="panel-hd">
+        <h3>🔁 年度固定例行業務管理（設一次、每年自動復活提醒）</h3>
+        <button class="btn-sm btn-primary" onclick="openRoutineModal()">＋ 新增例行事項</button>
+      </div>
+      <div class="panel-bd" style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>事項名稱與備註</th>
+              <th>類別／週期</th>
+              <th>到期規則／預告</th>
+              <th>下次到期</th>
+              <th>上次完成</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(r => `
+              <tr style="${r.is_active === false ? 'opacity:.45' : ''}">
+                <td>
+                  <strong>${esc(r.title)}</strong>
+                  ${r.note ? `<div class="item-meta">${esc(r.note)}</div>` : ''}
+                </td>
+                <td><span class="tag tag-gray">${esc(r.category)}</span><div class="item-meta">${esc(r.recurrence_type)}</div></td>
+                <td><code>${esc(r.due_rule)}</code><div class="item-meta">提前 ${r.lead_days} 天通知</div></td>
+                <td>
+                  <strong>${esc(r.sch.dueDate)}</strong>
+                  <div class="item-meta">期別 ${esc(r.sch.cycle)}</div>
+                </td>
+                <td>${r.last_done_cycle ? `${esc(r.last_done_cycle)}<div class="item-meta">${esc(r.last_done_date)}</div>` : '-'}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn-xs btn-success" onclick="markRoutineDone('${esc(r.routine_id)}','${esc(r.sch.cycle)}')">✓ 完成本期</button>
+                  <button class="btn-xs" onclick="openRoutineModal('${esc(r.routine_id)}')">✎ 編輯</button>
+                  <button class="btn-xs btn-danger" onclick="deleteRoutine('${esc(r.routine_id)}')">刪</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderUpcomingHTML() {
+  return `
+    <div class="panel">
+      <div class="panel-hd"><h3>🔧 下階段擴充模組狀態（Google Sheets 資料表已預先建妥）</h3></div>
+      <div class="panel-bd">
+        <div class="alert-item blue">
+          <strong>第一期 B｜工程三級品管、四方權責分工、變更設計與估驗計價</strong>
+          <div class="item-meta">對應試算表：<code>Project_Materials</code>、<code>Project_ChangeOrders</code>、<code>Project_Billings</code>、<code>Project_Responsibilities</code>（已建表就緒，待第一期 A 實際上線驗收後無縫開啟頁籤）</div>
+        </div>
+        <div class="alert-item blue">
+          <strong>第二期｜太陽能屋頂租賃控管 ＋ 學校水電費多錶號異常分析</strong>
+          <div class="item-meta">對應試算表：<code>Solar_Contracts</code>、<code>Solar_Records</code>、<code>Utilities_Meters</code>、<code>Utilities_Bills</code>（目前已串接至首頁戰情室紅黃燈預警引擎）</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================================
+// 6. 向量 SVG 甘特圖繪製與 A4 橫式 PDF 輸出
+// ============================================================================
+function buildSingleGanttSVG(p, tasks) {
+  const dates = [];
+  tasks.forEach(t => {
+    [t.plan_start, t.plan_end, t.actual_start, t.actual_end, t.sla_deadline].forEach(d => { if (d) dates.push(d); });
+  });
+  if (p.orig_end_date) dates.push(p.orig_end_date);
+  if (!dates.length) return '<div class="empty-state">尚未設定各階段日期，請點擊「📅 期程／死線」設定起迄日。</div>';
+
+  dates.sort();
+  const minDate = addDays(dates[0], -5);
+  const maxDate = addDays(dates[dates.length - 1], 10);
+  const totalDays = Math.max(15, diffDays(minDate, maxDate));
+
+  const W = 1040, leftW = 290, chartW = W - leftW - 20;
+  const rowH = 38, headH = 34;
+  const H = headH + tasks.length * rowH + 16;
+  const xOf = ymd => leftW + (diffDays(minDate, ymd) / totalDays) * chartW;
+
+  // 產生時間刻度（最多 10 格）
+  const tickStep = Math.max(5, Math.ceil(totalDays / 10));
+  let gridSvg = '';
+  for (let d = 0; d <= totalDays; d += tickStep) {
+    const dt = addDays(minDate, d);
+    const x = leftW + (d / totalDays) * chartW;
+    gridSvg += `<line x1="${x}" y1="${headH}" x2="${x}" y2="${H}" stroke="#e2e8f0" stroke-width="1"/>`;
+    gridSvg += `<text x="${x}" y="22" font-size="10.5" fill="#64748b" text-anchor="middle">${dt.slice(5)}</text>`;
+  }
+
+  // 今日線 & 原訂完工線
+  const today = todayStr();
+  let markersSvg = '';
+  if (today >= minDate && today <= maxDate) {
+    const tx = xOf(today);
+    markersSvg += `<line x1="${tx}" y1="${headH}" x2="${tx}" y2="${H}" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    markersSvg += `<text x="${tx}" y="11" font-size="9.5" fill="#dc2626" font-weight="700" text-anchor="middle">今日</text>`;
+  }
+  if (p.orig_end_date && p.orig_end_date >= minDate && p.orig_end_date <= maxDate) {
+    const ox = xOf(p.orig_end_date);
+    markersSvg += `<line x1="${ox}" y1="${headH}" x2="${ox}" y2="${H}" stroke="#334155" stroke-width="1.5" stroke-dasharray="5,3"/>`;
+    markersSvg += `<text x="${ox}" y="${H - 3}" font-size="9.5" fill="#334155" font-weight="700" text-anchor="middle">原訂完工</text>`;
+  }
+
+  let rowsSvg = '';
+  tasks.forEach((t, idx) => {
+    const y = headH + idx * rowH;
+    const items = parseJSON(t.checklist_json, []);
+    const done = items.filter(i => i.done).length;
+    rowsSvg += `<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="${idx % 2 ? '#f8fafc' : '#ffffff'}"/>`;
+    rowsSvg += `<line x1="0" y1="${y + rowH}" x2="${W}" y2="${y + rowH}" stroke="#f1f5f9"/>`;
+    rowsSvg += `<text x="10" y="${y + 16}" font-size="12" font-weight="700" fill="#0f172a">${t.stage_order}. ${escSvg(t.stage_name)}</text>`;
+    rowsSvg += `<text x="10" y="${y + 31}" font-size="10.5" fill="#64748b">檢核 ${done}/${items.length} ｜ ${escSvg(t.status)}</text>`;
+
+    if (t.plan_start && t.plan_end) {
+      const x1 = xOf(t.plan_start), x2 = Math.max(x1 + 6, xOf(t.plan_end));
+      rowsSvg += `<rect x="${x1}" y="${y + 7}" width="${x2 - x1}" height="10" rx="3" fill="#cbd5e1"/>`;
+    }
+    if (t.actual_start) {
+      const aEnd = t.actual_end || (today > t.actual_start ? today : t.actual_start);
+      const ax1 = xOf(t.actual_start), ax2 = Math.max(ax1 + 6, xOf(aEnd));
+      const color = t.status === '已完成' ? '#059669' : t.status === '缺件卡關' ? '#dc2626' : '#1d4ed8';
+      rowsSvg += `<rect x="${ax1}" y="${y + 20}" width="${ax2 - ax1}" height="10" rx="3" fill="${color}"/>`;
+    }
+    if (t.sla_deadline && t.sla_deadline >= minDate && t.sla_deadline <= maxDate) {
+      const sx = xOf(t.sla_deadline);
+      rowsSvg += `<polygon points="${sx},${y+8} ${sx+5},${y+13} ${sx},${y+18} ${sx-5},${y+13}" fill="#dc2626"/>`;
+    }
+  });
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;font-family:'Microsoft JhengHei',sans-serif">
+    <rect x="0" y="0" width="${W}" height="${headH}" fill="#f1f5f9"/>
+    <text x="10" y="22" font-size="12" font-weight="700" fill="#334155">階段名稱與檢核進度</text>
+    ${rowsSvg}${gridSvg}${markersSvg}
+  </svg>`;
+}
+
+function buildAnnualGanttSVG(rocYear, projects, monthLoad) {
+  const adYear = Number(rocYear) + 1911;
+  const yearStart = `${adYear}-01-01`;
+  const yearEnd = `${adYear}-12-31`;
+  const totalDays = diffDays(yearStart, yearEnd) + 1;
+
+  const W = 1040, leftW = 270, chartW = W - leftW - 12;
+  const rowH = 34, headH = 52;
+  const H = headH + Math.max(1, projects.length) * rowH + 10;
+  const xOf = ymd => {
+    const clamped = ymd < yearStart ? yearStart : (ymd > yearEnd ? yearEnd : ymd);
+    return leftW + (diffDays(yearStart, clamped) / totalDays) * chartW;
+  };
+
+  let headerSvg = `<rect x="0" y="0" width="${W}" height="${headH}" fill="#f1f5f9"/>`;
+  headerSvg += `<text x="10" y="22" font-size="12" font-weight="700" fill="#334155">標案名稱（${rocYear}年度）</text>`;
+  headerSvg += `<text x="10" y="42" font-size="10.5" fill="#64748b">各月開標／驗收負荷件數</text>`;
+
+  let gridSvg = '';
+  for (let m = 0; m < 12; m++) {
+    const mStart = `${adYear}-${String(m + 1).padStart(2, '0')}-01`;
+    const mNext = m === 11 ? yearEnd : `${adYear}-${String(m + 2).padStart(2, '0')}-01`;
+    const x1 = xOf(mStart), x2 = xOf(mNext);
+    const load = monthLoad[m];
+    headerSvg += `<rect x="${x1}" y="28" width="${x2 - x1}" height="22" fill="${load >= 3 ? '#fef3c7' : '#ffffff'}" stroke="#e2e8f0"/>`;
+    headerSvg += `<text x="${(x1 + x2) / 2}" y="19" font-size="11" font-weight="700" fill="#334155" text-anchor="middle">${m + 1}月</text>`;
+    headerSvg += `<text x="${(x1 + x2) / 2}" y="43" font-size="10.5" font-weight="700" fill="${load >= 3 ? '#b45309' : '#64748b'}" text-anchor="middle">${load}案</text>`;
+    gridSvg += `<line x1="${x1}" y1="${headH}" x2="${x1}" y2="${H}" stroke="#e2e8f0"/>`;
+  }
+
+  let rowsSvg = '';
+  if (!projects.length) {
+    rowsSvg = `<text x="${W / 2}" y="${headH + 22}" font-size="13" fill="#64748b" text-anchor="middle">民國 ${rocYear} 年度尚無標案資料</text>`;
+  } else {
+    projects.forEach((p, idx) => {
+      const y = headH + idx * rowH;
+      rowsSvg += `<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="${idx % 2 ? '#f8fafc' : '#ffffff'}"/>`;
+      rowsSvg += `<text x="10" y="${y + 21}" font-size="11.5" font-weight="700" fill="#1d4ed8" style="cursor:pointer" onclick="openProjectDetail('${esc(p.project_id)}')">${escSvg(p.project_name.slice(0, 18))}</text>`;
+      getProjectTasks(p.project_id).forEach(t => {
+        if (!t.plan_start || !t.plan_end) return;
+        if (t.plan_end < yearStart || t.plan_start > yearEnd) return;
+        const x1 = xOf(t.plan_start), x2 = Math.max(x1 + 4, xOf(t.plan_end));
+        const col = t.stage_name.includes('驗收') || t.stage_name.includes('核銷') ? '#059669'
+          : (t.stage_name.includes('施工') || t.stage_name.includes('履約') ? '#2563eb' : '#f59e0b');
+        rowsSvg += `<rect x="${x1}" y="${y + 9}" width="${x2 - x1}" height="16" rx="3" fill="${col}" opacity="0.88"><title>${escSvg(t.stage_name)} (${t.plan_start}~${t.plan_end})</title></rect>`;
+      });
+    });
+  }
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;font-family:'Microsoft JhengHei',sans-serif">${headerSvg}${rowsSvg}${gridSvg}</svg>`;
+}
+
+function printSingleProjectPDF(projectId) {
+  const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+  if (!p) return;
+  const tasks = getProjectTasks(projectId);
+  const blockers = tasks.filter(t => t.blocker_note).map(t => `• [${t.stage_name}] ${t.blocker_note}`);
+  const prog = calcProjectProgress(projectId);
+
+  document.getElementById('print-area').innerHTML = `
+    <div class="print-header">
+      <div>
+        <div style="font-size:12px;color:#475569">${esc(appData.schoolName)} ｜ 標案進度與甘特圖管制表</div>
+        <h2 style="margin:2px 0 0;font-size:18px">${esc(p.project_name)}</h2>
+      </div>
+      <div style="text-align:right;font-size:11.5px;color:#475569">
+        <div>案號：${esc(p.project_id)} ｜ 狀態：<strong>${esc(p.status)}</strong></div>
+        <div>列印日期：${todayStr()}</div>
+      </div>
+    </div>
+    <div class="print-meta">
+      <div><strong>採購性質：</strong>${esc(p.procurement_type)}（${esc(p.threshold_tier)}）</div>
+      <div><strong>決標原則：</strong>${esc(p.award_method)}</div>
+      <div><strong>得標廠商：</strong>${esc(p.vendor_name || '尚未決標')}</div>
+      <div><strong>檢核進度：</strong>${prog.doneChecks}/${prog.totalChecks}（${prog.pct}%）</div>
+      <div><strong>開工／履約起日：</strong>${esc(p.start_date || '-')}</div>
+      <div><strong>原訂完工／迄日：</strong>${esc(p.orig_end_date || '-')}</div>
+      <div><strong>補助核銷死線：</strong>${esc(p.grant_deadline || '無')}</div>
+      <div><strong>保固到期日：</strong>${esc(p.warranty_end_date || '-')}</div>
+    </div>
+    <div style="border:1px solid #cbd5e1;border-radius:6px;padding:6px">${buildSingleGanttSVG(p, tasks)}</div>
+    <div class="print-footer">
+      <div class="print-box">
+        <strong>經費與契約摘要</strong>
+        <div style="margin-top:5px">預算金額：${fmtMoney(p.budget_amount)}</div>
+        <div>原決標金額：${p.award_amount ? fmtMoney(p.award_amount) : '尚未決標'}</div>
+        <div>經費來源：${esc(p.funding_source || '校內預算')}</div>
+      </div>
+      <div class="print-box">
+        <strong>目前卡關與行政備註</strong>
+        <div style="margin-top:5px;white-space:pre-line">${blockers.length ? esc(blockers.join('\n')) : '目前各階段執行順暢，無重大卡關事項。'}</div>
+      </div>
+      <div class="print-box">
+        <div class="sign-grid">
+          <div class="sign-cell"><span>承辦人</span><span></span></div>
+          <div class="sign-cell"><span>總務主任</span><span></span></div>
+          <div class="sign-cell"><span>校長</span><span></span></div>
+        </div>
+      </div>
+    </div>
+  `;
+  setTimeout(() => window.print(), 80);
+}
+
+function printAnnualGanttPDF() {
+  const projects = (appData.tables.Projects || []).filter(p => Number(p.fiscal_year) === Number(annualGanttYear) && p.status !== '廢標撤案');
+  const adYear = Number(annualGanttYear) + 1911;
+  const monthLoad = Array.from({ length: 12 }, () => 0);
+  projects.forEach(p => getProjectTasks(p.project_id).forEach(t => {
+    if (t.stage_name.includes('開標') || t.stage_name.includes('驗收')) {
+      const dt = t.plan_end || t.plan_start;
+      if (dt && dt.startsWith(String(adYear))) {
+        const m = parseInt(dt.slice(5, 7), 10) - 1;
+        if (m >= 0 && m < 12) monthLoad[m]++;
+      }
+    }
+  }));
+  document.getElementById('print-area').innerHTML = `
+    <div class="print-header">
+      <div>
+        <div style="font-size:12px;color:#475569">${esc(appData.schoolName)}</div>
+        <h2 style="margin:2px 0 0;font-size:18px">民國 ${annualGanttYear} 年度全校採購標案總覽甘特圖</h2>
+      </div>
+      <div style="font-size:11.5px;color:#475569">列印日期：${todayStr()} ｜ 黃：招標前置 ｜ 藍：施工履約 ｜ 綠：驗收結算</div>
+    </div>
+    <div style="border:1px solid #cbd5e1;border-radius:6px;padding:6px">${buildAnnualGanttSVG(annualGanttYear, projects, monthLoad)}</div>
+  `;
+  setTimeout(() => window.print(), 80);
+}
+
+// ============================================================================
+// 7. 互動操作：開案精靈、Checklist、模板、例行事項、Memo、設定
+// ============================================================================
+function openProjectWizard(presetTemplateId = '', presetName = '', sourceMemoId = '') {
+  const tpls = appData.tables.Templates || [];
+  const fy = new Date().getFullYear() - 1911;
+
+  openModal('＋ 開立新採購標案（從招標文件準備起跑）', `
+    <div class="field full" style="margin-bottom:12px">
+      <label>方式選擇：從頭依採購法建立，或套用年度模板複製</label>
+      <select id="wiz-tpl" onchange="onWizardTemplateChange()">
+        <option value="">✨ 依台灣政府採購法自動組裝全新流程</option>
+        ${tpls.map(t => `<option value="${esc(t.template_id)}" ${presetTemplateId===t.template_id?'selected':''}>🗂️ 套用模板：${esc(t.template_name)}</option>`).join('')}
+      </select>
+    </div>
+    <div id="wiz-lessons" class="lessons-box" style="display:none"></div>
+    <input type="hidden" id="wiz-source-memo" value="${esc(sourceMemoId)}">
+    <div class="form-grid">
+      <div class="field full"><label>標案名稱 *</label><input id="wiz-name" type="text" value="${esc(presetName)}" placeholder="例：115年教學大樓廁所整修工程"></div>
+      <div class="field"><label>會計年度（民國年）</label><input id="wiz-fy" type="number" value="${fy}"></div>
+      <div class="field"><label>預算金額（元）</label><input id="wiz-budget" type="number" placeholder="例：1200000"></div>
+      <div class="field"><label>採購性質</label>
+        <select id="wiz-type" onchange="document.getElementById('wiz-eng-wrap').style.display=this.value==='工程'?'flex':'none'">
+          <option value="工程">工程</option><option value="勞務">勞務</option><option value="財物">財物</option>
+        </select>
+      </div>
+      <div class="field"><label>金額級距</label>
+        <select id="wiz-tier">
+          <option value="小額(15萬以下)">小額(15萬以下)</option>
+          <option value="未達(15-150萬)" selected>未達(15-150萬)</option>
+          <option value="公開(150萬以上)">公開(150萬以上)</option>
+        </select>
+      </div>
+      <div class="field"><label>決標原則</label>
+        <select id="wiz-award">
+          <option value="最低標">最低標</option><option value="取最有利標精神">取最有利標精神</option>
+          <option value="評分及格最低標">評分及格最低標</option><option value="最有利標">最有利標</option><option value="逕洽">逕洽</option>
+        </select>
+      </div>
+      <div class="field" id="wiz-eng-wrap"><label>附表二工程類別</label>
+        <select id="wiz-eng-cat">
+          <option value="一般公共工程">一般公共工程（球場／跑道／鋪面）</option>
+          <option value="公有建築物">公有建築物（校舍／廁所整修）</option>
+        </select>
+      </div>
+      <div class="field"><label id="wiz-anchor-lbl">招標準備起跑日</label><input id="wiz-start" type="date" value="${todayStr()}"></div>
+      <div class="field"><label>預計完工／履約迄日（選填）</label><input id="wiz-end" type="date"></div>
+      <div class="field"><label>經費來源</label>
+        <select id="wiz-funding"><option value="校內預算">校內預算</option><option value="上級補助款">上級補助款</option><option value="混合經費">混合經費</option></select>
+      </div>
+      <div class="field"><label>補助核銷死線（選填）</label><input id="wiz-grant-dl" type="date"></div>
+      <div class="field full">
+        <label>外掛檢核開關（勾選即自動注入對應法定檢核項）</label>
+        <div class="check-group">
+          <label><input type="checkbox" id="flg-grant"> 含上級補助款</label>
+          <label><input type="checkbox" id="flg-green"> 涉及綠色採購</label>
+          <label><input type="checkbox" id="flg-prio"> 涉及優先採購</label>
+          <label><input type="checkbox" id="flg-comm"> 需成立評選／評審小組</label>
+        </div>
+      </div>
+    </div>
+  `, `
+    <button onclick="closeModal()">取消</button>
+    <button class="btn-primary" onclick="submitNewProject()">建立標案並展開流程</button>
+  `);
+  if (presetTemplateId) onWizardTemplateChange();
+}
+
+function onWizardTemplateChange() {
+  const tid = document.getElementById('wiz-tpl').value;
+  const box = document.getElementById('wiz-lessons');
+  const lbl = document.getElementById('wiz-anchor-lbl');
+  if (!tid) {
+    box.style.display = 'none';
+    lbl.textContent = '招標準備起跑日';
+    return;
+  }
+  const t = (appData.tables.Templates || []).find(x => x.template_id === tid);
+  if (!t) return;
+  document.getElementById('wiz-type').value = t.procurement_type;
+  document.getElementById('wiz-tier').value = t.threshold_tier;
+  document.getElementById('wiz-award').value = t.award_method;
+  document.getElementById('wiz-eng-wrap').style.display = t.procurement_type === '工程' ? 'flex' : 'none';
+  lbl.textContent = `模板基準日（${t.anchor_label || '契約生效／開工日'}）`;
+  if (t.lessons_learned) {
+    box.style.display = 'block';
+    box.innerHTML = `<strong>⚠️ 套用模板前請注意【上年度踩雷備忘錄】：</strong>\n${esc(t.lessons_learned)}`;
+  } else { box.style.display = 'none'; }
+}
+
+async function submitNewProject() {
+  const name = document.getElementById('wiz-name').value.trim();
+  if (!name) return toast('請填寫標案名稱');
+  const fy = Number(document.getElementById('wiz-fy').value) || (new Date().getFullYear() - 1911);
+  const tid = document.getElementById('wiz-tpl').value;
+  const type = document.getElementById('wiz-type').value;
+  const tier = document.getElementById('wiz-tier').value;
+  const awardMethod = document.getElementById('wiz-award').value;
+  const startDate = document.getElementById('wiz-start').value || todayStr();
+  const endDate = document.getElementById('wiz-end').value;
+  const engCat = type === '工程' ? document.getElementById('wiz-eng-cat').value : '不適用';
+  const flags = {
+    has_grant: document.getElementById('flg-grant').checked,
+    is_green: document.getElementById('flg-green').checked,
+    is_priority: document.getElementById('flg-prio').checked,
+    use_committee: document.getElementById('flg-comm').checked
+  };
+
+  const projectId = nextId('Projects', 'project_id', `PRJ-${fy}`, 3);
+  const projectRec = {
+    project_id: projectId, fiscal_year: fy, project_name: name,
+    procurement_type: type, threshold_tier: tier, award_method: awardMethod,
+    supervision_mode: type === '工程' ? '委外監造' : '不適用',
+    engineering_category: engCat,
+    funding_source: document.getElementById('wiz-funding').value,
+    grant_deadline: document.getElementById('wiz-grant-dl').value,
+    flags_json: JSON.stringify(flags),
+    budget_amount: Number(document.getElementById('wiz-budget').value) || 0,
+    award_amount: '', vendor_name: '', vendor_contact: '', designer_contact: '', supervisor_contact: '',
+    duration_type: '日曆天', duration_days: '', start_date: tid ? '' : startDate, orig_end_date: endDate,
+    actual_completion_date: '', acceptance_date: '', retention_rate: 0.05, warranty_years: 1, warranty_end_date: '',
+    status: '籌備中', source_template_id: tid, drive_folder_url: '', updated_at: nowStr(), is_deleted: false
+  };
+
+  let stageDefs = [];
+  if (tid) {
+    const tpl = (appData.tables.Templates || []).find(x => x.template_id === tid);
+    const offsets = parseJSON(tpl?.stages_offset_json, []);
+    stageDefs = offsets.map((st, idx) => ({
+      stage_order: st.order || idx + 1,
+      stage_name: st.name,
+      plan_start: shiftWeekend(addDays(startDate, Number(st.offset_start || 0))),
+      plan_end: shiftWeekend(addDays(startDate, Number(st.offset_end || 0))),
+      actual_start: '', actual_end: '', sla_deadline: '', blocker_note: '',
+      status: idx === 0 ? '進行中' : '未開始',
+      checklist_json: JSON.stringify((st.checklist || []).map((c, j) => ({
+        id: c.id || `chk_${idx+1}_${j+1}`, text: c.text, required: !!c.required, done: false, doc_no: '', done_date: ''
+      })))
+    }));
+  } else {
+    stageDefs = buildStandardStages({ tier, type, awardMethod, flags, startDate, endDate, engCat });
+  }
+
+  let seqBase = 0;
+  (appData.tables.Project_Tasks || []).forEach(r => {
+    const m = String(r.task_id || '').match(/(\d+)$/);
+    if (m) seqBase = Math.max(seqBase, parseInt(m[1], 10));
+  });
+  const taskRecs = stageDefs.map((st, i) => ({
+    task_id: `TSK-${String(seqBase + i + 1).padStart(4, '0')}`,
+    project_id: projectId, ...st, updated_at: nowStr(), is_deleted: false
+  }));
+
+  upsertLocal('Projects', projectRec, 'project_id');
+  taskRecs.forEach(tr => upsertLocal('Project_Tasks', tr, 'task_id'));
+
+  const batchItems = [
+    { table: 'Projects', records: [projectRec] },
+    { table: 'Project_Tasks', records: taskRecs }
+  ];
+
+  // 若由臨時交辦 Memo 轉單，同步更新 Memo 紀錄
+  const srcMemoId = document.getElementById('wiz-source-memo').value;
+  if (srcMemoId) {
+    const memo = (appData.tables.Quick_Memos || []).find(m => m.memo_id === srcMemoId);
+    if (memo) {
+      memo.converted_ref = projectId;
+      batchItems.push({ table: 'Quick_Memos', records: [memo] });
+    }
+  }
+
+  closeModal();
+  openProjectDetail(projectId);
+  await pushToCloud({ action: 'batchUpsert', items: batchItems });
+  toast(`✅ 已建立標案 ${projectId} 並展開 ${taskRecs.length} 個標準階段`);
+}
+
+function openEditProjectModal(projectId) {
+  const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+  if (!p) return;
+  openModal('✎ 編輯標案基本資料與關鍵日期', `
+    <div class="form-grid">
+      <div class="field full"><label>標案名稱</label><input id="ep-name" type="text" value="${esc(p.project_name)}"></div>
+      <div class="field"><label>案件狀態</label>
+        <select id="ep-status">${['籌備中','招標中','履約中','驗收中','保固追蹤中','已結案','廢標撤案'].map(s=>`<option value="${s}" ${p.status===s?'selected':''}>${s}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>原決標金額（鎖定契約基準）</label><input id="ep-award" type="number" value="${esc(p.award_amount)}"></div>
+      <div class="field"><label>得標廠商</label><input id="ep-vendor" type="text" value="${esc(p.vendor_name)}"></div>
+      <div class="field"><label>廠商聯絡窗口</label><input id="ep-vcontact" type="text" value="${esc(p.vendor_contact)}"></div>
+      <div class="field"><label>開工／履約起日</label><input id="ep-start" type="date" value="${esc(p.start_date)}"></div>
+      <div class="field"><label>原訂完工／迄日</label><input id="ep-end" type="date" value="${esc(p.orig_end_date)}"></div>
+      <div class="field"><label>實際竣工日（自動推算驗收）</label><input id="ep-comp" type="date" value="${esc(p.actual_completion_date)}"></div>
+      <div class="field"><label>驗收合格日</label><input id="ep-acc" type="date" value="${esc(p.acceptance_date)}"></div>
+      <div class="field"><label>保固年限（年）</label><input id="ep-wyr" type="number" value="${esc(p.warranty_years || 1)}"></div>
+      <div class="field"><label>保固到期日（留空則由驗收日自動算）</label><input id="ep-wend" type="date" value="${esc(p.warranty_end_date)}"></div>
+      <div class="field"><label>補助核銷死線</label><input id="ep-gdl" type="date" value="${esc(p.grant_deadline)}"></div>
+      <div class="field"><label>雲端資料夾網址（Google Drive）</label><input id="ep-drive" type="url" value="${esc(p.drive_folder_url)}"></div>
+    </div>
+  `, `
+    <button onclick="closeModal()">取消</button>
+    <button class="btn-primary" onclick="saveEditProject('${esc(projectId)}')">儲存變更</button>
+  `);
+}
+
+async function saveEditProject(projectId) {
+  const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+  if (!p) return;
+  p.project_name = document.getElementById('ep-name').value.trim() || p.project_name;
+  p.status = document.getElementById('ep-status').value;
+  p.award_amount = Number(document.getElementById('ep-award').value) || '';
+  p.vendor_name = document.getElementById('ep-vendor').value.trim();
+  p.vendor_contact = document.getElementById('ep-vcontact').value.trim();
+  p.start_date = document.getElementById('ep-start').value;
+  p.orig_end_date = document.getElementById('ep-end').value;
+  p.actual_completion_date = document.getElementById('ep-comp').value;
+  p.acceptance_date = document.getElementById('ep-acc').value;
+  p.warranty_years = Number(document.getElementById('ep-wyr').value) || 1;
+  let wEnd = document.getElementById('ep-wend').value;
+  if (!wEnd && p.acceptance_date) {
+    const dt = new Date(p.acceptance_date + 'T00:00:00');
+    dt.setFullYear(dt.getFullYear() + p.warranty_years);
+    wEnd = fmtDate(dt);
+  }
+  p.warranty_end_date = wEnd;
+  p.grant_deadline = document.getElementById('ep-gdl').value;
+  p.drive_folder_url = document.getElementById('ep-drive').value.trim();
+  p.updated_at = nowStr();
+
+  closeModal();
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Projects', record: p });
+  toast('✅ 已更新標案資料');
+}
+
+async function deleteProject(projectId) {
+  if (!confirm(`確定要刪除標案 ${projectId} 及其所有階段紀錄嗎？（試算表將採軟刪除保留紀錄）`)) return;
+  appData.tables.Projects = appData.tables.Projects.filter(p => p.project_id !== projectId);
+  appData.tables.Project_Tasks = appData.tables.Project_Tasks.filter(t => t.project_id !== projectId);
+  selectedProjectId = null;
+  renderCurrentView();
+  await pushToCloud({ action: 'softDelete', table: 'Projects', id: projectId, cascade: true });
+  toast('🗑️ 已刪除標案');
+}
+
+// Checklist 與階段操作
+async function toggleCheckItem(taskId, idx, checked) {
+  const t = (appData.tables.Project_Tasks || []).find(x => x.task_id === taskId);
+  if (!t) return;
+  const items = parseJSON(t.checklist_json, []);
+  if (!items[idx]) return;
+  items[idx].done = checked;
+  if (checked && !items[idx].done_date) items[idx].done_date = todayStr();
+  t.checklist_json = JSON.stringify(items);
+  if (checked && t.status === '未開始') {
+    t.status = '進行中';
+    if (!t.actual_start) t.actual_start = todayStr();
+  }
+  if (items.length && items.every(i => i.done)) {
+    t.status = '已完成';
+    if (!t.actual_end) t.actual_end = todayStr();
+  }
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Project_Tasks', record: t });
+}
+
+async function updateCheckMeta(taskId, idx, key, val) {
+  const t = (appData.tables.Project_Tasks || []).find(x => x.task_id === taskId);
+  if (!t) return;
+  const items = parseJSON(t.checklist_json, []);
+  if (!items[idx]) return;
+  items[idx][key] = val;
+  t.checklist_json = JSON.stringify(items);
+  await pushToCloud({ action: 'upsert', table: 'Project_Tasks', record: t });
+}
+
+async function addChecklistItem(taskId) {
+  const text = prompt('輸入要新增的檢核項目內容：');
+  if (!text || !text.trim()) return;
+  const t = (appData.tables.Project_Tasks || []).find(x => x.task_id === taskId);
+  const items = parseJSON(t.checklist_json, []);
+  items.push({ id: 'chk_' + Date.now(), text: text.trim(), required: false, done: false, doc_no: '', done_date: '' });
+  t.checklist_json = JSON.stringify(items);
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Project_Tasks', record: t });
+}
+
+async function removeCheckItem(taskId, idx) {
+  const t = (appData.tables.Project_Tasks || []).find(x => x.task_id === taskId);
+  const items = parseJSON(t.checklist_json, []);
+  items.splice(idx, 1);
+  t.checklist_json = JSON.stringify(items);
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Project_Tasks', record: t });
+}
+
+async function updateTaskField(taskId, field, value) {
+  const t = (appData.tables.Project_Tasks || []).find(x => x.task_id === taskId);
+  if (!t) return;
+  if (field === 'status' && value === '已完成') {
+    const items = parseJSON(t.checklist_json, []);
+    const missing = items.filter(i => i.required && !i.done).length;
+    if (missing > 0 && !confirm(`此階段尚有 ${missing} 個紅星必備項目未勾選，確定仍要標記為已完成嗎？`)) {
+      return renderCurrentView();
+    }
+    if (!t.actual_end) t.actual_end = todayStr();
+  }
+  t[field] = value;
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Project_Tasks', record: t });
+}
+
+function openEditTaskDatesModal(taskId) {
+  const t = (appData.tables.Project_Tasks || []).find(x => x.task_id === taskId);
+  if (!t) return;
+  openModal(`📅 設定階段期程與卡關備忘（${t.stage_name}）`, `
+    <div class="form-grid">
+      <div class="field"><label>預計開始日</label><input id="td-ps" type="date" value="${esc(t.plan_start)}"></div>
+      <div class="field"><label>預計結束日</label><input id="td-pe" type="date" value="${esc(t.plan_end)}"></div>
+      <div class="field"><label>實際開始日</label><input id="td-as" type="date" value="${esc(t.actual_start)}"></div>
+      <div class="field"><label>實際完成日</label><input id="td-ae" type="date" value="${esc(t.actual_end)}"></div>
+      <div class="field full"><label>法定強制死線（如30日決標公告、7日確認竣工，會連動首頁紅黃燈）</label><input id="td-sla" type="date" value="${esc(t.sla_deadline)}"></div>
+      <div class="field full"><label>目前卡關事項／行政備忘（會印在甘特圖 PDF 上）</label><textarea id="td-blk">${esc(t.blocker_note)}</textarea></div>
+    </div>
+  `, `
+    <button onclick="closeModal()">取消</button>
+    <button class="btn-primary" onclick="saveTaskDates('${esc(taskId)}')">儲存</button>
+  `);
+}
+
+async function saveTaskDates(taskId) {
+  const t = (appData.tables.Project_Tasks || []).find(x => x.task_id === taskId);
+  if (!t) return;
+  t.plan_start = document.getElementById('td-ps').value;
+  t.plan_end = document.getElementById('td-pe').value;
+  t.actual_start = document.getElementById('td-as').value;
+  t.actual_end = document.getElementById('td-ae').value;
+  t.sla_deadline = document.getElementById('td-sla').value;
+  t.blocker_note = document.getElementById('td-blk').value.trim();
+  closeModal();
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Project_Tasks', record: t });
+  toast('✅ 已更新階段期程');
+}
+
+// 存為年度模板
+function openSaveAsTemplateModal(projectId) {
+  const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+  if (!p) return;
+  openModal('🗂️ 將本案另存為年度可重複複製模板', `
+    <div class="form-grid">
+      <div class="field full"><label>模板名稱 *</label><input id="st-name" type="text" value="${esc(p.project_name)}（年度範本）"></div>
+      <div class="field"><label>基準日說明（隔年複製時依此日自動倒推）</label><input id="st-anchor-lbl" type="text" value="預計開工／契約生效日"></div>
+      <div class="field"><label>本案的基準日對應日期</label><input id="st-anchor-dt" type="date" value="${esc(p.start_date || todayStr())}"></div>
+      <div class="field full"><label>💡 上年度踩雷備忘錄（隔年開案時會自動跳出提醒）</label><textarea id="st-lessons" placeholder="記下今年執行時遇到的合約細節、廠商漏件或主計提醒..."></textarea></div>
+    </div>
+  `, `
+    <button onclick="closeModal()">取消</button>
+    <button class="btn-primary" onclick="saveAsTemplate('${esc(projectId)}')">儲存至模板庫</button>
+  `);
+}
+
+async function saveAsTemplate(projectId) {
+  const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+  const name = document.getElementById('st-name').value.trim();
+  if (!p || !name) return toast('請填寫模板名稱');
+  const anchorDt = document.getElementById('st-anchor-dt').value || todayStr();
+  const tasks = getProjectTasks(projectId);
+
+  const offsets = tasks.map(t => ({
+    order: t.stage_order,
+    name: t.stage_name,
+    offset_start: t.plan_start ? diffDays(anchorDt, t.plan_start) : 0,
+    offset_end: t.plan_end ? diffDays(anchorDt, t.plan_end) : 7,
+    checklist: parseJSON(t.checklist_json, []).map(c => ({ id: c.id, text: c.text, required: !!c.required }))
+  }));
+
+  const tpl = {
+    template_id: nextId('Templates', 'template_id', 'TPL', 3),
+    template_name: name,
+    procurement_type: p.procurement_type,
+    threshold_tier: p.threshold_tier,
+    award_method: p.award_method,
+    anchor_label: document.getElementById('st-anchor-lbl').value.trim() || '基準日',
+    stages_offset_json: JSON.stringify(offsets),
+    default_materials_json: '[]',
+    lessons_learned: document.getElementById('st-lessons').value.trim(),
+    updated_at: nowStr(), is_deleted: false
+  };
+  upsertLocal('Templates', tpl, 'template_id');
+  closeModal();
+  await pushToCloud({ action: 'upsert', table: 'Templates', record: tpl });
+  toast(`✅ 已存入模板庫：${tpl.template_id}`);
+}
+
+async function deleteTemplate(tplId) {
+  if (!confirm('確定刪除此模板？')) return;
+  appData.tables.Templates = appData.tables.Templates.filter(t => t.template_id !== tplId);
+  renderCurrentView();
+  await pushToCloud({ action: 'softDelete', table: 'Templates', id: tplId });
+}
+
+// 年度例行事務操作
+async function markRoutineDone(routineId, cycle) {
+  const r = (appData.tables.Annual_Routines || []).find(x => x.routine_id === routineId);
+  if (!r) return;
+  r.last_done_cycle = cycle;
+  r.last_done_date = todayStr();
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Annual_Routines', record: r });
+  toast(`✅ 已完成「${r.title}」（期別 ${cycle}），下期將自動提醒`);
+}
+
+function openRoutineModal(routineId = '') {
+  const r = routineId ? (appData.tables.Annual_Routines || []).find(x => x.routine_id === routineId) : {};
+  const tpls = appData.tables.Templates || [];
+  openModal(routineId ? '✎ 編輯年度固定例行事項' : '＋ 新增年度固定例行事項', `
+    <div class="form-grid">
+      <div class="field full"><label>事項名稱 *</label><input id="rt-title" type="text" value="${esc(r.title || '')}" placeholder="例：消防安全設備年度檢修申報"></div>
+      <div class="field"><label>業務類別</label>
+        <select id="rt-cat">${['法定填報','設施安檢維運','預算核銷','例行招標預告','校產與租約'].map(c=>`<option value="${c}" ${r.category===c?'selected':''}>${c}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>循環週期</label>
+        <select id="rt-rec">${['每年','每學期','每季','每雙月','每月'].map(c=>`<option value="${c}" ${r.recurrence_type===c?'selected':''}>${c}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>到期規則（每年MM-DD / 每季Q-END-25或Q-NEXT-10 / 每月D-10 / 學期02-10,08-20）</label><input id="rt-rule" type="text" value="${esc(r.due_rule || '12-10')}"></div>
+      <div class="field"><label>提前預告天數</label><input id="rt-lead" type="number" value="${esc(r.lead_days || 14)}"></div>
+      <div class="field"><label>外部申報網站連結（選填）</label><input id="rt-url" type="url" value="${esc(r.portal_url || '')}"></div>
+      <div class="field"><label>關聯招標模板（選填）</label>
+        <select id="rt-tpl"><option value="">不關聯</option>${tpls.map(t=>`<option value="${esc(t.template_id)}" ${r.linked_template_id===t.template_id?'selected':''}>${esc(t.template_name)}</option>`).join('')}</select>
+      </div>
+      <div class="field full"><label>承辦注意事項（勿存密碼）</label><textarea id="rt-note">${esc(r.note || '')}</textarea></div>
+      <div class="field full"><label><input type="checkbox" id="rt-active" ${r.is_active !== false ? 'checked' : ''}> 啟用此循環通知</label></div>
+    </div>
+  `, `
+    <button onclick="closeModal()">取消</button>
+    <button class="btn-primary" onclick="saveRoutine('${esc(routineId)}')">儲存</button>
+  `);
+}
+
+async function saveRoutine(routineId) {
+  const title = document.getElementById('rt-title').value.trim();
+  if (!title) return toast('請填寫事項名稱');
+  const existing = routineId ? (appData.tables.Annual_Routines || []).find(x => x.routine_id === routineId) : {};
+  const rec = {
+    ...existing,
+    routine_id: routineId || nextId('Annual_Routines', 'routine_id', 'RTN', 3),
+    title,
+    category: document.getElementById('rt-cat').value,
+    recurrence_type: document.getElementById('rt-rec').value,
+    due_rule: document.getElementById('rt-rule').value.trim(),
+    lead_days: Number(document.getElementById('rt-lead').value) || 14,
+    portal_url: document.getElementById('rt-url').value.trim(),
+    linked_template_id: document.getElementById('rt-tpl').value,
+    note: document.getElementById('rt-note').value.trim(),
+    is_active: document.getElementById('rt-active').checked,
+    last_done_cycle: existing.last_done_cycle || '',
+    last_done_date: existing.last_done_date || '',
+    updated_at: nowStr(), is_deleted: false
+  };
+  upsertLocal('Annual_Routines', rec, 'routine_id');
+  closeModal();
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Annual_Routines', record: rec });
+  toast('✅ 已儲存年度例行事項');
+}
+
+async function deleteRoutine(id) {
+  if (!confirm('確定刪除此例行事項？')) return;
+  appData.tables.Annual_Routines = appData.tables.Annual_Routines.filter(r => r.routine_id !== id);
+  renderCurrentView();
+  await pushToCloud({ action: 'softDelete', table: 'Annual_Routines', id });
+}
+
+// Memo 快速操作
+async function quickAddMemo() {
+  const input = document.getElementById('memo-input');
+  const content = (input?.value || '').trim();
+  if (!content) return toast('請先輸入交辦事項內容');
+  const rec = {
+    memo_id: nextId('Quick_Memos', 'memo_id', 'MEM', 4),
+    content,
+    source_tag: document.getElementById('memo-tag').value,
+    priority: document.getElementById('memo-prio').value,
+    remind_date: document.getElementById('memo-remind').value,
+    due_date: document.getElementById('memo-due').value,
+    is_done: false, done_date: '', converted_ref: '',
+    updated_at: nowStr(), is_deleted: false
+  };
+  upsertLocal('Quick_Memos', rec, 'memo_id');
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Quick_Memos', record: rec });
+  toast('📌 已記錄臨時交辦 Memo');
+}
+
+async function toggleMemoDone(id, checked) {
+  const m = (appData.tables.Quick_Memos || []).find(x => x.memo_id === id);
+  if (!m) return;
+  m.is_done = checked;
+  m.done_date = checked ? todayStr() : '';
+  renderCurrentView();
+  await pushToCloud({ action: 'upsert', table: 'Quick_Memos', record: m });
+}
+
+function convertMemoToProject(id) {
+  const m = (appData.tables.Quick_Memos || []).find(x => x.memo_id === id);
+  if (!m) return;
+  openProjectWizard('', m.content, m.memo_id);
+}
+
+async function deleteMemo(id) {
+  appData.tables.Quick_Memos = appData.tables.Quick_Memos.filter(m => m.memo_id !== id);
+  renderCurrentView();
+  await pushToCloud({ action: 'softDelete', table: 'Quick_Memos', id });
+}
+
+// 常用傳送門自訂 & 連線設定
+function openPortalEditor() {
+  const lines = (appData.portals || DEFAULT_PORTALS).map(p => `${p.icon || '🔗'} | ${p.name} | ${p.url}`).join('\n');
+  openModal('✎ 自訂 Chrome 起始頁常用公務傳送門', `
+    <div class="field full">
+      <label>每行一筆，格式：圖示 | 名稱 | 網址</label>
+      <textarea id="portal-lines" style="min-height:180px;font-family:monospace">${esc(lines)}</textarea>
+    </div>
+  `, `
+    <button onclick="closeModal()">取消</button>
+    <button class="btn-primary" onclick="savePortals()">儲存捷徑列</button>
+  `);
+}
+
+async function savePortals() {
+  const raw = document.getElementById('portal-lines').value.split('\n').map(s => s.trim()).filter(Boolean);
+  const portals = raw.map(line => {
+    const [icon, name, url] = line.split('|').map(s => (s || '').trim());
+    return { icon: icon || '🔗', name: name || '網站', url: url || '#' };
+  });
+  appData.portals = portals;
+  closeModal();
+  renderHeaderAndPortals();
+  await pushToCloud({ action: 'savePortals', portals });
+  toast('✅ 已更新常用傳送門');
+}
+
+function openSettingsModal() {
+  openModal('⚙️ Google Sheets 雲端連線與備份設定', `
+    <div class="form-grid">
+      <div class="field full"><label>GAS Web App 網址（結尾為 /exec）</label><input id="cfg-url" type="url" value="${esc(appConfig.gasUrl || '')}" placeholder="https://script.google.com/macros/s/xxxx/exec"></div>
+      <div class="field full"><label>通行金鑰（需與 Code.gs 的 API_TOKEN 一致）</label><input id="cfg-token" type="password" value="${esc(appConfig.token || '')}" placeholder="輸入自訂通行金鑰"></div>
+      <div class="field full"><label>學校名稱顯示</label><input id="cfg-school" type="text" value="${esc(appConfig.schoolName || '高雄市立溪埔國民中學')}"></div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="exportBackupJSON()">⬇️ 匯出本機 JSON 備份</button>
+      <button onclick="triggerSendDigest()">📧 立即測試寄送預警摘要信</button>
+    </div>
+  `, `
+    <button onclick="closeModal()">關閉</button>
+    <button class="btn-primary" onclick="saveSettingsAndSync()">儲存並立即同步</button>
+  `);
+}
+
+async function saveSettingsAndSync() {
+  saveConfig({
+    gasUrl: document.getElementById('cfg-url').value.trim(),
+    token: document.getElementById('cfg-token').value.trim(),
+    schoolName: document.getElementById('cfg-school').value.trim() || '高雄市立溪埔國民中學'
+  });
+  closeModal();
+  await syncFromCloud(true);
+}
+
+async function triggerSendDigest() {
+  const res = await pushToCloud({ action: 'sendDigestNow' });
+  if (res.ok && !res.localOnly) toast('📧 ' + (res.message || '已觸發寄信'));
+}
+
+function exportBackupJSON() {
+  const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `總務助理備份_${todayStr()}.json`;
+  a.click();
+}
+
+// ============================================================================
+// 8. 通用輔助函式
+// ============================================================================
+function getProjectTasks(projectId) {
+  return (appData.tables.Project_Tasks || [])
+    .filter(t => t.project_id === projectId)
+    .sort((a, b) => Number(a.stage_order) - Number(b.stage_order));
+}
+
+function calcProjectProgress(projectId) {
+  const tasks = getProjectTasks(projectId);
+  let total = 0, done = 0, currentStage = '尚未開始';
+  for (const t of tasks) {
+    const items = parseJSON(t.checklist_json, []);
+    total += items.length;
+    done += items.filter(i => i.done).length;
+    if (currentStage === '尚未開始' && t.status !== '已完成') currentStage = t.stage_name;
+  }
+  if (tasks.length && tasks.every(t => t.status === '已完成')) currentStage = '全部階段已完成';
+  return { totalChecks: total, doneChecks: done, pct: total ? Math.round((done / total) * 100) : 0, currentStage };
+}
+
+function statusTagCls(s) {
+  if (s === '已結案') return 'tag-green';
+  if (s === '履約中' || s === '招標中') return 'tag-blue';
+  if (s === '驗收中' || s === '保固追蹤中') return 'tag-amber';
+  return 'tag-gray';
+}
+
+function openModal(title, bodyHtml, footerHtml) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  document.getElementById('modal-footer').innerHTML = footerHtml;
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-backdrop').classList.remove('open'); }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function parseJSON(val, fallback) {
+  if (Array.isArray(val) || (val && typeof val === 'object')) return val;
+  try { return JSON.parse(val); } catch { return fallback; }
+}
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function escSvg(s) { return esc(s); }
+function fmtMoney(n) { return (n === '' || n === null || n === undefined) ? '-' : Number(n).toLocaleString('zh-TW') + ' 元'; }
+function fmtDate(dt) { return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; }
+function todayStr() { return fmtDate(new Date()); }
+function nowStr() {
+  const d = new Date();
+  return `${fmtDate(d)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+function diffDays(a, b) {
+  return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+}
+function addDays(ymd, days) {
+  const d = new Date(ymd + 'T00:00:00');
+  d.setDate(d.getDate() + Number(days));
+  return fmtDate(d);
+}
+function shiftWeekend(ymd) {
+  const d = new Date(ymd + 'T00:00:00');
+  if (d.getDay() === 6) d.setDate(d.getDate() + 2);
+  else if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+  return fmtDate(d);
+}
+
+// ============================================================================
+// 9. 啟動程序：0.1 秒本機快取秒開 → 背景靜默同步雲端
+// ============================================================================
+renderHeaderAndPortals();
+renderCurrentView();
+syncFromCloud(false);
+</script>
+</body>
+</html>
