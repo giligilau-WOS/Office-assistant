@@ -87,8 +87,21 @@ let opsUtilChartMetric = 'amount'; // amount | usage
 // 1. 太陽能對帳與發電效率核心演算法
 // ----------------------------------------------------------------------------
 function normFeedbackRate(raw) {
-  const n = Number(raw) || 0;
-  return n > 1 ? n / 100 : n;
+  if (raw === null || raw === undefined || raw === '') return 0;
+  if (typeof raw === 'string') {
+    const s = raw.trim();
+    if (!s) return 0;
+    if (s.endsWith('%') || s.endsWith('％')) {
+      const num = Number(s.slice(0, -1).trim());
+      return (isNaN(num) || num < 0) ? 0 : Number((num / 100).toFixed(8));
+    }
+    const num = Number(s);
+    if (isNaN(num) || num < 0) return 0;
+    return num >= 1 ? Number((num / 100).toFixed(8)) : num;
+  }
+  const n = Number(raw);
+  if (isNaN(n) || n < 0) return 0;
+  return n >= 1 ? Number((n / 100).toFixed(8)) : n;
 }
 
 function billingDaysCount(startYmd, endYmd) {
