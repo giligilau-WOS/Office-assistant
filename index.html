@@ -278,7 +278,7 @@
     <div class="top-actions">
       <span class="sync-pill" id="sync-status" title="點擊強制重新同步" style="cursor:pointer" onclick="syncFromCloud(true)">
         <span class="dot" id="sync-dot"></span>
-        <span id="sync-text">尚未設定雲端</span>
+        <span id="sync-text">載入中...</span>
       </span>
       <input id="global-search" type="search" placeholder="🔍 搜尋標案／Memo／例行項..." style="padding:5px 10px;border-radius:6px;border:1px solid #334155;background:#1e293b;color:#fff;width:210px;" oninput="renderCurrentView()">
       <button class="btn-primary" onclick="openProjectWizard()">＋ 開新標案</button>
@@ -322,7 +322,7 @@
 
 <script>
 // ============================================================================
-// 1. 狀態儲存與本機快取（0.1 秒秒開引擎）
+// 1. 狀態儲存與本機快取（0.1 秒秒開引擎 — 預設常數置頂避免初始化錯誤）
 // ============================================================================
 const STORAGE_CFG = 'ga_assistant_cfg_v1';
 const STORAGE_DATA = 'ga_assistant_cache_v1';
@@ -343,14 +343,6 @@ let selectedProjectSubtab = 'checklist'; // checklist | gantt
 let showDoneMemos = false;
 let annualGanttYear = new Date().getFullYear() - 1911;
 
-const DEFAULT_PORTALS = [
-  { name: '政府電子採購網', url: 'https://web.pcc.gov.tw/', icon: '🏛️' },
-  { name: '機關綠色採購網', url: 'https://greenliving.moenv.gov.tw/', icon: '🌿' },
-  { name: '優先採購平台', url: 'https://ptp.sfaa.gov.tw/', icon: '🤝' },
-  { name: '節約用水填報網', url: 'https://www.wcis.org.tw/', icon: '💧' },
-  { name: '台灣電力電子帳單', url: 'https://ebpps2.taipower.com.tw/', icon: '⚡' }
-];
-
 function loadConfig() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_CFG)) || { gasUrl: '', token: '', schoolName: '高雄市立溪埔國民中學' };
@@ -364,9 +356,9 @@ function saveConfig(cfg) {
 
 function emptyData() {
   return {
-    schoolName: appConfig.schoolName || '高雄市立溪埔國民中學',
+    schoolName: (appConfig && appConfig.schoolName) || '高雄市立溪埔國民中學',
     serverTime: '',
-    portals: DEFAULT_PORTALS,
+    portals: DEFAULT_PORTALS.slice(),
     tables: {
       Projects: [], Project_Tasks: [], Templates: [],
       Project_Materials: [], Project_ChangeOrders: [], Project_Billings: [], Project_Responsibilities: [],
@@ -617,8 +609,8 @@ function buildStandardStages(opts) {
 function setSyncUI(state, text) {
   const dot = document.getElementById('sync-dot');
   const txt = document.getElementById('sync-text');
-  dot.className = 'dot ' + (state || '');
-  txt.textContent = text;
+  if (dot) dot.className = 'dot ' + (state || '');
+  if (txt) txt.textContent = text;
 }
 
 async function syncFromCloud(showMsg = false) {
@@ -636,11 +628,11 @@ async function syncFromCloud(showMsg = false) {
     appData = {
       schoolName: json.schoolName || appConfig.schoolName,
       serverTime: json.serverTime,
-      portals: (json.portals && json.portals.length) ? json.portals : DEFAULT_PORTALS,
+      portals: (json.portals && json.portals.length) ? json.portals : DEFAULT_PORTALS.slice(),
       tables: { ...emptyData().tables, ...json.tables }
     };
     persistCache();
-    setSyncUI('ok', '已同步 ' + (json.serverTime || '').slice(11, 16));
+    setSyncUI('ok', '已同步 ' + String(json.serverTime || '').slice(11, 16));
     renderHeaderAndPortals();
     renderCurrentView();
     if (showMsg) toast('✅ 已從 Google Sheets 同步最新資料');
@@ -665,7 +657,7 @@ async function pushToCloud(payload) {
     });
     const json = await res.json();
     if (!json.ok) throw new Error(json.message || '寫入失敗');
-    setSyncUI('ok', '已儲存 ' + (json.serverTime || '').slice(11, 16));
+    setSyncUI('ok', '已儲存 ' + String(json.serverTime || '').slice(11, 16));
     return json;
   } catch (err) {
     setSyncUI('err', '寫入失敗');
@@ -736,7 +728,6 @@ function computeRoutineSchedule(r) {
 
   candidates.sort((a, b) => a.date.localeCompare(b.date));
   const lead = Number(r.lead_days) || 14;
-  // 找最近一期尚未完成，且未落後超過 45 天的期別
   for (const c of candidates) {
     if (c.cycle === r.last_done_cycle) continue;
     const diff = diffDays(today, c.date);
@@ -761,7 +752,7 @@ function buildAllAlerts() {
       const d = diffDays(today, p.grant_deadline);
       if (d <= 14) {
         alerts.push({
-          level: 'red', badge: '補助死線', title: p.project_name,
+          level: 'red', badge: '補助死線', title: p.project_name || p.project_id,
           detail: `補助核銷期限 ${p.grant_deadline}（${d < 0 ? '逾期 ' + Math.abs(d) + ' 天' : '剩 ' + d + ' 天'}）`,
           sortKey: d, action: () => openProjectDetail(p.project_id)
         });
@@ -771,7 +762,7 @@ function buildAllAlerts() {
       const d = diffDays(today, p.warranty_end_date);
       if (d <= 30) {
         alerts.push({
-          level: d < 0 ? 'red' : 'amber', badge: '保固到期', title: p.project_name,
+          level: d < 0 ? 'red' : 'amber', badge: '保固到期', title: p.project_name || p.project_id,
           detail: `保固至 ${p.warranty_end_date}（${d < 0 ? '已到期' : '剩 ' + d + ' 天，請排會勘'}）`,
           sortKey: d, action: () => openProjectDetail(p.project_id)
         });
@@ -868,7 +859,7 @@ function renderHeaderAndPortals() {
   document.getElementById('today-roc').textContent = `民國 ${now.getFullYear() - 1911}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} (${wk})`;
 
   const bar = document.getElementById('portal-bar');
-  const portals = appData.portals || DEFAULT_PORTALS;
+  const portals = (appData.portals && appData.portals.length) ? appData.portals : DEFAULT_PORTALS;
   bar.innerHTML = `<span style="color:#94a3b8;font-size:12px;white-space:nowrap;">常用傳送門：</span>` +
     portals.map(p => `<a class="portal-chip" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.icon || '🔗')} ${esc(p.name)}</a>`).join('') +
     `<button class="btn-xs" style="background:#0f172a;color:#cbd5e1;border-color:#475569;margin-left:auto" onclick="openPortalEditor()">✎ 自訂捷徑</button>`;
@@ -894,21 +885,21 @@ function renderCurrentView() {
 // ---------- 視圖 1：Chrome 起始頁總控戰情室 ----------
 function renderDashboardHTML() {
   const q = (document.getElementById('global-search')?.value || '').trim().toLowerCase();
-  const alerts = buildAllAlerts().filter(a => !q || (a.title + a.detail + a.badge).toLowerCase().includes(q));
+  const alerts = buildAllAlerts().filter(a => !q || String(a.title + a.detail + a.badge).toLowerCase().includes(q));
   const redCount = alerts.filter(a => a.level === 'red').length;
   const amberCount = alerts.filter(a => a.level === 'amber').length;
 
   const activeProjects = (appData.tables.Projects || []).filter(p => !['已結案', '廢標撤案'].includes(p.status))
-    .filter(p => !q || (p.project_name + p.project_id + p.vendor_name).toLowerCase().includes(q));
+    .filter(p => !q || String(p.project_name + p.project_id + p.vendor_name).toLowerCase().includes(q));
 
   const routines = (appData.tables.Annual_Routines || [])
     .filter(r => r.is_active !== false)
     .map(r => ({ ...r, sch: computeRoutineSchedule(r) }))
     .filter(r => r.sch.isVisible)
-    .filter(r => !q || (r.title + r.category + r.note).toLowerCase().includes(q))
+    .filter(r => !q || String(r.title + r.category + r.note).toLowerCase().includes(q))
     .sort((a, b) => a.sch.diffDays - b.sch.diffDays);
 
-  const allMemos = (appData.tables.Quick_Memos || []).filter(m => !q || (m.content + m.source_tag).toLowerCase().includes(q));
+  const allMemos = (appData.tables.Quick_Memos || []).filter(m => !q || String(m.content + m.source_tag).toLowerCase().includes(q));
   const openMemos = allMemos.filter(m => !m.is_done);
   const doneMemos = allMemos.filter(m => m.is_done);
   const today = todayStr();
@@ -921,10 +912,9 @@ function renderDashboardHTML() {
       if (m.priority === '重要') return 3;
       return 4;
     };
-    return score(a) - score(b) || (a.due_date || '9999').localeCompare(b.due_date || '9999');
+    return score(a) - score(b) || String(a.due_date || '9999').localeCompare(String(b.due_date || '9999'));
   });
 
-  // 掛載 alert 點擊事件索引
   window._dashAlerts = alerts;
 
   return `
@@ -1106,7 +1096,7 @@ function renderMemoCardHTML(m, today) {
 function renderProjectsListHTML() {
   const q = (document.getElementById('global-search')?.value || '').trim().toLowerCase();
   const list = (appData.tables.Projects || [])
-    .filter(p => !q || (p.project_name + p.project_id + p.vendor_name + p.procurement_type).toLowerCase().includes(q))
+    .filter(p => !q || String(p.project_name + p.project_id + p.vendor_name + p.procurement_type).toLowerCase().includes(q))
     .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
 
   return `
@@ -1303,13 +1293,13 @@ function renderAnnualGanttHTML() {
   const projects = (appData.tables.Projects || []).filter(p => Number(p.fiscal_year) === Number(annualGanttYear) && p.status !== '廢標撤案');
   const adYear = Number(annualGanttYear) + 1911;
 
-  // 統計每月開標／驗收負荷
   const monthLoad = Array.from({ length: 12 }, () => 0);
   projects.forEach(p => {
     getProjectTasks(p.project_id).forEach(t => {
-      if (t.stage_name.includes('開標') || t.stage_name.includes('驗收')) {
-        const dt = t.plan_end || t.plan_start;
-        if (dt && dt.startsWith(String(adYear))) {
+      const sn = String(t.stage_name || '');
+      if (sn.includes('開標') || sn.includes('驗收')) {
+        const dt = String(t.plan_end || t.plan_start || '');
+        if (dt.startsWith(String(adYear))) {
           const m = parseInt(dt.slice(5, 7), 10) - 1;
           if (m >= 0 && m < 12) monthLoad[m]++;
         }
@@ -1463,7 +1453,6 @@ function buildSingleGanttSVG(p, tasks) {
   const H = headH + tasks.length * rowH + 16;
   const xOf = ymd => leftW + (diffDays(minDate, ymd) / totalDays) * chartW;
 
-  // 產生時間刻度（最多 10 格）
   const tickStep = Math.max(5, Math.ceil(totalDays / 10));
   let gridSvg = '';
   for (let d = 0; d <= totalDays; d += tickStep) {
@@ -1473,7 +1462,6 @@ function buildSingleGanttSVG(p, tasks) {
     gridSvg += `<text x="${x}" y="22" font-size="10.5" fill="#64748b" text-anchor="middle">${dt.slice(5)}</text>`;
   }
 
-  // 今日線 & 原訂完工線
   const today = todayStr();
   let markersSvg = '';
   if (today >= minDate && today <= maxDate) {
@@ -1557,14 +1545,15 @@ function buildAnnualGanttSVG(rocYear, projects, monthLoad) {
     projects.forEach((p, idx) => {
       const y = headH + idx * rowH;
       rowsSvg += `<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="${idx % 2 ? '#f8fafc' : '#ffffff'}"/>`;
-      rowsSvg += `<text x="10" y="${y + 21}" font-size="11.5" font-weight="700" fill="#1d4ed8" style="cursor:pointer" onclick="openProjectDetail('${esc(p.project_id)}')">${escSvg(p.project_name.slice(0, 18))}</text>`;
+      rowsSvg += `<text x="10" y="${y + 21}" font-size="11.5" font-weight="700" fill="#1d4ed8" style="cursor:pointer" onclick="openProjectDetail('${esc(p.project_id)}')">${escSvg(String(p.project_name || '').slice(0, 18))}</text>`;
       getProjectTasks(p.project_id).forEach(t => {
         if (!t.plan_start || !t.plan_end) return;
         if (t.plan_end < yearStart || t.plan_start > yearEnd) return;
         const x1 = xOf(t.plan_start), x2 = Math.max(x1 + 4, xOf(t.plan_end));
-        const col = t.stage_name.includes('驗收') || t.stage_name.includes('核銷') ? '#059669'
-          : (t.stage_name.includes('施工') || t.stage_name.includes('履約') ? '#2563eb' : '#f59e0b');
-        rowsSvg += `<rect x="${x1}" y="${y + 9}" width="${x2 - x1}" height="16" rx="3" fill="${col}" opacity="0.88"><title>${escSvg(t.stage_name)} (${t.plan_start}~${t.plan_end})</title></rect>`;
+        const sn = String(t.stage_name || '');
+        const col = sn.includes('驗收') || sn.includes('核銷') ? '#059669'
+          : (sn.includes('施工') || sn.includes('履約') ? '#2563eb' : '#f59e0b');
+        rowsSvg += `<rect x="${x1}" y="${y + 9}" width="${x2 - x1}" height="16" rx="3" fill="${col}" opacity="0.88"><title>${escSvg(sn)} (${t.plan_start}~${t.plan_end})</title></rect>`;
       });
     });
   }
@@ -1629,9 +1618,10 @@ function printAnnualGanttPDF() {
   const adYear = Number(annualGanttYear) + 1911;
   const monthLoad = Array.from({ length: 12 }, () => 0);
   projects.forEach(p => getProjectTasks(p.project_id).forEach(t => {
-    if (t.stage_name.includes('開標') || t.stage_name.includes('驗收')) {
-      const dt = t.plan_end || t.plan_start;
-      if (dt && dt.startsWith(String(adYear))) {
+    const sn = String(t.stage_name || '');
+    if (sn.includes('開標') || sn.includes('驗收')) {
+      const dt = String(t.plan_end || t.plan_start || '');
+      if (dt.startsWith(String(adYear))) {
         const m = parseInt(dt.slice(5, 7), 10) - 1;
         if (m >= 0 && m < 12) monthLoad[m]++;
       }
@@ -1811,7 +1801,6 @@ async function submitNewProject() {
     { table: 'Project_Tasks', records: taskRecs }
   ];
 
-  // 若由臨時交辦 Memo 轉單，同步更新 Memo 紀錄
   const srcMemoId = document.getElementById('wiz-source-memo').value;
   if (srcMemoId) {
     const memo = (appData.tables.Quick_Memos || []).find(m => m.memo_id === srcMemoId);
