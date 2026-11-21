@@ -1,0 +1,40 @@
+name: Verify JS Syntax & Bundle Integrity
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  syntax-and-refs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check syntax of all JS modules (catches truncated files)
+        run: |
+          for f in *.js; do
+            echo "Checking $f ..."
+            node --check "$f"
+          done
+
+      - name: Verify all script references in index.html exist
+        run: |
+          node -e '
+            const fs = require("fs");
+            const html = fs.readFileSync("index.html", "utf8");
+            const refs = [...html.matchAll(/<script\s+src="\.\/([^"?]+)/g)].map(m => m[1]);
+            const missing = refs.filter(f => !fs.existsSync(f));
+            if (missing.length) {
+              console.error("Missing referenced JS files:", missing);
+              process.exit(1);
+            }
+            console.log("All script references verified:", refs.join(", "));
+          '
