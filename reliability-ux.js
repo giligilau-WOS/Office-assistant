@@ -1092,3 +1092,40 @@ renderCurrentView();
 if (syncQueue.length > 0 && navigator.onLine !== false) {
   setTimeout(() => retrySyncQueue(false), 1500);
 }
+// ----------------------------------------------------------------------------
+// 修復中文輸入法（IME）組字確認按 Enter 誤觸送出 Memo
+// ----------------------------------------------------------------------------
+function bindSafeMemoEnter() {
+  const inp = document.getElementById('memo-input');
+  if (!inp || inp.dataset.imeSafe === '1') return;
+  inp.dataset.imeSafe = '1';
+  inp.removeAttribute('onkeydown');
+  inp.onkeydown = null;
+
+  let isComposing = false;
+  let lastCompEnd = 0;
+
+  inp.addEventListener('compositionstart', () => {
+    isComposing = true;
+  });
+  inp.addEventListener('compositionend', () => {
+    isComposing = false;
+    lastCompEnd = Date.now();
+  });
+  inp.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    // 中文輸入法組字／選字確認期間（含 macOS Chrome keyCode 229 與結束組字瞬間）一律不送出
+    if (e.isComposing || e.keyCode === 229 || isComposing || (Date.now() - lastCompEnd < 100)) {
+      return;
+    }
+    e.preventDefault();
+    quickAddMemo();
+  });
+}
+
+const _prevRenderForIme = renderCurrentView;
+renderCurrentView = function() {
+  _prevRenderForIme();
+  bindSafeMemoEnter();
+};
+bindSafeMemoEnter();
