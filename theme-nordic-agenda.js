@@ -69,12 +69,13 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* ==================== 主殼層：左側固定側欄 ＋ 右側工作區 ==================== */
+    /* ==================== 主殼層：左側可收折側欄 ＋ 右側工作區 ==================== */
     #app-shell {
       display: grid !important;
       grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
       min-height: 100vh;
       background: var(--bg);
+      transition: grid-template-columns 0.22s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
     #nordic-sidebar {
@@ -83,6 +84,7 @@
       height: 100vh;
       height: 100dvh;
       overflow-y: auto;
+      overflow-x: hidden;
       background: #FFFFFF;
       border-right: 1px solid var(--border);
       display: flex;
@@ -90,6 +92,64 @@
       justify-content: space-between;
       padding: 12px 11px 10px;
       z-index: 80;
+      transition: opacity 0.18s ease, padding 0.2s ease;
+    }
+
+    @media (min-width: 1024px) {
+      body.nordic-sidebar-collapsed #app-shell {
+        grid-template-columns: 0px minmax(0, 1fr) !important;
+      }
+      body.nordic-sidebar-collapsed #nordic-sidebar {
+        padding: 0 !important;
+        border-right: none !important;
+        overflow: hidden !important;
+        opacity: 0;
+        pointer-events: none;
+      }
+    }
+
+    .ns-collapse-btn {
+      margin-left: auto;
+      min-height: 26px !important;
+      width: 26px;
+      padding: 0 !important;
+      border-radius: 6px !important;
+      border: 1px solid transparent !important;
+      background: transparent !important;
+      color: #64748B !important;
+      font-size: 13px !important;
+      flex-shrink: 0;
+    }
+    .ns-collapse-btn:hover {
+      background: #F1F5F9 !important;
+      color: var(--primary) !important;
+      border-color: var(--border) !important;
+    }
+
+    .nt-sidebar-toggle {
+      display: inline-flex !important;
+      align-items: center;
+      gap: 5px;
+      min-height: 32px !important;
+      padding: 4px 9px !important;
+      border-radius: 7px !important;
+      background: #FFFFFF !important;
+      border: 1px solid #DCE3EC !important;
+      color: #334155 !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .nt-sidebar-toggle:hover {
+      background: #F8FAFC !important;
+      border-color: #94A3B8 !important;
+      color: var(--primary) !important;
+    }
+    .nt-sidebar-toggle.is-collapsed {
+      background: var(--primary-soft) !important;
+      border-color: #93B4D4 !important;
+      color: var(--primary) !important;
     }
 
     #nordic-main-col {
@@ -903,10 +963,11 @@
   // --------------------------------------------------------------------------
   const STORE_KEY = 'ga_nordic_agenda_prefs_v2';
   let prefs = {
-    viewMode: 'cards',      // 'cards' | 'timeline'
-    routineFilter: 'all',   // 'all' | 'red' | 'amber' | 'done'
-    timelineType: 'all',    // 'all' | 'routine' | 'project' | 'memo'
+    viewMode: 'cards',        // 'cards' | 'timeline'
+    routineFilter: 'all',     // 'all' | 'red' | 'amber' | 'done'
+    timelineType: 'all',      // 'all' | 'routine' | 'project' | 'memo'
     showCalendar: true,
+    sidebarCollapsed: false,  // 左側選單收折狀態（桌機記憶）
     memoExpanded: false
   };
   try {
@@ -947,10 +1008,11 @@
     sideTop.innerHTML = `
       <div class="ns-brand">
         <span class="ns-logo">${esc(shortMark)}</span>
-        <div class="ns-brand-text">
+        <div class="ns-brand-text" style="min-width:0">
           <div class="ns-school-name" id="ns-school-title">${esc(schoolName)}</div>
           <div class="ns-sub">總務行政戰情助理</div>
         </div>
+        <button type="button" class="ns-collapse-btn" title="收合左側選單" aria-label="收合左側選單" onclick="toggleNordicSidebar()">«</button>
       </div>
     `;
 
@@ -999,6 +1061,35 @@
   function closeMobileSidebar() {
     document.getElementById('nordic-sidebar')?.classList.remove('mobile-open');
     document.getElementById('nordic-drawer-backdrop')?.classList.remove('open');
+  }
+
+  window.toggleNordicSidebar = function() {
+    if (window.innerWidth < 1024) {
+      window.toggleMobileSidebar();
+      return;
+    }
+    prefs.sidebarCollapsed = !prefs.sidebarCollapsed;
+    savePrefs();
+    syncSidebarState();
+  };
+
+  function syncSidebarState() {
+    const isDesktop = window.innerWidth >= 1024;
+    const collapsed = isDesktop && Boolean(prefs.sidebarCollapsed);
+    document.body.classList.toggle('nordic-sidebar-collapsed', collapsed);
+    const btn = document.getElementById('btn-nordic-sidebar-toggle');
+    if (btn) {
+      btn.classList.toggle('is-collapsed', collapsed);
+      btn.setAttribute('aria-expanded', String(!collapsed));
+      btn.title = collapsed ? '展開左側選單' : '收合左側選單';
+      btn.innerHTML = collapsed ? '☰ 展開選單' : '☰ 收合選單';
+    }
+    const calBtn = document.getElementById('btn-toggle-calendar');
+    if (calBtn) {
+      const calVisibleNow = prefs.showCalendar && !collapsed;
+      calBtn.classList.toggle('btn-cal-active', calVisibleNow);
+      calBtn.textContent = calVisibleNow ? '📅 收合行事曆' : '📅 顯示行事曆';
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -1075,6 +1166,15 @@
   // 4. 8 號迷你行事曆渲染於側欄（點擊日期即篩選戰情面板）
   // --------------------------------------------------------------------------
   window.toggleNordicCalendar = function() {
+    // 若左側欄正收折中，點擊行事曆鈕時先自動叫出左側欄並展開行事曆
+    if (window.innerWidth >= 1024 && prefs.sidebarCollapsed) {
+      prefs.sidebarCollapsed = false;
+      prefs.showCalendar = true;
+      savePrefs();
+      syncSidebarState();
+      renderCurrentView();
+      return;
+    }
     prefs.showCalendar = !prefs.showCalendar;
     if (!prefs.showCalendar) calSelectedDate = '';
     savePrefs();
@@ -1172,6 +1272,7 @@
     const isDash = (typeof currentTab === 'undefined' || currentTab === 'dashboard') && window.innerWidth >= 1024;
     document.documentElement.classList.toggle('nordic-one-screen', isDash);
     document.body.classList.toggle('nordic-one-screen', isDash);
+    syncSidebarState();
   }
 
   function enhanceNordicChrome() {
@@ -1199,8 +1300,9 @@
     const brand = document.querySelector('.topbar .brand');
     if (brand) {
       const pageTitle = tabTitles[typeof currentTab !== 'undefined' ? currentTab : 'dashboard'] || '總務行政戰情助理';
+      const isCollapsedDesktop = window.innerWidth >= 1024 && Boolean(prefs.sidebarCollapsed);
       brand.innerHTML = `
-        <button type="button" class="nt-mobile-menu-btn" aria-label="開啟導覽選單" onclick="toggleMobileSidebar()">☰</button>
+        <button type="button" id="btn-nordic-sidebar-toggle" class="nt-sidebar-toggle ${isCollapsedDesktop ? 'is-collapsed' : ''}" aria-label="切換左側選單" aria-expanded="${!isCollapsedDesktop}" title="${isCollapsedDesktop ? '展開左側選單' : '收合左側選單'}" onclick="toggleNordicSidebar()">${isCollapsedDesktop ? '☰ 展開選單' : '☰ 收合選單'}</button>
         <div>
           <div class="nt-greet-title">${esc(pageTitle)}</div>
           <div class="nt-greet-sub num-mono"><span id="school-title" style="display:none">${esc(schoolName)}</span><span id="today-roc">${esc(rocStr)}</span></div>
@@ -1220,8 +1322,9 @@
         if (searchEl) searchEl.insertAdjacentElement('afterend', calBtn);
         else actions.prepend(calBtn);
       }
-      calBtn.classList.toggle('btn-cal-active', prefs.showCalendar);
-      calBtn.textContent = prefs.showCalendar ? '📅 收合行事曆' : '📅 顯示行事曆';
+      const calVisibleNow = prefs.showCalendar && !(window.innerWidth >= 1024 && prefs.sidebarCollapsed);
+      calBtn.classList.toggle('btn-cal-active', calVisibleNow);
+      calBtn.textContent = calVisibleNow ? '📅 收合行事曆' : '📅 顯示行事曆';
 
       if (!document.getElementById('btn-quick-new-routine')) {
         const addPrjBtn = Array.from(actions.querySelectorAll('button')).find(b => (b.getAttribute('onclick') || '').includes('openProjectWizard'));
