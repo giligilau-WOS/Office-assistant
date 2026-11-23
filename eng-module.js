@@ -238,7 +238,7 @@ renderProjectDetailHTML = function(projectId) {
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
           <div style="flex:1;min-width:280px">
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
-              <span class="tag tag-gray">${esc(p.project_id)}</span>
+              <span class="tag tag-gray">${esc(typeof formatProjectCaseNo === 'function' ? formatProjectCaseNo(p) : p.project_id)}</span>
               <span class="tag tag-blue">${esc(p.procurement_type)}</span>
               <span class="tag tag-gray">${esc(p.threshold_tier)}</span>
               <span class="tag tag-gray">${esc(p.award_method)}</span>
@@ -678,7 +678,7 @@ function printMaterialsPDF(projectId) {
     <div class="print-header">
       <div>
         <div style="font-size:12px;color:#475569">${esc(appData.schoolName)} ｜ 工程材料設備送審管制總表</div>
-        <h2 style="margin:2px 0 0;font-size:17px">${esc(p.project_name)}（${esc(p.project_id)}）</h2>
+        <h2 style="margin:2px 0 0;font-size:17px">${esc(p.project_name)}（${esc(typeof formatProjectCaseNo === 'function' ? formatProjectCaseNo(p) : p.project_id)}）</h2>
       </div>
       <div style="text-align:right;font-size:11px;color:#475569">
         <div>總項數：${eng.mats.length} ｜ 核定：${eng.approvedMats} ｜ 抽驗合格：${eng.inspectedMats} ｜ 綠建材：${eng.greenMats}</div>
@@ -1551,7 +1551,7 @@ printSingleProjectPDF = function(projectId) {
         <h2 style="margin:2px 0 0;font-size:18px">${esc(p.project_name)}</h2>
       </div>
       <div style="text-align:right;font-size:11.5px;color:#475569">
-        <div>案號：${esc(p.project_id)} ｜ 狀態：<strong>${esc(p.status)}</strong></div>
+        <div>案號：${esc(typeof formatProjectCaseNo === 'function' ? formatProjectCaseNo(p) : p.project_id)} ｜ 狀態：<strong>${esc(p.status)}</strong></div>
         <div>列印日期：${todayStr()}</div>
       </div>
     </div>
