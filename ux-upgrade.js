@@ -645,6 +645,7 @@ function refreshWizardAwardOptions(preferredAward) {
   const opts = AWARD_OPTIONS_BY_TIER[tier] || AWARD_OPTIONS_BY_TIER['未達(15-150萬)'];
   const nextVal = resolveAwardForTier(tier, preferredAward !== undefined ? preferredAward : awardEl.value);
   awardEl.innerHTML = opts.map(o => `<option value="${esc(o.value)}" ${o.value === nextVal ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
+  if (typeof refreshWizardProjectId === 'function') refreshWizardProjectId();
   onWizardAwardChange();
 }
 
@@ -707,7 +708,7 @@ function updateWizardLegalHint() {
   } else if (award.includes('共同供應契約')) {
     lines.push('🛒 共同供應契約提醒：將自動展開專屬 4 階段檢核（確認契約效期 → 電子採購網下訂 → 交貨測試 → 驗收登帳核銷）。');
   } else if (tier === '小額(15萬以下)') {
-    lines.push('📘 小額採購（15 萬元以下）：免公告、免監辦；若屬電梯／飲水機／冷氣／消防等年度保養契約，建議勾選下方「年度保養／分期履約契約」。');
+    lines.push('📘 小額採購（15 萬元以下）：免編標案案號、免公告、免監辦；若屬電梯／飲水機／冷氣／消防等年度保養契約，建議勾選下方「年度保養／分期履約契約」。');
   } else if (tier === '未達(15-150萬)') {
     lines.push('📘 未達公告金額（逾 15 萬至未達 150 萬）：等標期原則不少於 5 天，第 1 階段請一併簽准未滿 3 家改採限制性招標及監辦方式。');
   } else {

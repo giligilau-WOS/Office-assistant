@@ -685,6 +685,18 @@ function nextId(table, pkKey, prefix, pad = 4) {
 
 const PROCUREMENT_TYPE_CODE = { '工程': '01', '勞務': '02', '財物': '03' };
 
+function isSmallProcurementTier(tier) {
+  return String(tier || '').trim() === '小額(15萬以下)';
+}
+
+function formatProjectCaseNo(p) {
+  if (!p) return '-';
+  const pid = String(p.project_id || '').trim();
+  if (isSmallProcurementTier(p.threshold_tier) && !/^XP/i.test(pid)) return '小額免編號';
+  if (/^SML-/i.test(pid)) return '小額免編號';
+  return pid || '-';
+}
+
 function nextProjectCaseId(fiscalYear, procurementType) {
   const fy = String(Number(fiscalYear) || (new Date().getFullYear() - 1911));
   const typeCode = PROCUREMENT_TYPE_CODE[procurementType] || '01';
@@ -701,8 +713,20 @@ function nextProjectCaseId(fiscalYear, procurementType) {
 
 function refreshWizardProjectId(force = false) {
   const pidEl = document.getElementById('wiz-pid');
+  const recalcBtn = document.getElementById('wiz-pid-recalc');
   if (!pidEl) return;
-  if (!force && pidEl.dataset.auto === '0') return;
+  const tier = document.getElementById('wiz-tier')?.value || '';
+  if (isSmallProcurementTier(tier)) {
+    pidEl.value = '';
+    pidEl.placeholder = '小額採購（15萬以下）不編號';
+    pidEl.disabled = true;
+    if (recalcBtn) recalcBtn.disabled = true;
+    return;
+  }
+  pidEl.disabled = false;
+  pidEl.placeholder = '例：XP1150101';
+  if (recalcBtn) recalcBtn.disabled = false;
+  if (!force && pidEl.dataset.auto === '0' && pidEl.value.trim()) return;
   const fy = document.getElementById('wiz-fy')?.value;
   const type = document.getElementById('wiz-type')?.value || '工程';
   pidEl.value = nextProjectCaseId(fy, type);
@@ -1153,7 +1177,7 @@ function renderProjectsListHTML() {
                 const prog = calcProjectProgress(p.project_id);
                 return `
                   <tr>
-                    <td><strong>${esc(p.project_id)}</strong><div class="item-meta">${esc(p.fiscal_year)}年度</div></td>
+                    <td><strong>${esc(formatProjectCaseNo(p))}</strong><div class="item-meta">${esc(p.fiscal_year)}年度</div></td>
                     <td>
                       <a href="javascript:void(0)" style="font-weight:700" onclick="openProjectDetail('${esc(p.project_id)}')">${esc(p.project_name)}</a>
                       <div class="item-meta">${p.vendor_name ? '廠商：' + esc(p.vendor_name) : '尚未決標'} ${p.grant_deadline ? '｜補助死線：' + esc(p.grant_deadline) : ''}</div>
@@ -1217,7 +1241,7 @@ function renderProjectDetailHTML(projectId) {
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
           <div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
-              <span class="tag tag-gray">${esc(p.project_id)}</span>
+              <span class="tag tag-gray">${esc(formatProjectCaseNo(p))}</span>
               <span class="tag tag-blue">${esc(p.procurement_type)}</span>
               <span class="tag tag-gray">${esc(p.threshold_tier)}</span>
               <span class="tag tag-gray">${esc(p.award_method)}</span>
@@ -1601,7 +1625,7 @@ function printSingleProjectPDF(projectId) {
         <h2 style="margin:2px 0 0;font-size:18px">${esc(p.project_name)}</h2>
       </div>
       <div style="text-align:right;font-size:11.5px;color:#475569">
-        <div>案號：${esc(p.project_id)} ｜ 狀態：<strong>${esc(p.status)}</strong></div>
+        <div>案號：${esc(formatProjectCaseNo(p))} ｜ 狀態：<strong>${esc(p.status)}</strong></div>
         <div>列印日期：${todayStr()}</div>
       </div>
     </div>
@@ -1685,7 +1709,7 @@ function openProjectWizard(presetTemplateId = '', presetName = '', sourceMemoId 
     <input type="hidden" id="wiz-source-memo" value="${esc(sourceMemoId)}">
     <div class="form-grid">
       <div class="field full"><label>標案名稱 *</label><input id="wiz-name" type="text" value="${esc(presetName)}" placeholder="例：115年教學大樓廁所整修工程"></div>
-      <div class="field"><label>標案案號（XP＋民國年＋類碼＋序號，可微調）</label><div style="display:flex;gap:6px"><input id="wiz-pid" type="text" value="${esc(nextProjectCaseId(fy, '工程'))}" data-auto="1" oninput="this.dataset.auto=this.value.trim()?'0':'1'" placeholder="例：XP1150101" style="flex:1"><button type="button" class="btn-xs" title="依年度與採購性質重算案號" onclick="refreshWizardProjectId(true)">重算</button></div></div>
+      <div class="field"><label>標案案號（XP＋民國年＋類碼＋序號，小額不編號）</label><div style="display:flex;gap:6px"><input id="wiz-pid" type="text" value="${esc(nextProjectCaseId(fy, '工程'))}" data-auto="1" oninput="this.dataset.auto=this.value.trim()?'0':'1'" placeholder="例：XP1150101" style="flex:1"><button id="wiz-pid-recalc" type="button" class="btn-xs" title="依年度與採購性質重算案號" onclick="refreshWizardProjectId(true)">重算</button></div></div>
       <div class="field"><label>會計年度（民國年）</label><input id="wiz-fy" type="number" value="${fy}" oninput="refreshWizardProjectId()"></div>
       <div class="field"><label>採購性質</label>
         <select id="wiz-type" onchange="document.getElementById('wiz-eng-wrap').style.display=this.value==='工程'?'flex':'none';refreshWizardProjectId()">
@@ -1694,7 +1718,7 @@ function openProjectWizard(presetTemplateId = '', presetName = '', sourceMemoId 
       </div>
       <div class="field"><label>預算金額（元）</label><input id="wiz-budget" type="number" placeholder="例：1200000"></div>
       <div class="field"><label>金額級距</label>
-        <select id="wiz-tier">
+        <select id="wiz-tier" onchange="refreshWizardProjectId()">
           <option value="小額(15萬以下)">小額(15萬以下)</option>
           <option value="未達(15-150萬)" selected>未達(15-150萬)</option>
           <option value="公開(150萬以上)">公開(150萬以上)</option>
@@ -1733,6 +1757,7 @@ function openProjectWizard(presetTemplateId = '', presetName = '', sourceMemoId 
     <button class="btn-primary" onclick="submitNewProject()">建立標案並展開流程</button>
   `);
   if (presetTemplateId) onWizardTemplateChange();
+  else refreshWizardProjectId();
 }
 
 function onWizardTemplateChange() {
@@ -1777,10 +1802,15 @@ async function submitNewProject() {
     use_committee: document.getElementById('flg-comm').checked
   };
 
-  const rawPid = (document.getElementById('wiz-pid')?.value || '').trim().toUpperCase();
-  const projectId = rawPid || nextProjectCaseId(fy, type);
-  if ((appData.tables.Projects || []).some(p => String(p.project_id || '').trim().toUpperCase() === projectId)) {
-    return toast(`❌ 標案案號 ${projectId} 已存在，請修改案號`);
+  let projectId;
+  if (isSmallProcurementTier(tier)) {
+    projectId = nextId('Projects', 'project_id', `SML-${fy}`, 3);
+  } else {
+    const rawPid = (document.getElementById('wiz-pid')?.value || '').trim().toUpperCase();
+    projectId = rawPid || nextProjectCaseId(fy, type);
+    if ((appData.tables.Projects || []).some(p => String(p.project_id || '').trim().toUpperCase() === projectId)) {
+      return toast(`❌ 標案案號 ${projectId} 已存在，請修改案號`);
+    }
   }
   const projectRec = {
     project_id: projectId, fiscal_year: fy, project_name: name,
@@ -1846,7 +1876,7 @@ async function submitNewProject() {
   closeModal();
   openProjectDetail(projectId);
   await pushToCloud({ action: 'batchUpsert', items: batchItems });
-  toast(`✅ 已建立標案 ${projectId} 並展開 ${taskRecs.length} 個標準階段`);
+  toast(`✅ 已建立${isSmallProcurementTier(tier) ? '小額採購案（免編號）' : '標案 ' + projectId} 並展開 ${taskRecs.length} 個標準階段`);
 }
 
 function openEditProjectModal(projectId) {
