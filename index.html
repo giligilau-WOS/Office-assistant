@@ -683,6 +683,32 @@ function nextId(table, pkKey, prefix, pad = 4) {
   return `${prefix}-${String(max + 1).padStart(pad, '0')}`;
 }
 
+const PROCUREMENT_TYPE_CODE = { '工程': '01', '勞務': '02', '財物': '03' };
+
+function nextProjectCaseId(fiscalYear, procurementType) {
+  const fy = String(Number(fiscalYear) || (new Date().getFullYear() - 1911));
+  const typeCode = PROCUREMENT_TYPE_CODE[procurementType] || '01';
+  const prefix = `XP${fy}${typeCode}`;
+  const re = new RegExp(`^${prefix}(\\d+)$`, 'i');
+  let max = 0;
+  (appData.tables.Projects || []).forEach(r => {
+    if (r.is_deleted === true) return;
+    const m = String(r.project_id || '').trim().match(re);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  });
+  return `${prefix}${String(max + 1).padStart(2, '0')}`;
+}
+
+function refreshWizardProjectId(force = false) {
+  const pidEl = document.getElementById('wiz-pid');
+  if (!pidEl) return;
+  if (!force && pidEl.dataset.auto === '0') return;
+  const fy = document.getElementById('wiz-fy')?.value;
+  const type = document.getElementById('wiz-type')?.value || '工程';
+  pidEl.value = nextProjectCaseId(fy, type);
+  pidEl.dataset.auto = '1';
+}
+
 // ============================================================================
 // 4. 年度固定例行事項自動復活演算法 & 跨模組紅黃燈預警引擎
 // ============================================================================
@@ -1659,13 +1685,14 @@ function openProjectWizard(presetTemplateId = '', presetName = '', sourceMemoId 
     <input type="hidden" id="wiz-source-memo" value="${esc(sourceMemoId)}">
     <div class="form-grid">
       <div class="field full"><label>標案名稱 *</label><input id="wiz-name" type="text" value="${esc(presetName)}" placeholder="例：115年教學大樓廁所整修工程"></div>
-      <div class="field"><label>會計年度（民國年）</label><input id="wiz-fy" type="number" value="${fy}"></div>
-      <div class="field"><label>預算金額（元）</label><input id="wiz-budget" type="number" placeholder="例：1200000"></div>
+      <div class="field"><label>標案案號（XP＋民國年＋類碼＋序號，可微調）</label><div style="display:flex;gap:6px"><input id="wiz-pid" type="text" value="${esc(nextProjectCaseId(fy, '工程'))}" data-auto="1" oninput="this.dataset.auto=this.value.trim()?'0':'1'" placeholder="例：XP1150101" style="flex:1"><button type="button" class="btn-xs" title="依年度與採購性質重算案號" onclick="refreshWizardProjectId(true)">重算</button></div></div>
+      <div class="field"><label>會計年度（民國年）</label><input id="wiz-fy" type="number" value="${fy}" oninput="refreshWizardProjectId()"></div>
       <div class="field"><label>採購性質</label>
-        <select id="wiz-type" onchange="document.getElementById('wiz-eng-wrap').style.display=this.value==='工程'?'flex':'none'">
-          <option value="工程">工程</option><option value="勞務">勞務</option><option value="財物">財物</option>
+        <select id="wiz-type" onchange="document.getElementById('wiz-eng-wrap').style.display=this.value==='工程'?'flex':'none';refreshWizardProjectId()">
+          <option value="工程">工程（01）</option><option value="勞務">勞務（02）</option><option value="財物">財物（03）</option>
         </select>
       </div>
+      <div class="field"><label>預算金額（元）</label><input id="wiz-budget" type="number" placeholder="例：1200000"></div>
       <div class="field"><label>金額級距</label>
         <select id="wiz-tier">
           <option value="小額(15萬以下)">小額(15萬以下)</option>
@@ -1715,6 +1742,7 @@ function onWizardTemplateChange() {
   if (!tid) {
     box.style.display = 'none';
     lbl.textContent = '招標準備起跑日';
+    refreshWizardProjectId();
     return;
   }
   const t = (appData.tables.Templates || []).find(x => x.template_id === tid);
@@ -1723,6 +1751,7 @@ function onWizardTemplateChange() {
   document.getElementById('wiz-tier').value = t.threshold_tier;
   document.getElementById('wiz-award').value = t.award_method;
   document.getElementById('wiz-eng-wrap').style.display = t.procurement_type === '工程' ? 'flex' : 'none';
+  refreshWizardProjectId();
   lbl.textContent = `模板基準日（${t.anchor_label || '契約生效／開工日'}）`;
   if (t.lessons_learned) {
     box.style.display = 'block';
@@ -1748,7 +1777,11 @@ async function submitNewProject() {
     use_committee: document.getElementById('flg-comm').checked
   };
 
-  const projectId = nextId('Projects', 'project_id', `PRJ-${fy}`, 3);
+  const rawPid = (document.getElementById('wiz-pid')?.value || '').trim().toUpperCase();
+  const projectId = rawPid || nextProjectCaseId(fy, type);
+  if ((appData.tables.Projects || []).some(p => String(p.project_id || '').trim().toUpperCase() === projectId)) {
+    return toast(`❌ 標案案號 ${projectId} 已存在，請修改案號`);
+  }
   const projectRec = {
     project_id: projectId, fiscal_year: fy, project_name: name,
     procurement_type: type, threshold_tier: tier, award_method: awardMethod,
