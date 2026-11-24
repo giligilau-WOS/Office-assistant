@@ -1288,13 +1288,13 @@
     const rocStr = `民國${now.getFullYear() - 1911}年${String(now.getMonth() + 1).padStart(2, '0')}月${String(now.getDate()).padStart(2, '0')}日 (${wk})`;
 
     const tabTitles = {
-      dashboard: '今日總務焦點工作台',
-      projects: '採購與履約管理',
-      'annual-gantt': '全校年度甘特圖',
-      templates: '年度標案模板庫',
-      routines: '年度固定例行事務',
-      solar: '太陽能屋頂租賃',
-      utilities: '水電費異常控管'
+      dashboard: '戰情總覽',
+      projects: '採購履約',
+      'annual-gantt': '全校甘特圖',
+      templates: '標案模板',
+      routines: '例行事務',
+      solar: '太陽能租賃',
+      utilities: '水電費監控'
     };
 
     const brand = document.querySelector('.topbar .brand');
@@ -1470,7 +1470,7 @@
     const leftPanels = dashGrid.querySelectorAll(':scope > div:first-child > .panel');
     if (leftPanels[0]) {
       const h3 = leftPanels[0].querySelector('.panel-hd h3');
-      if (h3) h3.textContent = '紅黃燈預警雷達';
+      if (h3) h3.textContent = '🚨 急件與到期';
       leftPanels[0].querySelectorAll('.alert-item').forEach((el, idx) => {
         const a = (window._dashAlerts || [])[idx];
         if (!a || typeof calcAlertCardVisual !== 'function') return;
@@ -1480,7 +1480,7 @@
     }
     if (leftPanels[1]) {
       const h3 = leftPanels[1].querySelector('.panel-hd h3');
-      if (h3) h3.textContent = '進行中採購與履約';
+      if (h3) h3.textContent = '📋 進行中採購';
       const activeProjects = (appData.tables.Projects || [])
         .filter(p => !['已結案', '廢標撤案'].includes(p.status))
         .filter(p => !q || String(p.project_name + p.project_id + p.vendor_name).toLowerCase().includes(q));
@@ -1493,7 +1493,7 @@
       });
       const emptyEl = leftPanels[1].querySelector('.empty-state');
       if (emptyEl && emptyEl.textContent.includes('開新標案')) {
-        emptyEl.textContent = '尚無進行中採購案，點擊右上角「＋ 新增採購」啟動流程。';
+        emptyEl.textContent = '尚無進行中採購案。按右上「＋ 新增」開始。';
       }
     }
 
@@ -1504,7 +1504,7 @@
       if (midHd) {
         midHd.innerHTML = `
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <h3>${prefs.viewMode === 'timeline' ? '近期業務時間軸' : '近期例行與待辦'}</h3>
+            <h3>${prefs.viewMode === 'timeline' ? '📅 近期時間軸' : '🔁 近期待辦'}</h3>
             <div class="nordic-seg" role="group" aria-label="切換待辦卡片或時間軸">
               <button type="button" class="${prefs.viewMode === 'cards' ? 'active' : ''}" onclick="setNordicViewMode('cards')">待辦卡片</button>
               <button type="button" class="${prefs.viewMode === 'timeline' ? 'active' : ''}" onclick="setNordicViewMode('timeline')">時間軸</button>
@@ -1622,7 +1622,7 @@
                   ${inlineStepsHtml}
                   <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;align-items:center;padding-top:6px;border-top:1px solid rgba(15, 23, 42, 0.06)">
                     <button type="button" class="btn-xs btn-success" style="min-height:27px!important;padding:2px 8px" onclick="event.stopPropagation();markRoutineDone('${esc(r.routine_id)}','${esc(sch.cycle)}')">✓ 辦結</button>
-                    <button type="button" class="btn-xs" style="min-height:27px!important;padding:2px 8px" onclick="event.stopPropagation();openRoutineDetailModal('${esc(r.routine_id)}')">詳情附件</button>
+                    <button type="button" class="btn-xs" style="min-height:27px!important;padding:2px 8px" onclick="event.stopPropagation();openRoutineDetailModal('${esc(r.routine_id)}')">檢視細節</button>
                     ${r.portal_url ? `<a class="btn-xs" style="min-height:27px!important;padding:2px 8px" href="${esc(r.portal_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">網站 ↗</a>` : ''}
                     ${r.linked_template_id ? `<button type="button" class="btn-xs btn-primary" style="min-height:27px!important;padding:2px 8px;margin-left:auto" onclick="event.stopPropagation();openProjectWizard('${esc(r.linked_template_id)}','${esc(r.title)}')">套模板</button>` : ''}
                     ${(!r.linked_template_id && canQuickBuy && typeof openRoutineQuickPurchase === 'function') ? `<button type="button" class="btn-xs btn-primary" style="min-height:27px!important;padding:2px 8px;margin-left:auto" onclick="event.stopPropagation();openRoutineQuickPurchase('${esc(r.routine_id)}')">開單</button>` : ''}
@@ -1639,7 +1639,7 @@
     const rightPanel = dashGrid.querySelector(':scope > .panel:last-child');
     if (rightPanel) {
       const rh3 = rightPanel.querySelector('.panel-hd h3');
-      if (rh3) rh3.textContent = '臨時交辦 Memo';
+      if (rh3) rh3.textContent = '📌 交辦 Memo';
 
       const quickBox = rightPanel.querySelector('.memo-quick');
       if (quickBox && !quickBox.dataset.nordicUpgraded) {

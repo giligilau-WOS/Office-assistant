@@ -1203,11 +1203,11 @@ renderOpsDashStripHTML = function() {
 
   const card = `<div class="ops-mini-card ${cls}" onclick="solarV2SelectedId=null;switchTab('solar')">
     <div>
-      <div style="font-size:12px;color:var(--muted);font-weight:700">☀️ 太陽能屋頂（${active.length}約｜${totalKwp.toFixed(1)} kWp）</div>
-      <div style="font-weight:800;font-size:15px;margin-top:2px">${curRocY}年實收 ${fmtMoney(yrActual)} <small style="font-weight:500;color:var(--muted)">｜保金 ${fmtMoney(bondBal)}</small></div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700">☀️ 太陽能（${active.length} 約）</div>
+      <div style="font-weight:800;font-size:15px;margin-top:2px">實收 ${fmtMoney(yrActual)} <small style="font-weight:500;color:var(--muted)">｜保金 ${fmtMoney(bondBal)}</small></div>
       <div class="item-meta">${sAlerts.length ? `🚨 ${redCnt} 紅燈 ／ ${sAlerts.length - redCnt} 黃燈（保險／續租／催繳）` : '✓ 雙保險、保證函與對帳全數合規'}</div>
     </div>
-    <span class="tag ${cls==='warn-red'?'tag-red':cls==='warn-amber'?'tag-amber':'tag-green'}">光電面板 →</span>
+    <span class="tag ${cls==='warn-red'?'tag-red':cls==='warn-amber'?'tag-amber':'tag-green'}">查看 →</span>
   </div>`;
   return baseHtml.replace(new RegExp('<div class="ops-mini-card[\\s\\S]*?進入面板 →</span>\\s*</div>'), card);
 };

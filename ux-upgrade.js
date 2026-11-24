@@ -136,7 +136,7 @@
 // ----------------------------------------------------------------------------
 (function renameProcurementTab() {
   const tabBtn = document.querySelector('#nav-tabs [data-tab="projects"]');
-  if (tabBtn) tabBtn.textContent = '📋 採購與履約管理';
+  if (tabBtn) tabBtn.textContent = '📋 採購履約';
 })();
 
 const _origRenderProjectsListHTML_ux = renderProjectsListHTML;
@@ -1253,8 +1253,8 @@ function runClaudeVerificationSuite() {
 
     // 11. E2E：一屏適配切換鈕與「採購與履約管理」正名
     const fitBtnExists = !!document.getElementById('btn-fit-mode');
-    const renamedOk = (document.querySelector('#nav-tabs [data-tab="projects"]')?.textContent || '').includes('採購與履約管理');
-    assert(fitBtnExists && renamedOk, 'E2E：一屏適配切換鈕與「採購與履約管理」正名就位');
+    const renamedOk = (document.querySelector('#nav-tabs [data-tab="projects"]')?.textContent || '').includes('採購履約');
+    assert(fitBtnExists && renamedOk, 'E2E：一屏適配切換鈕與「採購履約」短名就位');
 
     // 12. R-04 資安檢查：不含 API Token、資料表不含底價欄位
     const dumpStr = JSON.stringify(appData);

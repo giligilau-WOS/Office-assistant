@@ -282,7 +282,7 @@
       </span>
       <input id="global-search" type="search" placeholder="🔍 搜尋標案／Memo／例行項..." style="padding:5px 10px;border-radius:6px;border:1px solid #334155;background:#1e293b;color:#fff;width:210px;" oninput="renderCurrentView()">
       <button class="btn-primary" onclick="openProjectWizard()">＋ 開新標案</button>
-      <button style="background:#334155;color:#fff;border-color:#475569" onclick="openSettingsModal()">⚙️ 連線與備份</button>
+      <button style="background:#334155;color:#fff;border-color:#475569" onclick="openSettingsModal()">⚙️ 設定</button>
     </div>
   </div>
 
@@ -291,12 +291,12 @@
 
   <!-- 主頁籤導覽 -->
   <div class="nav-tabs" id="nav-tabs">
-    <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 起始戰情室</button>
-    <button class="nav-tab" data-tab="projects" onclick="switchTab('projects')">📋 招標與工程控管</button>
-    <button class="nav-tab" data-tab="annual-gantt" onclick="switchTab('annual-gantt')">📅 全校年度甘特圖</button>
-    <button class="nav-tab" data-tab="templates" onclick="switchTab('templates')">🗂️ 年度標案模板庫</button>
-    <button class="nav-tab" data-tab="routines" onclick="switchTab('routines')">🔁 年度固定例行事務</button>
-    <button class="nav-tab" data-tab="upcoming" onclick="switchTab('upcoming')">🔧 工程品管／太陽能／水電 <span class="badge-soon">下階段</span></button>
+    <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 戰情總覽</button>
+    <button class="nav-tab" data-tab="projects" onclick="switchTab('projects')">📋 採購履約</button>
+    <button class="nav-tab" data-tab="annual-gantt" onclick="switchTab('annual-gantt')">📅 全校甘特圖</button>
+    <button class="nav-tab" data-tab="templates" onclick="switchTab('templates')">🗂️ 標案模板</button>
+    <button class="nav-tab" data-tab="routines" onclick="switchTab('routines')">🔁 例行事務</button>
+    <button class="nav-tab" data-tab="upcoming" onclick="switchTab('upcoming')">🔧 設施與綠能 <span class="badge-soon">下階段</span></button>
   </div>
 
   <!-- 主內容容器 -->
@@ -434,7 +434,7 @@ function createDemoSeed() {
   ];
   d.tables.Quick_Memos = [
     {
-      memo_id: 'MEM-0001', content: '點擊右上角「⚙️ 連線與備份」填入 GAS /exec 網址與通行金鑰即可啟用雲端同步',
+      memo_id: 'MEM-0001', content: '🔌 尚未連線雲端：⚙️ 設定 →「連線與備份」',
       source_tag: '系統提示', priority: '重要', remind_date: today, due_date: '', is_done: false, done_date: '', converted_ref: ''
     }
   ];
@@ -970,19 +970,19 @@ function renderDashboardHTML() {
   return `
     <div class="kpi-grid">
       <div class="kpi-card kpi-red" onclick="switchTab('dashboard')">
-        <div><div class="kpi-label">🔴 緊急紅燈（立即處理）</div><div class="kpi-val">${redCount}</div></div>
+        <div><div class="kpi-label">🔴 急件</div><div class="kpi-val">${redCount}</div></div>
         <span style="font-size:24px">🚨</span>
       </div>
       <div class="kpi-card kpi-amber" onclick="switchTab('dashboard')">
-        <div><div class="kpi-label">🟡 近期追蹤（黃燈預警）</div><div class="kpi-val">${amberCount}</div></div>
+        <div><div class="kpi-label">🟠 7 天內到期</div><div class="kpi-val">${amberCount}</div></div>
         <span style="font-size:24px">⏳</span>
       </div>
       <div class="kpi-card kpi-blue" onclick="switchTab('projects')">
-        <div><div class="kpi-label">📋 執行／保固中標案</div><div class="kpi-val">${activeProjects.length}</div></div>
+        <div><div class="kpi-label">📋 執行中標案</div><div class="kpi-val">${activeProjects.length}</div></div>
         <span style="font-size:24px">🏗️</span>
       </div>
       <div class="kpi-card kpi-green" onclick="document.getElementById('memo-input')?.focus()">
-        <div><div class="kpi-label">📌 未完成臨時交辦 Memo</div><div class="kpi-val">${openMemos.length}</div></div>
+        <div><div class="kpi-label">📌 待辦 Memo</div><div class="kpi-val">${openMemos.length}</div></div>
         <span style="font-size:24px">📝</span>
       </div>
     </div>
@@ -1032,7 +1032,7 @@ function renderDashboardHTML() {
                   <div class="mini-bar-wrap"><div class="mini-bar" style="width:${prog.pct}%"></div></div>
                 </div>
               `;
-            }).join('') : '<div class="empty-state">尚無進行中標案，點擊右上角「＋ 開新標案」啟動流程。</div>'}
+            }).join('') : '<div class="empty-state">尚無進行中標案。按「＋ 新增」開始。</div>'}
           </div>
         </div>
       </div>
@@ -1154,7 +1154,7 @@ function renderProjectsListHTML() {
       <div class="panel-hd">
         <h3>📋 學校招標與工程案件清單（共 ${list.length} 件）</h3>
         <div style="display:flex;gap:8px">
-          <button class="btn-sm" onclick="switchTab('annual-gantt')">📅 全校年度甘特圖</button>
+          <button class="btn-sm" onclick="switchTab('annual-gantt')">📅 全校甘特圖</button>
           <button class="btn-sm btn-primary" onclick="openProjectWizard()">＋ 開新標案</button>
         </div>
       </div>
@@ -2368,14 +2368,15 @@ renderCurrentView();
 syncFromCloud(false);
 </script>
 <script src="./eng-module.js?v=2"></script>
-<script src="./ops-module.js?v=2"></script>
-<script src="./ux-upgrade.js?v=3"></script>
-<script src="./solar-v2.js?v=2"></script>
+<script src="./ops-module.js?v=3"></script>
+<script src="./ux-upgrade.js?v=4"></script>
+<script src="./solar-v2.js?v=3"></script>
 <script src="./reliability-ux.js?v=2"></script>
 <script src="./dashboard-visuals.js?v=1"></script>
-<script src="./theme-nordic-agenda.js?v=2"></script>
+<script src="./theme-nordic-agenda.js?v=3"></script>
 <script src="./layout-theme-switcher.js?v=1"></script>
 <script src="./maint-schedule-helper.js?v=2"></script>
+<script src="./ui-declutter.js?v=1"></script>
 <script>
 (function(){
   const miss = [
