@@ -342,6 +342,7 @@ let selectedProjectId = null;
 let selectedProjectSubtab = 'checklist'; // checklist | gantt
 let showDoneMemos = false;
 let annualGanttYear = new Date().getFullYear() - 1911;
+let annualGanttFitW = 0; // 螢幕甘特圖依容器實寬繪製（0 = 列印用固定 1040 寬）
 
 function loadConfig() {
   try {
@@ -1369,7 +1370,7 @@ function renderAnnualGanttHTML() {
         </div>
       </div>
       <div class="panel-bd">
-        <div class="gantt-box">${buildAnnualGanttSVG(annualGanttYear, projects, monthLoad)}</div>
+        <div class="gantt-box">${buildAnnualGanttSVG(annualGanttYear, projects, monthLoad, annualGanttFitW)}</div>
         <div class="item-meta" style="margin-top:8px">
           說明：上方月份列顯示各月預計「開標／驗收」案次（達 3 案以上亮橘燈提醒錯開行政負荷）；點擊下方各案可進入檢視明細。
         </div>
@@ -1558,14 +1559,17 @@ function buildSingleGanttSVG(p, tasks) {
   </svg>`;
 }
 
-function buildAnnualGanttSVG(rocYear, projects, monthLoad) {
+function buildAnnualGanttSVG(rocYear, projects, monthLoad, fitW) {
   const adYear = Number(rocYear) + 1911;
   const yearStart = `${adYear}-01-01`;
   const yearEnd = `${adYear}-12-31`;
   const totalDays = diffDays(yearStart, yearEnd) + 1;
 
-  const W = 1040, leftW = 270, chartW = W - leftW - 12;
-  const rowH = 34, headH = 52;
+  // fitW：依容器實寬繪製、不縮放，字級維持實際大小；窄於 760 時改由外框水平捲動
+  const W = fitW ? Math.max(760, Math.round(fitW)) : 1040;
+  const leftW = W >= 1000 ? 300 : 240, chartW = W - leftW - 12;
+  const rowH = 42, headH = 60;
+  const nameMax = Math.floor((leftW - 20) / 13.5);
   const H = headH + Math.max(1, projects.length) * rowH + 10;
   const xOf = ymd => {
     const clamped = ymd < yearStart ? yearStart : (ymd > yearEnd ? yearEnd : ymd);
@@ -1573,8 +1577,8 @@ function buildAnnualGanttSVG(rocYear, projects, monthLoad) {
   };
 
   let headerSvg = `<rect x="0" y="0" width="${W}" height="${headH}" fill="#f1f5f9"/>`;
-  headerSvg += `<text x="10" y="22" font-size="12" font-weight="700" fill="#334155">標案名稱（${rocYear}年度）</text>`;
-  headerSvg += `<text x="10" y="42" font-size="10.5" fill="#64748b">各月開標／驗收負荷件數</text>`;
+  headerSvg += `<text x="10" y="24" font-size="14" font-weight="700" fill="#334155">標案名稱（${rocYear}年度）</text>`;
+  headerSvg += `<text x="10" y="50" font-size="12" fill="#64748b">各月開標／驗收件數</text>`;
 
   let gridSvg = '';
   for (let m = 0; m < 12; m++) {
@@ -1582,20 +1586,21 @@ function buildAnnualGanttSVG(rocYear, projects, monthLoad) {
     const mNext = m === 11 ? yearEnd : `${adYear}-${String(m + 2).padStart(2, '0')}-01`;
     const x1 = xOf(mStart), x2 = xOf(mNext);
     const load = monthLoad[m];
-    headerSvg += `<rect x="${x1}" y="28" width="${x2 - x1}" height="22" fill="${load >= 3 ? '#fef3c7' : '#ffffff'}" stroke="#e2e8f0"/>`;
-    headerSvg += `<text x="${(x1 + x2) / 2}" y="19" font-size="11" font-weight="700" fill="#334155" text-anchor="middle">${m + 1}月</text>`;
-    headerSvg += `<text x="${(x1 + x2) / 2}" y="43" font-size="10.5" font-weight="700" fill="${load >= 3 ? '#b45309' : '#64748b'}" text-anchor="middle">${load}案</text>`;
+    headerSvg += `<rect x="${x1}" y="33" width="${x2 - x1}" height="25" fill="${load >= 3 ? '#fef3c7' : '#ffffff'}" stroke="#e2e8f0"/>`;
+    headerSvg += `<text x="${(x1 + x2) / 2}" y="23" font-size="13.5" font-weight="700" fill="#334155" text-anchor="middle">${m + 1}月</text>`;
+    headerSvg += `<text x="${(x1 + x2) / 2}" y="50" font-size="12.5" font-weight="700" fill="${load >= 3 ? '#b45309' : '#64748b'}" text-anchor="middle">${load}案</text>`;
     gridSvg += `<line x1="${x1}" y1="${headH}" x2="${x1}" y2="${H}" stroke="#e2e8f0"/>`;
   }
 
   let rowsSvg = '';
   if (!projects.length) {
-    rowsSvg = `<text x="${W / 2}" y="${headH + 22}" font-size="13" fill="#64748b" text-anchor="middle">民國 ${rocYear} 年度尚無標案資料</text>`;
+    rowsSvg = `<text x="${W / 2}" y="${headH + 22}" font-size="14" fill="#64748b" text-anchor="middle">民國 ${rocYear} 年度尚無標案資料</text>`;
   } else {
     projects.forEach((p, idx) => {
       const y = headH + idx * rowH;
       rowsSvg += `<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="${idx % 2 ? '#f8fafc' : '#ffffff'}"/>`;
-      rowsSvg += `<text x="10" y="${y + 21}" font-size="11.5" font-weight="700" fill="#1d4ed8" style="cursor:pointer" onclick="openProjectDetail('${esc(p.project_id)}')">${escSvg(String(p.project_name || '').slice(0, 18))}</text>`;
+      const pName = String(p.project_name || '');
+      rowsSvg += `<text x="10" y="${y + 26}" font-size="13.5" font-weight="700" fill="#1d4ed8" style="cursor:pointer" onclick="openProjectDetail('${esc(p.project_id)}')"><title>${escSvg(pName)}</title>${escSvg(pName.length > nameMax ? pName.slice(0, nameMax - 1) + '…' : pName)}</text>`;
       getProjectTasks(p.project_id).forEach(t => {
         if (!t.plan_start || !t.plan_end) return;
         if (t.plan_end < yearStart || t.plan_start > yearEnd) return;
@@ -1603,12 +1608,12 @@ function buildAnnualGanttSVG(rocYear, projects, monthLoad) {
         const sn = String(t.stage_name || '');
         const col = sn.includes('驗收') || sn.includes('核銷') ? '#059669'
           : (sn.includes('施工') || sn.includes('履約') ? '#2563eb' : '#f59e0b');
-        rowsSvg += `<rect x="${x1}" y="${y + 9}" width="${x2 - x1}" height="16" rx="3" fill="${col}" opacity="0.88"><title>${escSvg(sn)} (${t.plan_start}~${t.plan_end})</title></rect>`;
+        rowsSvg += `<rect x="${x1}" y="${y + 11}" width="${x2 - x1}" height="20" rx="4" fill="${col}" opacity="0.88"><title>${escSvg(sn)} (${t.plan_start}~${t.plan_end})</title></rect>`;
       });
     });
   }
 
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;font-family:'Microsoft JhengHei',sans-serif">${headerSvg}${rowsSvg}${gridSvg}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" style="${fitW ? `width:${W}px;max-width:none` : 'width:100%'};height:auto;display:block;font-family:'Microsoft JhengHei',sans-serif">${headerSvg}${rowsSvg}${gridSvg}</svg>`;
 }
 
 function printSingleProjectPDF(projectId) {
@@ -2370,13 +2375,13 @@ syncFromCloud(false);
 <script src="./eng-module.js?v=2"></script>
 <script src="./ops-module.js?v=3"></script>
 <script src="./ux-upgrade.js?v=4"></script>
-<script src="./solar-v2.js?v=3"></script>
+<script src="./solar-v2.js?v=4"></script>
 <script src="./reliability-ux.js?v=2"></script>
 <script src="./dashboard-visuals.js?v=1"></script>
 <script src="./theme-nordic-agenda.js?v=3"></script>
 <script src="./layout-theme-switcher.js?v=1"></script>
 <script src="./maint-schedule-helper.js?v=2"></script>
-<script src="./ui-declutter.js?v=2"></script>
+<script src="./ui-declutter.js?v=3"></script>
 <script>
 (function(){
   const miss = [
