@@ -293,7 +293,7 @@ function calcRoutineCardVisual(r, sch) {
     if (pct >= 100) tone = 'green';
     else if (diff < 0) tone = 'red';
     else if (diff <= 7) tone = 'amber';
-    else if (pct >= 70) tone = 'green';
+    else if (pct >= 70) tone = 'blue';
     else tone = 'blue';
     mode = 'work';
     label = `進度 ${doneSteps}/${totalSteps} (${pct}%)`;
@@ -303,7 +303,7 @@ function calcRoutineCardVisual(r, sch) {
       tone = 'red';
     } else {
       pct = Math.max(8, Math.min(98, Math.round(((lead - diff) / lead) * 100)));
-      tone = diff <= 7 ? 'amber' : (diff <= 14 ? 'blue' : 'green');
+      tone = diff <= 7 ? 'amber' : 'blue';
     }
     mode = 'time';
     label = diff <= 0 ? '已達時限 100%' : `時限進度 ${pct}%`;
@@ -322,7 +322,7 @@ function calcProjectCardVisual(p, prog) {
   let tone = 'blue';
   if (minDiff !== null && minDiff < 0 && pct < 100) tone = 'red';
   else if (minDiff !== null && minDiff <= 14 && pct < 80) tone = 'amber';
-  else if (pct >= 80) tone = 'green';
+  else if (pct >= 100) tone = 'green';
   return { pct, tone };
 }
 

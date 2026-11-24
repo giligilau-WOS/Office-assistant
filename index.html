@@ -435,7 +435,7 @@ function createDemoSeed() {
   ];
   d.tables.Quick_Memos = [
     {
-      memo_id: 'MEM-0001', content: '🔌 尚未連線雲端：⚙️ 設定 →「連線與備份」',
+      memo_id: 'MEM-0001', content: '🔌 尚未連線雲端：⚙️ 設定 →「同步與備份」',
       source_tag: '系統提示', priority: '重要', remind_date: today, due_date: '', is_done: false, done_date: '', converted_ref: ''
     }
   ];
@@ -1184,18 +1184,18 @@ function renderProjectsListHTML() {
                       <div class="item-meta">${p.vendor_name ? '廠商：' + esc(p.vendor_name) : '尚未決標'} ${p.grant_deadline ? '｜補助死線：' + esc(p.grant_deadline) : ''}</div>
                     </td>
                     <td style="white-space:nowrap">
-                      <span class="tag tag-blue">${esc(p.procurement_type)}</span>
+                      <span class="tag tag-gray">${esc(p.procurement_type)}</span>
                       <div class="item-meta">${esc(p.threshold_tier)}</div>
                     </td>
                     <td style="white-space:nowrap">
-                      <div>預：${fmtMoney(p.budget_amount)}</div>
-                      <div class="item-meta">決：${p.award_amount ? fmtMoney(p.award_amount) : '-'}</div>
+                      <div>預算 <strong>${fmtMoneyShort(p.budget_amount)}</strong></div>
+                      <div class="item-meta">決標 ${p.award_amount ? fmtMoneyShort(p.award_amount) : '未決標'}</div>
                     </td>
                     <td style="min-width:130px">
                       <div style="font-size:12px">${esc(prog.currentStage)} (${prog.pct}%)</div>
                       <div class="mini-bar-wrap"><div class="mini-bar" style="width:${prog.pct}%"></div></div>
                     </td>
-                    <td style="white-space:nowrap"><span class="tag ${statusTagCls(p.status)}">${esc(p.status)}</span></td>
+                    <td style="white-space:nowrap">${statusTagHTML(p)}</td>
                     <td style="white-space:nowrap">
                       <div style="display:flex;flex-direction:column;gap:4px;align-items:stretch">
                         <button class="btn-xs btn-primary" style="justify-content:center" onclick="openProjectDetail('${esc(p.project_id)}')">進入控管</button>
@@ -1245,11 +1245,11 @@ function renderProjectDetailHTML(projectId) {
           <div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
               <span class="tag tag-gray">${esc(formatProjectCaseNo(p))}</span>
-              <span class="tag tag-blue">${esc(p.procurement_type)}</span>
+              <span class="tag tag-gray">${esc(p.procurement_type)}</span>
               <span class="tag tag-gray">${esc(p.threshold_tier)}</span>
               <span class="tag tag-gray">${esc(p.award_method)}</span>
-              ${p.engineering_category && p.engineering_category !== '不適用' ? `<span class="tag tag-amber">附表二：${esc(p.engineering_category)}</span>` : ''}
-              <span class="tag ${statusTagCls(p.status)}">${esc(p.status)}</span>
+              ${p.engineering_category && p.engineering_category !== '不適用' ? `<span class="tag tag-gray">附表二：${esc(p.engineering_category)}</span>` : ''}
+              ${statusTagHTML(p)}
             </div>
             <h2 style="margin:4px 0 6px;font-size:20px">${esc(p.project_name)}</h2>
             <div class="item-meta">
@@ -2314,12 +2314,37 @@ function calcProjectProgress(projectId) {
   return { totalChecks: total, doneChecks: done, pct: total ? Math.round((done / total) * 100) : 0, currentStage };
 }
 
+// 三色原則：🔴 紅橘 = 急件／卡關、🔵 藍 = 進行中、🟢 綠 = 已完成、灰 = 其他
 function statusTagCls(s) {
   if (s === '已結案') return 'tag-green';
-  if (s === '履約中' || s === '招標中') return 'tag-blue';
-  if (s === '驗收中' || s === '保固追蹤中') return 'tag-amber';
+  if (s === '驗收中') return 'tag-amber';
+  if (s === '籌備中' || s === '招標中' || s === '履約中' || s === '保固追蹤中') return 'tag-blue';
   return 'tag-gray';
 }
+
+// 狀態短語化：「現況・下一步」
+function projectStatusPhrase(p) {
+  const today = todayStr();
+  const behind = p.status === '履約中' && getProjectTasks(p.project_id)
+    .some(t => t.status === '進行中' && t.plan_end && diffDays(today, t.plan_end) < 0);
+  if (behind) return { text: '進度落後・待催辦', cls: 'tag-red' };
+  const map = {
+    '籌備中': '簽辦中・待公告',
+    '招標中': '公告中・待開標',
+    '履約中': '履約中・進度正常',
+    '驗收中': '已竣工・待排驗',
+    '保固追蹤中': '保固中・待期滿',
+    '已結案': '已結案',
+    '廢標撤案': '已廢標・撤案'
+  };
+  return { text: map[p.status] || p.status || '-', cls: statusTagCls(p.status) };
+}
+function statusTagHTML(p) {
+  const ph = projectStatusPhrase(p);
+  return `<span class="tag ${ph.cls}" title="${esc(p.status)}">${esc(ph.text)}</span>`;
+}
+// 精簡金額：$602,234（列表用；正式文件與 PDF 仍用 fmtMoney）
+function fmtMoneyShort(n) { return (n === '' || n === null || n === undefined) ? '-' : '$' + Number(n).toLocaleString('zh-TW'); }
 
 function openModal(title, bodyHtml, footerHtml) {
   document.getElementById('modal-title').textContent = title;
@@ -2374,16 +2399,16 @@ renderHeaderAndPortals();
 renderCurrentView();
 syncFromCloud(false);
 </script>
-<script src="./eng-module.js?v=2"></script>
+<script src="./eng-module.js?v=3"></script>
 <script src="./ops-module.js?v=3"></script>
 <script src="./ux-upgrade.js?v=4"></script>
 <script src="./solar-v2.js?v=4"></script>
 <script src="./reliability-ux.js?v=2"></script>
-<script src="./dashboard-visuals.js?v=1"></script>
+<script src="./dashboard-visuals.js?v=2"></script>
 <script src="./theme-nordic-agenda.js?v=3"></script>
 <script src="./layout-theme-switcher.js?v=1"></script>
 <script src="./maint-schedule-helper.js?v=2"></script>
-<script src="./ui-declutter.js?v=3"></script>
+<script src="./ui-declutter.js?v=4"></script>
 <script>
 (function(){
   const miss = [

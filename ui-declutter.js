@@ -73,8 +73,8 @@
       html body .card-prog-bg { background: #FFFFFF !important; }
       html body .card-prog-bg.tone-red   { border-left: 3px solid #DC2626 !important; }
       html body .card-prog-bg.tone-amber { border-left: 3px solid #EA580C !important; }
-      html body .card-prog-bg.tone-blue,
-      html body .card-prog-bg.tone-green { border-left: 3px solid #2563EB !important; }
+      html body .card-prog-bg.tone-blue  { border-left: 3px solid #2563EB !important; }
+      html body .card-prog-bg.tone-green { border-left: 3px solid #059669 !important; }
       body[data-nordic-theme="obsidian"] .card-prog-bg { background: transparent !important; }
 
       /* 戰情總覽只留 3 資訊點：色籤／標題／日期 → 隱藏進度與附件小標籤、內嵌步驟 */
@@ -82,12 +82,9 @@
       body[data-ud-tab="dashboard"] .routine-item .item-row .tag-gray,
       body[data-ud-tab="dashboard"] .rtn-inline-steps { display: none !important; }
 
-      /* ---------- 三色票：綠 → 藍 ---------- */
-      html body .tag-green { background: #DBEAFE !important; color: #1D4ED8 !important; border-color: #BFDBFE !important; }
+      /* ---------- 三色原則：紅橘 = 急件／卡關、藍 = 進行中、綠 = 已完成／正常、灰 = 分類與其他 ---------- */
       html body .tag-amber { background: #FFEDD5 !important; color: #C2410C !important; border-color: #FED7AA !important; }
-      html body .ops-mini-card.warn-ok { border-left: 3px solid #94A3B8 !important; }
-      html body .kpi-card.kpi-green { border-left-color: #2563EB !important; }
-      body[data-nordic-theme="obsidian"] .tag-green { background: rgba(37, 99, 235, 0.22) !important; color: #93C5FD !important; }
+      html body .tag-green { background: #DCFCE7 !important; color: #047857 !important; border-color: #BBF7D0 !important; }
 
       /* ---------- 戰情總覽三區塊 ---------- */
       #ud-legacy-dash { display: none !important; }
@@ -95,7 +92,7 @@
       /* 主內容區固定撐滿可用寬度（避免依內容縮成置中窄欄，如年度甘特圖） */
       #main-view { width: 100% !important; min-width: 0 !important; box-sizing: border-box; }
       #ud-dash {
-        display: flex; flex-direction: column; gap: 12px;
+        display: flex; flex-direction: column; gap: 16px;
         flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
         min-width: 0; width: 100%; max-width: 100%;
         padding-bottom: 4px;
@@ -123,7 +120,20 @@
       .ud-row-main { flex: 1 1 auto; min-width: 0; }
       .ud-row-title { font-weight: 700; font-size: 14px; color: var(--text, #0F172A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .ud-row-sub { font-size: 12.5px; color: var(--muted, #64748B); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .ud-row-go { flex-shrink: 0; font-size: 12.5px; font-weight: 700; color: #2563EB; }
+      .ud-row-go { flex-shrink: 0; font-size: 12.5px; font-weight: 700; color: #2563EB; min-width: 78px; text-align: right; }
+      .ud-row-due { flex-shrink: 0; margin-left: auto; font-size: 13px; font-weight: 700; color: var(--muted, #475569); white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .ud-row-due.is-red { color: #DC2626; }
+      .ud-row-due.is-amber { color: #C2410C; }
+      .ud-row > .tag:last-child { margin-left: auto; flex-shrink: 0; }
+      .ud-fold {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        width: 100%; margin-top: 6px; padding: 10px 12px !important; min-height: 42px;
+        background: var(--bg, #F8FAFC) !important; border: 1px dashed var(--border, #CBD5E1) !important; box-shadow: none !important;
+        border-radius: 8px; color: var(--text, #334155) !important; font-size: 13.5px; font-weight: 600; cursor: pointer;
+      }
+      .ud-fold:hover { border-color: #93C5FD !important; }
+      .ud-fold-act { color: #2563EB; font-weight: 700; font-size: 12.5px; }
+      .ud-fold-list { display: flex; flex-direction: column; margin-top: 4px; }
       .ud-more {
         margin-top: 4px; align-self: flex-start;
         background: transparent !important; border: none !important; box-shadow: none !important;
@@ -133,13 +143,13 @@
 
       /* (B) 模組卡 */
       .ud-zone-title { font-size: 13px; font-weight: 800; color: var(--muted, #64748B); margin: 0 0 6px 2px; }
-      .ud-mods { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+      .ud-mods { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
       .ud-mod {
         background: var(--panel, #FFFFFF);
         border: 1px solid var(--border, #E2E8F0);
         border-left: 3px solid #94A3B8;
         border-radius: 10px;
-        padding: 10px 12px;
+        padding: 14px 16px;
         cursor: pointer; min-width: 0;
         display: flex; flex-direction: column; gap: 4px;
       }
@@ -168,6 +178,7 @@
         .ud-quick { grid-template-columns: 1fr; }
         .ud-mods { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .ud-row-go { display: none; }
+        .ud-row-due { font-size: 12px; }
       }
 
       body[data-nordic-theme="obsidian"] .ud-mod { background: #1C1F26; border-color: #374151; }
@@ -251,7 +262,7 @@
     const esc_ = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     openMenu(ev.currentTarget, `
       <div class="ud-status ${stCls}"><span class="ud-dot"></span><span>${esc_(syncTxt)}</span></div>
-      <button type="button" class="ud-item" role="menuitem" onclick="udMenuAction('settings', event)">🔌 連線與備份</button>
+      <button type="button" class="ud-item" role="menuitem" onclick="udMenuAction('settings', event)">🔌 同步與備份</button>
       ${typeof window.toggleLayoutSwitcherPopover === 'function' ? `<button type="button" class="ud-item" role="menuitem" onclick="udMenuAction('style', event)">🎨 配色風格</button>` : ''}
       ${calBtn ? `<button type="button" class="ud-item" role="menuitem" onclick="udMenuAction('calendar', event)">📅 行事曆 <small>${esc_(calLabel.replace('行事曆', ''))}</small></button>` : ''}
     `);
@@ -357,17 +368,77 @@
     window.udGoModule(mod);
   };
 
+  // 日期結合相對天數：「11/22 截止（逾期 2 天）」
+  function relDue(ymd, word = '截止') {
+    if (!ymd || typeof diffDays !== 'function' || typeof todayStr !== 'function') return null;
+    const d = diffDays(todayStr(), ymd);
+    const rel = d < 0 ? `逾期 ${Math.abs(d)} 天` : d === 0 ? '今天' : `剩 ${d} 天`;
+    return { d, text: `${ymd.slice(5, 7)}/${ymd.slice(8, 10)} ${word}（${rel}）` };
+  }
+  function dueFromDetail(detail) {
+    const m = /(\d{4}-\d{2}-\d{2})/.exec(String(detail || ''));
+    if (!m) return null;
+    return relDue(m[1], /提醒/.test(detail) ? '提醒' : '截止');
+  }
+
+  // 具體動詞按鈕（取代「處理」）
+  const MOD_VERB = { project: '更新進度', routine: '檢視步驟', memo: '開啟交辦', solar: '檢視契約', util: '檢視帳單' };
+
   function alertRowHTML(a, i) {
+    const due = dueFromDetail(a.detail);
+    const mod = classifyAlert(a, udCtx());
+    const dueCls = due && (due.d < 0 || a.level === 'red') ? 'is-red' : 'is-amber';
     return `
       <div class="ud-row lv-${h(a.level)}" role="button" tabindex="0"
            onclick="udAlertAct(${i})" onkeydown="if(event.key==='Enter'){udAlertAct(${i})}">
         <span class="tag ${levelTag(a.level)}">${h(a.badge || '提醒')}</span>
         <div class="ud-row-main">
           <div class="ud-row-title">${h(a.title || '')}</div>
-          ${a.detail ? `<div class="ud-row-sub">${h(a.detail)}</div>` : ''}
+          ${!due && a.detail ? `<div class="ud-row-sub">${h(a.detail)}</div>` : ''}
         </div>
-        <span class="ud-row-go">處理 →</span>
+        ${due ? `<span class="ud-row-due ${dueCls}">${h(due.text)}</span>` : ''}
+        <span class="ud-row-go">${MOD_VERB[mod] || '檢視明細'} →</span>
       </div>`;
+  }
+
+  // 首頁只看急件：其餘正常推進的項目摺疊成一行
+  let udFoldOpen = false;
+  window.toggleUdFold = function() { udFoldOpen = !udFoldOpen; renderCurrentView(); };
+
+  function normalItems(urgentAlerts, ctx) {
+    const urgentTitles = urgentAlerts.map(a => String(a.title || ''));
+    const isUrgent = name => urgentTitles.some(t => t === name || t.startsWith(name + '｜'));
+    const items = [];
+    (ctx.t.Projects || [])
+      .filter(p => !['已結案', '廢標撤案'].includes(p.status) && !isUrgent(p.project_name))
+      .forEach(p => {
+        const ph = typeof projectStatusPhrase === 'function' ? projectStatusPhrase(p) : { text: p.status, cls: 'tag-blue' };
+        items.push({ sort: 9999, title: p.project_name, right: `<span class="tag ${ph.cls}">${h(ph.text)}</span>`,
+          act: `openProjectDetail('${h(p.project_id)}')` });
+      });
+    if (typeof computeRoutineSchedule === 'function') {
+      ctx.routines.filter(r => !isUrgent(r.title)).forEach(r => {
+        const s = computeRoutineSchedule(r);
+        const due = relDue(s.dueDate);
+        items.push({ sort: s.diffDays, title: r.title, right: due ? `<span class="ud-row-due">${h(due.text)}</span>` : '',
+          act: typeof openRoutineDetailModal === 'function' ? `openRoutineDetailModal('${h(r.routine_id)}')` : `switchTab('routines')` });
+      });
+    }
+    return items.sort((x, y) => x.sort - y.sort);
+  }
+
+  function foldHTML(items) {
+    if (!items.length) return '';
+    return `
+      <button type="button" class="ud-fold" aria-expanded="${udFoldOpen}" onclick="toggleUdFold()">
+        <span>其他進行中 <strong>${items.length}</strong> 件</span>
+        <span class="ud-fold-act">${udFoldOpen ? '收合 ▲' : '點擊展開 ▼'}</span>
+      </button>
+      ${udFoldOpen ? `<div class="ud-fold-list">${items.map(it => `
+        <div class="ud-row lv-blue" role="button" tabindex="0" onclick="${it.act}" onkeydown="if(event.key==='Enter'){${it.act}}">
+          <div class="ud-row-main"><div class="ud-row-title">${h(it.title)}</div></div>
+          ${it.right}
+        </div>`).join('')}</div>` : ''}`;
   }
 
   window.openUdAllAlerts = function() {
@@ -474,6 +545,7 @@
             ? urgent.slice(0, A_LIMIT).map(({ a, i }) => alertRowHTML(a, i)).join('') +
               (urgent.length > A_LIMIT ? `<button type="button" class="ud-more" onclick="openUdAllAlerts()">還有 ${urgent.length - A_LIMIT} 筆 →</button>` : '')
             : `<div class="ud-empty">${q ? `找不到符合「${h(q)}」的急件` : '✓ 目前沒有逾期或即將到期的事項'}</div>`}
+          ${q ? '' : foldHTML(normalItems(urgent.map(x => x.a), ctx))}
         </div>
       </section>
 
