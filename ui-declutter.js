@@ -92,6 +92,8 @@
       /* ---------- 戰情總覽三區塊 ---------- */
       #ud-legacy-dash { display: none !important; }
       body[data-ud-tab="dashboard"] #main-view { min-width: 0 !important; max-width: 100% !important; box-sizing: border-box; }
+      /* 主內容區固定撐滿可用寬度（避免依內容縮成置中窄欄，如年度甘特圖） */
+      #main-view { width: 100% !important; min-width: 0 !important; box-sizing: border-box; }
       #ud-dash {
         display: flex; flex-direction: column; gap: 12px;
         flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
@@ -503,10 +505,34 @@
     main.appendChild(legacy);
   }
 
+  // --------------------------------------------------------------------------
+  // 5. 年度甘特圖依容器實寬重繪（字級不再被縮放到看不清楚）
+  // --------------------------------------------------------------------------
+  function fitAnnualGantt() {
+    if (typeof annualGanttFitW === 'undefined') return;
+    const box = document.querySelector('#main-view .gantt-box');
+    if (!box) return;
+    const cs = getComputedStyle(box);
+    const avail = Math.floor(box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+    if (avail > 0 && Math.abs(avail - annualGanttFitW) > 4) {
+      annualGanttFitW = avail;
+      renderCurrentView();
+    }
+  }
+
+  let ganttResizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(ganttResizeTimer);
+    ganttResizeTimer = setTimeout(() => {
+      if (typeof currentTab !== 'undefined' && currentTab === 'annual-gantt') fitAnnualGantt();
+    }, 200);
+  });
+
   function applyDeclutter() {
     const tab = (typeof currentTab !== 'undefined' && currentTab) || 'dashboard';
     document.body.dataset.udTab = tab;
     if (tab === 'dashboard') buildThreeZoneDashboard();
+    if (tab === 'annual-gantt') fitAnnualGantt();
     const memoList = document.getElementById('ud-memo-list');
     if (memoList) memoList.innerHTML = memoListHTML();
     declutterHeader();
