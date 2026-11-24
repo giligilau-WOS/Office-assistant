@@ -70,13 +70,13 @@ let opsUtilChartMetric = 'amount'; // amount | usage
     const solarBtn = document.createElement('button');
     solarBtn.className = 'nav-tab';
     solarBtn.dataset.tab = 'solar';
-    solarBtn.textContent = '☀️ 太陽能屋頂租賃';
+    solarBtn.textContent = '☀️ 太陽能';
     solarBtn.onclick = () => switchTab('solar');
 
     const utilBtn = document.createElement('button');
     utilBtn.className = 'nav-tab';
     utilBtn.dataset.tab = 'utilities';
-    utilBtn.textContent = '⚡ 水電費異常控管';
+    utilBtn.textContent = '⚡ 水電費';
     utilBtn.onclick = () => switchTab('utilities');
 
     oldBtn.replaceWith(solarBtn, utilBtn);
@@ -1341,19 +1341,19 @@ function renderOpsDashStripHTML() {
       </div>
       <div class="ops-mini-card ${elecCls}" onclick="opsUtilTypeFilter='電費';switchTab('utilities')">
         <div>
-          <div style="font-size:12px;color:var(--muted);font-weight:700">⚡ 學校電費控管（${curRocY}年度累計實支）</div>
-          <div style="font-weight:800;font-size:15px;margin-top:2px">${fmtMoney(elecSpend)} <small style="font-weight:500;color:var(--muted)">/ 預估全年水電 ${fmtMoney(util.totalProj)}</small></div>
+          <div style="font-size:12px;color:var(--muted);font-weight:700">⚡ 電費（${curRocY}年累計）</div>
+          <div style="font-weight:800;font-size:15px;margin-top:2px">${fmtMoney(elecSpend)} <small style="font-weight:500;color:var(--muted)">/ 全年預估 ${fmtMoney(util.totalProj)}</small></div>
           <div class="item-meta">${elecIssues ? `🚨 ${elecIssues} 筆超約／功因異常待處理` : (utilBudgetRed ? '🚨 推估將超支年度預算' : '✓ 需量與功率因數正常')}</div>
         </div>
-        <span class="tag ${elecCls==='warn-red'?'tag-red':elecCls==='warn-amber'?'tag-amber':'tag-green'}">電費明細 →</span>
+        <span class="tag ${elecCls==='warn-red'?'tag-red':elecCls==='warn-amber'?'tag-amber':'tag-green'}">查看 →</span>
       </div>
       <div class="ops-mini-card ${waterCls}" onclick="opsUtilTypeFilter='水費';switchTab('utilities')">
         <div>
-          <div style="font-size:12px;color:var(--muted);font-weight:700">💧 學校水費漏水監控（${curRocY}年度累計實支）</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:700">💧 水費（${curRocY}年累計）</div>
           <div style="font-weight:800;font-size:15px;margin-top:2px">${fmtMoney(waterSpend)}</div>
           <div class="item-meta">${waterIssues ? `🚨 ${waterIssues} 筆疑似漏水／異常暴增` : '✓ 各水錶同期用水正常'}</div>
         </div>
-        <span class="tag ${waterCls==='warn-red'?'tag-red':'tag-green'}">水費明細 →</span>
+        <span class="tag ${waterCls==='warn-red'?'tag-red':'tag-green'}">查看 →</span>
       </div>
     </div>
   `;
