@@ -359,14 +359,14 @@ function renderSolarV2CardHTML(c, meterGroups) {
   return `
     <div class="site-card ${cls}">
       <div class="item-row">
-        <div>
+        <div style="flex:1;min-width:0">
           <span class="tag tag-blue">${esc(c.solar_id)}</span>
           ${c.phase_label ? `<span class="tag tag-amber">${esc(c.phase_label)}</span>` : ''}
           <span class="tag ${c.status==='併聯發電中'?'tag-green':'tag-gray'}">${esc(c.status)}</span>
           <div style="font-size:15.5px;font-weight:800;margin-top:4px;cursor:pointer;color:var(--primary)" onclick="openSolarContractDetail('${esc(c.solar_id)}')">${esc(c.building_name)}</div>
         </div>
-        <div style="display:flex;gap:4px">
-          <button class="btn-xs btn-primary" onclick="openSolarContractDetail('${esc(c.solar_id)}')">進入管理 →</button>
+        <div style="display:flex;gap:4px;flex-shrink:0;align-items:flex-start">
+          <button class="btn-xs btn-primary" style="white-space:nowrap" onclick="openSolarContractDetail('${esc(c.solar_id)}')">進入管理 →</button>
           <button class="btn-xs" onclick="openSolarContractModal('${esc(c.solar_id)}')">✎</button>
         </div>
       </div>
