@@ -239,11 +239,11 @@ renderProjectDetailHTML = function(projectId) {
           <div style="flex:1;min-width:280px">
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
               <span class="tag tag-gray">${esc(typeof formatProjectCaseNo === 'function' ? formatProjectCaseNo(p) : p.project_id)}</span>
-              <span class="tag tag-blue">${esc(p.procurement_type)}</span>
+              <span class="tag tag-gray">${esc(p.procurement_type)}</span>
               <span class="tag tag-gray">${esc(p.threshold_tier)}</span>
               <span class="tag tag-gray">${esc(p.award_method)}</span>
-              ${isEng ? `<span class="tag tag-amber">附表二：${esc(p.engineering_category || '一般公共工程')}｜${esc(p.supervision_mode || '委外監造')}</span>` : ''}
-              <span class="tag ${statusTagCls(p.status)}">${esc(p.status)}</span>
+              ${isEng ? `<span class="tag tag-gray">附表二：${esc(p.engineering_category || '一般公共工程')}｜${esc(p.supervision_mode || '委外監造')}</span>` : ''}
+              ${typeof statusTagHTML === 'function' ? statusTagHTML(p) : `<span class="tag ${statusTagCls(p.status)}">${esc(p.status)}</span>`}
             </div>
             <h2 style="margin:4px 0 6px;font-size:20px">${esc(p.project_name)}</h2>
             <div class="item-meta">
