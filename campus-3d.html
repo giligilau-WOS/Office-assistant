@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     html, body {
       margin: 0;
       padding: 0;
@@ -329,6 +330,17 @@
     </div>
   </aside>
 
+  <!-- Drawing Lightbox -->
+  <div id="lightbox" class="fixed inset-0 z-50 bg-slate-950/90 flex flex-col items-center justify-center gap-3 p-4" hidden>
+    <img id="lightbox-img" alt="" class="max-w-full max-h-[78vh] rounded-lg shadow-2xl bg-white" />
+    <div class="flex items-center gap-3 text-xs text-slate-200">
+      <button id="lightbox-prev" class="earth-btn px-3 py-1.5 rounded-lg">‹ 上一張</button>
+      <span id="lightbox-cap" class="text-center max-w-[60vw]"></span>
+      <button id="lightbox-next" class="earth-btn px-3 py-1.5 rounded-lg">下一張 ›</button>
+      <button id="lightbox-close" class="earth-btn px-3 py-1.5 rounded-lg">關閉</button>
+    </div>
+  </div>
+
   <!-- Room Info Card -->
   <div id="room-info-card" class="fixed top-20 right-3 z-30 w-[90vw] max-w-[310px] glass-panel rounded-2xl p-4 transform -translate-y-4 opacity-0 pointer-events-none transition-all duration-200">
     <div class="flex items-start justify-between gap-2">
@@ -343,6 +355,10 @@
       <div><span class="text-slate-400">樓層高程：</span><span id="room-elev" class="text-sky-300 font-mono">+1.20m</span></div>
       <div><span class="text-slate-400">概估面積：</span><span id="room-area" class="text-amber-300 font-mono">70.6 m²</span></div>
       <div class="col-span-2"><span class="text-slate-400">建置／保固：</span><span id="room-meta" class="text-emerald-300">—</span></div>
+    </div>
+    <div id="room-gallery-wrap" class="mt-2.5" hidden>
+      <div class="text-[11px] text-slate-400 mb-1">整修設計圖（點圖放大）</div>
+      <div id="room-gallery" class="flex gap-1.5 overflow-x-auto custom-scroll pb-1"></div>
     </div>
     <div class="mt-3 flex gap-2">
       <button id="room-focus-btn" class="flex-1 py-1.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition">拉近檢視</button>
@@ -1568,8 +1584,8 @@
           { floor: '1F', name: '穿堂', shortName: '穿堂', x: 58.5, z: 3.9, w: 8.8, d: 7.8, y: ELEV.F1, area: 71, meta: W, desc: '南北貫通的開放穿堂（軸線⑦–⑧），北側有戶外樓梯下到後方。' },
           { floor: '1F', name: '10-2 人事會計室', shortName: '10-2 人事會計', x: 65.2, z: 3.9, w: 4.2, d: 7.4, y: ELEV.F1, area: 34, meta: W, desc: '軸線⑧–⑨西半間（原設計「辦公室」）。' },
           { floor: '1F', name: '7-1 健康中心', shortName: '7-1 健康中心', x: 69.8, z: 3.9, w: 4.2, d: 7.4, y: ELEV.F1, area: 34, meta: W, desc: '軸線⑧–⑨東半間，原設計即為健康中心。' },
-          { floor: '1F', name: '20-4 廁所（東側）', shortName: '20-4 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F1, area: 52, isRestroom: true, meta: W, desc: '東側男女廁所＋無障礙廁所。（荔枝意象整修內容未附來源，待核對）' },
-          { floor: '1F', name: '樓梯・昇降機（電梯）・消防機房・配電室', shortName: '電梯・機房', x: 75.5, z: 13.8, w: 7.0, d: 5.6, y: ELEV.F1, area: 39, meta: W, desc: '東端走廊南側附屬區：無障礙樓梯 A、昇降機、發電機室／消防泵浦室與配電室（位置為示意）。' },
+          { floor: '1F', name: '20-4 廁所（東側）', shortName: '20-4 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F1, area: 52, isRestroom: true, meta: W, desc: '溪埔國中廁所整修工程（細部設計圖 2026.01 第四版，超聖工程顧問）。入口為大樹「玉荷包荔枝」意象牆；男廁新設小便斗 3 處（含無障礙小便斗 1 處）、坐式馬桶 1、蹲式 1；女廁坐式 1、蹲式 4；無障礙廁所含瞬熱式電熱水器。每間設掛衣勾與緊急求救鈴。同區西南角為昇降機。', images: [{ src: 'campus-3d-assets/restroom/d04-1f-lychee.jpg', cap: 'D-04 1F廁所荔枝水果意象設計' }, { src: 'campus-3d-assets/restroom/b02-1f3f-plan.jpg', cap: 'B-02 A梯1F及3F廁所平面配置與地板計畫' }] },
+          { floor: '1F', name: '無障礙樓梯A・發電機室／消防泵浦室', shortName: '樓梯A・機房', x: 75.5, z: 13.8, w: 7.0, d: 5.6, y: ELEV.F1, area: 39, meta: W, desc: '東端走廊南側附屬區：無障礙樓梯 A、發電機室／消防泵浦室與配電室。昇降機（電梯）在東側廁所區的西南角。' },
           // ── 2F 貳層 ──
           { floor: '2F', name: '20-2 廁所（西側）', shortName: '20-2 廁所', x: 3.5, z: 3.8, w: 6.5, d: 6.8, y: ELEV.F2, area: 44, isRestroom: true, meta: W, desc: '西側二樓男女廁所。' },
           { floor: '2F', name: '1-4 普通教室（302班）', shortName: '1-4 教室(302)', x: 13.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '九年級 302 班（軸線②–③）。' },
@@ -1579,7 +1595,7 @@
           { floor: '2F', name: '10-6 校長室', shortName: '10-6 校長室', x: 49.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '校長室（軸線⑥–⑦）。' },
           { floor: '2F', name: '10-5 輔導室・10-4 諮商室・2-6 團諮室', shortName: '輔導・諮商・團諮', x: 58.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '穿堂正上方（軸線⑦–⑧），原設計教師辦公室＋休息室，現分隔為輔導室、諮商室、團諮室。' },
           { floor: '2F', name: '10-3 學務處', shortName: '10-3 學務處', x: 67.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '學務處（軸線⑧–⑨），鄰近電梯。' },
-          { floor: '2F', name: '20-5 廁所（東側）', shortName: '20-5 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F2, area: 52, isRestroom: true, meta: W, desc: '東側二樓廁所。（性別友善／舊鐵橋意象整修內容未附來源，待核對）' },
+          { floor: '2F', name: '20-5 廁所（東側）', shortName: '20-5 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F2, area: 52, isRestroom: true, meta: W, desc: '溪埔國中廁所整修工程（細部設計圖 2026.01 第四版，超聖工程顧問）。打通原男女廁隔間改為性別友善廁所：入口為高屏溪舊鐵橋造型與濕地意象馬賽克牆（330×240 cm）；小便斗隔間 3（含無障礙 1）、坐式 2、蹲式 3，隔間高 240 cm 附防窺頂板，另設無障礙廁所。主色 PANTONE 2088U 紫。', images: [{ src: 'campus-3d-assets/restroom/d02-2f-entrance.jpg', cap: 'D-02 2F性別友善廁所入口意象模擬' }, { src: 'campus-3d-assets/restroom/d03-2f-entrance-detail.jpg', cap: 'D-03 入口意象設計說明（鐵橋・濕地馬賽克）' }, { src: 'campus-3d-assets/restroom/d06-2f-interior.jpg', cap: 'D-06 2F空間設計模擬（隔間與洗手台）' }, { src: 'campus-3d-assets/restroom/d07-2f-interior.jpg', cap: 'D-07 2F空間設計模擬（濕地馬賽克牆）' }, { src: 'campus-3d-assets/restroom/d08-2f-cubicles.jpg', cap: 'D-08 隔間設備圖示與防窺頂板' }, { src: 'campus-3d-assets/restroom/d01-2f-design.jpg', cap: 'D-01 2F性別友善廁所平面規劃設計' }, { src: 'campus-3d-assets/restroom/b13-2f-plan.jpg', cap: 'B-13 2F性別友善廁所平面配置與地板計畫' }, { src: 'campus-3d-assets/restroom/d09-2f-signage.jpg', cap: 'D-09 指標牌設計' }] },
           // ── 3F 參層 ──
           { floor: '3F', name: '20-3 廁所（西側）', shortName: '20-3 廁所', x: 3.5, z: 3.8, w: 6.5, d: 6.8, y: ELEV.F3, area: 44, isRestroom: true, meta: W, desc: '西側三樓男女廁所。' },
           { floor: '3F', name: '2-5 資源班教室', shortName: '2-5 資源班', x: 13.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '資源班教室（軸線②–③，原設計檔案室）。' },
@@ -1589,7 +1605,7 @@
           { floor: '3F', name: '2-1 藝術教室', shortName: '2-1 藝術教室', x: 49.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '藝術教室（軸線⑥–⑦，原設計美術教室），南側為三樓露台。' },
           { floor: '3F', name: '1-6 普通教室（202班）', shortName: '1-6 教室(202)', x: 58.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '八年級 202 班（軸線⑦–⑧）。' },
           { floor: '3F', name: '1-5 普通教室（201班）', shortName: '1-5 教室(201)', x: 67.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '八年級 201 班（軸線⑧–⑨）。' },
-          { floor: '3F', name: '20-6 廁所（東側）', shortName: '20-6 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F3, area: 52, isRestroom: true, meta: W, desc: '東側三樓廁所。（鳳梨意象整修內容未附來源，待核對）' },
+          { floor: '3F', name: '20-6 廁所（東側）', shortName: '20-6 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F3, area: 52, isRestroom: true, meta: W, desc: '溪埔國中廁所整修工程（細部設計圖 2026.01 第四版，超聖工程顧問）。入口為台農 17 號「金鑽鳳梨」意象牆；配置與 1F 相同：男廁小便斗 3（含無障礙 1）、坐式 1、蹲式 1；女廁坐式 1、蹲式 4；無障礙廁所 1。', images: [{ src: 'campus-3d-assets/restroom/d05-3f-pineapple.jpg', cap: 'D-05 3F廁所鳳梨水果意象設計' }, { src: 'campus-3d-assets/restroom/b02-1f3f-plan.jpg', cap: 'B-02 A梯1F及3F廁所平面配置與地板計畫' }] },
           // ── 中央廚房（111.11 完工・保固 5 年）──
           { floor: '1F', building: 'kitchen', name: '21-1 中央廚房', shortName: '21-1 中央廚房', x: -31.5, z: 1.5, w: 18.0, d: 13.0, y: ELEV.F1, area: 485, meta: '111.11 完工・保固 5 年', desc: '聯合供餐中央廚房，供應本校及興田、姑山、水寮、大樹國小約 1,500 人午餐。地上一層（局部二層機房），樓板抬高 +1.20 m 與教學大樓一樓走廊同高。' },
           { floor: '1F', building: 'kitchen', name: '10-8 營養師辦公室', shortName: '10-8 營養師', x: -26.0, z: 9.2, w: 3.4, d: 5.2, y: ELEV.F1, area: 15, meta: '111.11 完工・保固 5 年', desc: '營養師辦公室（規劃面積約 15.45 m²）。' },
@@ -1915,10 +1931,58 @@
         document.getElementById('room-area').textContent = rm.area ? `約 ${rm.area} m²` : '—';
         document.getElementById('room-meta').textContent = rm.meta || '—';
         if (rm.building === 'site') document.getElementById('room-elev').textContent = '地面';
+        renderRoomGallery(rm.images || []);
         const card = document.getElementById('room-info-card');
         card.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
         card.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
       }
+
+      // 整修設計圖縮圖與放大檢視
+      const lightbox = { list: [], idx: 0 };
+      function renderRoomGallery(images) {
+        const wrap = document.getElementById('room-gallery-wrap');
+        const box = document.getElementById('room-gallery');
+        box.innerHTML = '';
+        wrap.hidden = images.length === 0;
+        images.forEach((im, i) => {
+          const b = document.createElement('button');
+          b.className = 'shrink-0 w-20 h-14 rounded-md overflow-hidden border border-slate-600 hover:border-sky-400 bg-white';
+          b.title = im.cap;
+          const img = document.createElement('img');
+          img.src = im.src; img.alt = im.cap; img.loading = 'lazy';
+          img.className = 'w-full h-full object-cover';
+          b.appendChild(img);
+          b.addEventListener('click', (e) => { e.stopPropagation(); openLightbox(images, i); });
+          box.appendChild(b);
+        });
+      }
+      function showLightboxImage() {
+        const im = lightbox.list[lightbox.idx];
+        document.getElementById('lightbox-img').src = im.src;
+        document.getElementById('lightbox-img').alt = im.cap;
+        document.getElementById('lightbox-cap').textContent = `${im.cap}（${lightbox.idx + 1}/${lightbox.list.length}）`;
+        document.getElementById('lightbox-prev').hidden = lightbox.list.length < 2;
+        document.getElementById('lightbox-next').hidden = lightbox.list.length < 2;
+      }
+      function openLightbox(list, idx) {
+        lightbox.list = list; lightbox.idx = idx;
+        showLightboxImage();
+        document.getElementById('lightbox').hidden = false;
+      }
+      function stepLightbox(d) {
+        lightbox.idx = (lightbox.idx + d + lightbox.list.length) % lightbox.list.length;
+        showLightboxImage();
+      }
+      document.getElementById('lightbox-prev').addEventListener('click', (e) => { e.stopPropagation(); stepLightbox(-1); });
+      document.getElementById('lightbox-next').addEventListener('click', (e) => { e.stopPropagation(); stepLightbox(1); });
+      document.getElementById('lightbox-close').addEventListener('click', () => { document.getElementById('lightbox').hidden = true; });
+      document.getElementById('lightbox').addEventListener('click', (e) => { if (e.target.id === 'lightbox') e.currentTarget.hidden = true; });
+      window.addEventListener('keydown', (e) => {
+        if (document.getElementById('lightbox').hidden) return;
+        if (e.key === 'Escape') document.getElementById('lightbox').hidden = true;
+        if (e.key === 'ArrowRight') { e.stopPropagation(); stepLightbox(1); }
+        if (e.key === 'ArrowLeft') { e.stopPropagation(); stepLightbox(-1); }
+      }, true);
 
       function deselectRoom() {
         if (state.selectedRoomMesh) {
