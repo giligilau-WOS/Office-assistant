@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>溪埔國中 3D 校園</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230ea5e9'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='white'>🏫</text></svg>" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -307,10 +308,10 @@
         </div>
       </section>
 
-      <!-- 4. Solar Illumination Simulator -->
+      <!-- 5. Solar Illumination Simulator -->
       <section class="pt-3 border-t border-slate-700/50">
         <div class="flex justify-between items-center mb-1.5">
-          <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider">4. 高雄大樹日照模擬</h2>
+          <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider">5. 高雄大樹日照模擬</h2>
           <span id="sun-time-label" class="text-xs font-mono font-semibold text-amber-300">10:30</span>
         </div>
         <input id="sun-slider" type="range" min="6" max="18" step="0.25" value="10.5" class="w-full accent-amber-400 cursor-pointer" />
@@ -321,9 +322,9 @@
         </div>
       </section>
 
-      <!-- 5. 3D Model Export -->
+      <!-- 6. 3D Model Export -->
       <section class="pt-3 border-t border-slate-700/50">
-        <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">5. 匯出 3D 建築模型</h2>
+        <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">6. 匯出 3D 建築模型</h2>
         <div class="grid grid-cols-3 gap-1.5">
           <button id="export-glb" class="py-1.5 rounded-xl bg-sky-600/85 hover:bg-sky-500 text-white text-xs font-semibold transition">.GLB</button>
           <button id="export-obj" class="py-1.5 rounded-xl bg-indigo-600/85 hover:bg-indigo-500 text-white text-xs font-semibold transition">.OBJ</button>
@@ -470,7 +471,7 @@
       // 校園配置（依中央廚房統包工程「現況全區配置圖」1/600 量測，原點＝主校舍軸線①×D，+X 東、+Z 南）
       const SITE = {
         // 依 Google 衛星圖（比例尺 20 m）與現況全區配置圖校正；原點＝主校舍軸線①×D，+X 東、+Z 南
-        boundary: [[-48, -23], [-9, -23], [-9, -11], [123.5, -11], [123.5, 100], [110, 100], [8, 94], [-50, 78], [-69, 68], [-56, 53]],
+        boundary: [[-48, -23], [-9, -23], [-9, -12.5], [123.5, -12.5], [123.5, 100], [110, 100], [8, 94], [-50, 78], [-69, 68], [-56, 53]],
         track: { cx: 8.9, cz: 43.8, straightHalf: 25.7, outerR: 21.7, innerR: 14.4 },
         sprint: { cx: 1.0, cz: 66.5, len: 104.0, w: 8.0 },
         stage: { cx: 6.3, cz: 74.7, w: 11.0, d: 7.0 },
@@ -484,8 +485,8 @@
         annex: { x0: 112.0, x1: 119.0, z0: 27.0, z1: 41.0 },
         parkingNE: { x0: 99.0, x1: 111.0, z0: 0.0, z1: 37.0 },
         bikeShed: [[9.0, 73.0]],
-        bikeShedZ: -7.3,
-        northShed: { x0: -8.0, x1: -0.8, z0: -10.0, z1: -4.4 },
+        bikeShedZ: -9.8,
+        northShed: { x0: -8.0, x1: -0.8, z0: -11.5, z1: -5.9 },
         kitchenRoad: { from: [-64.0, 66.0], to: [-51.0, -6.0], w: 6.0 },
         gates: {
           main: [123.5, 47.5],
@@ -941,7 +942,26 @@
         }
       }
 
-      // Helper for concrete stair flights
+      function addRailingSeg(parent, x0, z0, x1, z1, yBase, height = 1.1) {
+        const dx = x1 - x0;
+        const dz = z1 - z0;
+        const len = Math.hypot(dx, dz);
+        if (len < 0.05) return;
+        const cx = (x0 + x1) * 0.5;
+        const cz = (z0 + z1) * 0.5;
+        const ang = Math.atan2(-dz, dx);
+        const topBar = addBox(parent, len, 0.05, 0.05, gx(cx), yBase + height, gz(cz), MAT.steelSilver, false);
+        topBar.rotation.y = ang;
+        const botBar = addBox(parent, len, 0.04, 0.04, gx(cx), yBase + 0.15, gz(cz), MAT.steelSilver, false);
+        botBar.rotation.y = ang;
+        const count = Math.max(2, Math.round(len / 0.85));
+        for (let i = 0; i <= count; i++) {
+          const t = i / count;
+          addBox(parent, 0.035, height, 0.035, gx(x0 + t * dx), yBase + height * 0.5, gz(z0 + t * dz), MAT.steelSilver, false);
+        }
+      }
+
+      // Helper for concrete stair flights (ascending along Z from zStart to zEnd)
       function addStepsX(parent, x0, x1, yLow, yHigh, zStart, zEnd, stepCount, mat = MAT.concreteBase) {
         const w = Math.abs(x1 - x0);
         const cx = (x0 + x1) * 0.5;
@@ -953,6 +973,35 @@
           const zStep = zStart + (i + 0.5) * stepD;
           addBox(parent, w, h, Math.abs(stepD) + 0.02, gx(cx), yLow + h * 0.5, gz(zStep), mat);
         }
+      }
+
+      // Helper for concrete stair flights (ascending along X from xStart to xEnd)
+      function addStepsZ(parent, z0, z1, yLow, yHigh, xStart, xEnd, stepCount, mat = MAT.concreteBase) {
+        const d = Math.abs(z1 - z0);
+        const cz = (z0 + z1) * 0.5;
+        const totalW = xEnd - xStart;
+        const stepW = totalW / stepCount;
+        const totalH = yHigh - yLow;
+        for (let i = 0; i < stepCount; i++) {
+          const h = ((i + 1) / stepCount) * totalH;
+          const xStep = xStart + (i + 0.5) * stepW;
+          addBox(parent, Math.abs(stepW) + 0.02, h, d, gx(xStep), yLow + h * 0.5, gz(cz), mat);
+        }
+      }
+
+      // Helper for extruded horizontal polygon slab in raw (rx, rz) coordinates
+      function addFlatPoly(parent, pts, yBottom, yTop, mat, cast = true, receive = true) {
+        const sh = new THREE.Shape();
+        pts.forEach(([rx, rz], i) => (i === 0 ? sh.moveTo(gx(rx), -gz(rz)) : sh.lineTo(gx(rx), -gz(rz))));
+        sh.closePath();
+        const geo = new THREE.ExtrudeGeometry(sh, { depth: yTop - yBottom, bevelEnabled: false });
+        geo.rotateX(-Math.PI / 2);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.y = yBottom;
+        mesh.castShadow = cast;
+        mesh.receiveShadow = receive;
+        parent.add(mesh);
+        return mesh;
       }
 
       // =========================================================================
@@ -995,35 +1044,65 @@
       // 7. BUILD MAIN SCHOOL BUILDING (主校舍 1F–3F + 屋頂鋼構 + 東側2026整修廁所)
       // =========================================================================
       function buildFoundation() {
-        // Main building elevated plinth (+0.00 to +1.20m)
-        addBox(foundationGroup, 82.9, ELEV.F1 - 0.2, 11.1, gx(41.35), (ELEV.F1 - 0.2) * 0.5, gz(5.45), MAT.concreteBase); // 頂面低於樓板，避免與 1F 樓板同高閃爍
-        // East stair A & generator room plinth (Grid ⑨–⑩, B to A')
-        addBox(foundationGroup, 7.2, ELEV.F1, 6.2, gx(75.55), ELEV.F1 * 0.5, gz(14.0), MAT.concreteBase);
+        // Main building elevated plinth (+0.00 to +1.00m, stops at Grid ⑩ X=79.05m per A1-1)
+        addBox(foundationGroup, 79.15, ELEV.F1 - 0.2, 10.95, gx(39.525), (ELEV.F1 - 0.2) * 0.5, gz(5.425), MAT.concreteBase);
+        // East corridor extension plinth (Grid ⑩–⑪, ONLY along corridor C–B: Z=7.85~10.85m per A1-1 / A1-6)
+        addBox(foundationGroup, 3.65, ELEV.F1 - 0.2, 3.0, gx(80.875), (ELEV.F1 - 0.2) * 0.5, gz(9.35), MAT.concreteBase);
+        // East Stair A plinth (Grid ⑨–⑨', X=72.0~76.4m, Z=10.85~18.20m) & 1F Generator/Pump Room plinth (⑨'–⑩, X=76.4~79.05m, Z=10.85~16.65m)
+        addBox(foundationGroup, 4.4, ELEV.F1 - 0.2, 7.35, gx(74.2), (ELEV.F1 - 0.2) * 0.5, gz(14.525), MAT.concreteBase);
+        addBox(foundationGroup, 2.65, 0.45, 5.8, gx(77.725), 0.225, gz(13.75), MAT.concreteBase);
 
-        // South entry grand steps along corridor (Grid ②–⑤ & Breezeway ⑦–⑧)
-        addStepsX(foundationGroup, 10.5, 45.0, 0, ELEV.F1, 13.0, 10.85, 6, MAT.plazaTile);
-        addStepsX(foundationGroup, 53.5, 64.5, 0, ELEV.F1, 15.2, 10.85, 7, MAT.plazaTile);
+        // South entry grand steps along corridor (Grid ②–⑤ & angled Breezeway ⑥–⑧ per A1-1)
+        addStepsX(foundationGroup, 10.0, 42.2, 0, ELEV.F1, 13.1, 10.85, 6, MAT.plazaTile);
+        // Breezeway south entry landing & wide steps toward central plaza (Grid ⑦–⑧)
+        addFlatPoly(foundationGroup, [[53.5, 10.85], [64.5, 10.85], [63.8, 12.6], [53.8, 14.1]], 0, ELEV.F1 - 0.02, MAT.corridorFloor);
+        addStepsX(foundationGroup, 53.8, 63.8, 0, ELEV.F1, 16.0, 13.2, 7, MAT.plazaTile);
 
-        // ★ 穿堂後方（北側）戶外樓梯（依 A1-1 平面圖 Grid ⑦ 旁，從 +1.20m 下至北側地面 +0.0m）
-        // North exit landing extending north of Grid D at Breezeway (X = 53.5 ~ 62.5m)
-        addBox(foundationGroup, 9.0, ELEV.F1, 2.2, gx(58.0), ELEV.F1 * 0.5, gz(-1.1), MAT.corridorFloor);
-        // Wide north rear staircase descending from +1.20m to ground 0.0m (Z = -2.2m to -4.6m)
-        addStepsX(foundationGroup, 54.0, 58.6, 0, ELEV.F1, -4.6, -2.2, 8, MAT.plazaTile);
-        // Side 12cm RC cheek walls (H=90cm) & stainless steel handrails per A1-1
-        addBox(foundationGroup, 0.16, 0.9, 2.5, gx(53.9), ELEV.F1 + 0.15, gz(-3.4), MAT.wallExt);
-        addBox(foundationGroup, 0.16, 0.9, 2.5, gx(58.7), ELEV.F1 + 0.15, gz(-3.4), MAT.wallExt);
-        addRailingX(foundationGroup, 58.7, 62.5, ELEV.F1, -2.15, 1.05);
-        // East north utility / water tank enclosure (水箱室) next to Breezeway rear
-        addBox(foundationGroup, 3.2, 2.2, 2.6, gx(64.8), 1.1, gz(-1.4), MAT.wallFrameGray);
+        // West corner outdoor steps (Grid ①–② south/west per A1-1 / A1-8)
+        addStepsX(foundationGroup, 0.0, 8.8, 0, ELEV.F1, 13.0, 10.85, 6, MAT.plazaTile);
 
-        // East barrier-free ramp (無障礙坡道) west of Stair A
-        const rampGeo = new THREE.BoxGeometry(1.5, 0.25, 9.2);
-        const ramp = new THREE.Mesh(rampGeo, MAT.plazaTile);
-        ramp.position.set(gx(71.1), 0.62, gz(15.2));
-        ramp.rotation.x = 0.125;
-        ramp.castShadow = true;
-        ramp.receiveShadow = true;
-        foundationGroup.add(ramp);
+        // East corridor outdoor steps (Grid ⑩–⑪ north & south per A1-6 / A3-9)
+        addStepsX(foundationGroup, 79.1, 81.3, 0, ELEV.F1, 5.3, 7.85, 6, MAT.plazaTile); // North steps (+30 -> +120)
+        addStepsX(foundationGroup, 79.1, 81.2, 0, ELEV.F1, 12.4, 10.85, 5, MAT.plazaTile); // South steps (+60 -> +120)
+
+        // ★ 穿堂後方（北側）戶外樓梯（依 A1-1 / A2-2 / A3-8：平台北伸，西側東西向兩段式階梯往西下至地面，北側 12cm RC 欄牆 H=90cm）
+        addBox(foundationGroup, 9.0, ELEV.F1, 2.3, gx(58.5), ELEV.F1 * 0.5, gz(-1.15), MAT.corridorFloor);
+        // Upper run (+1.20 -> +0.60, X=54.6 -> 52.8) + mid-landing (+0.60, X=51.4~52.8) + lower run (+0.60 -> 0.0, X=51.4 -> 49.4)
+        addStepsZ(foundationGroup, -4.0, -2.15, 0.60, ELEV.F1, 52.8, 54.8, 4, MAT.plazaTile);
+        addBox(foundationGroup, 1.5, 0.60, 1.85, gx(52.05), 0.30, gz(-3.075), MAT.plazaTile);
+        addStepsZ(foundationGroup, -4.0, -2.15, 0.0, 0.60, 49.4, 51.3, 4, MAT.plazaTile);
+        // 12cm RC cheek wall (H=90cm) tightly bordering the north stair run & connecting to landing
+        addBox(foundationGroup, 5.9, 0.90, 0.14, gx(52.25), 0.75, gz(-4.06), MAT.wallExt);
+        addBox(foundationGroup, 0.14, 0.90, 1.85, gx(55.15), 0.75, gz(-3.15), MAT.wallExt);
+        addRailingX(foundationGroup, 55.2, 63.0, ELEV.F1, -2.25, 1.05);
+
+        // 北側東旁：水箱室（X=63.2~67.8, Z=-3.8~-1.835, +40~+260）＋ 資源回收場（鋁格柵 H=+190，依 A1-1 / A2-2）
+        addBox(foundationGroup, 4.6, 2.4, 1.95, gx(65.5), 1.2, gz(-2.82), MAT.wallFrameGray);
+        addBox(foundationGroup, 4.0, 0.12, 1.95, gx(69.8), 0.06, gz(-2.82), MAT.concreteBase);
+        for (let lx = 67.95; lx <= 71.7; lx += 0.24) {
+          addBox(foundationGroup, 0.06, 1.90, 0.08, gx(lx), 0.95, gz(-3.76), MAT.steelDark, false);
+        }
+        addBox(foundationGroup, 3.9, 0.08, 0.10, gx(69.8), 1.90, gz(-3.76), MAT.steelDark, false);
+        for (let lz = -3.65; lz <= -1.95; lz += 0.24) {
+          addBox(foundationGroup, 0.08, 1.90, 0.06, gx(71.75), 0.95, gz(lz), MAT.steelDark, false);
+        }
+
+        // 東側無障礙坡道（1:12，緊鄰無障礙樓梯 A 西側：X=70.5~72.0, Z=10.85~16.65，依 A1-1 / A1-6 / A3-8）
+        {
+          const sh = new THREE.Shape();
+          sh.moveTo(0, 0); sh.lineTo(5.8, 0); sh.lineTo(5.8, 0.72); sh.lineTo(0, ELEV.F1); sh.closePath();
+          const geo = new THREE.ExtrudeGeometry(sh, { depth: 1.45, bevelEnabled: false });
+          geo.rotateY(-Math.PI / 2);
+          const ramp = new THREE.Mesh(geo, MAT.plazaTile);
+          ramp.position.set(gx(71.95), 0, gz(10.85));
+          ramp.castShadow = true; ramp.receiveShadow = true;
+          foundationGroup.add(ramp);
+          // 15cm RC side cheek curb & handrail along west edge of ramp
+          addBox(foundationGroup, 0.15, 0.95, 5.8, gx(70.48), 0.65, gz(13.75), MAT.wallExt);
+          addRailingZ(foundationGroup, 10.95, 16.55, 0.95, 70.52, 0.85);
+          // South ramp entry approach (+0 -> +0.72)
+          addStepsX(foundationGroup, 70.4, 72.0, 0, 0.72, 18.2, 16.65, 4, MAT.plazaTile);
+        }
       }
 
       /**
@@ -1174,94 +1253,164 @@
         }
       }
 
+      const CHALKBOARD_MAT = makeMat(0x1f4d36, { roughness: 0.7 });
+
       /**
        * Builds one complete floor (1F, 2F, or 3F) of the Main School Building
-       * strictly following A1-1 ~ A1-3, A2-1 ~ A2-2, and 115-year room schedule.
+       * strictly following A1-1 ~ A1-8, A2-1 ~ A2-2, A3-1 ~ A3-9, and 115-year room schedule.
        */
       function buildMainFloor(floorNum, targetGroup, yBase) {
-        // 1. Structural Floor Slab (Main classroom block + South 3.0m corridor + North 1.5m rear balcony)
-        addBox(targetGroup, 82.7, 0.18, 10.85, gx(41.35), yBase - 0.09, gz(5.425), MAT.slabFloor);
-        // South corridor distinct surface
+        // 1. Structural Floor Slab
+        //    Main classroom/restroom block STOPS at Grid ⑩ (X=79.05m) per A1-1~A1-3!
+        addBox(targetGroup, 79.05, 0.18, 10.85, gx(39.525), yBase - 0.09, gz(5.425), MAT.slabFloor);
+        //    East corridor extension (Grid ⑩–⑪, X=79.05~82.70m) exists ONLY along corridor C–B (Z=7.85~10.85m)!
+        addBox(targetGroup, 3.65, 0.18, 3.0, gx(80.875), yBase - 0.09, gz(9.35), MAT.slabFloor);
+        //    South corridor distinct surface (X=0~82.70m, Z=7.85~10.85m)
         addBox(targetGroup, 82.7, 0.04, 3.0, gx(41.35), yBase + 0.02, gz(9.35), MAT.corridorFloor, false, true);
-        // North rear balcony slab (Grid ②–⑨, Z = -1.55 ~ 0)
-        addBox(targetGroup, 63.0, 0.16, 1.55, gx(40.5), yBase - 0.08, gz(-0.775), MAT.corridorFloor);
-        // Rear balcony railings (skip north breezeway exit on 1F so rear stairs connect openly!)
-        if (floorNum === 1) {
-          addRailingX(targetGroup, 9.0, 53.5, yBase, -1.50, 1.10);
-          addRailingX(targetGroup, 63.0, 72.0, yBase, -1.50, 1.10);
-        } else {
-          addRailingX(targetGroup, 9.0, 72.0, yBase, -1.50, 1.10);
+
+        //    North rear balcony slab (Grid ②–⑨, Z = -1.835 ~ 0 per A1-1~A1-3)
+        addBox(targetGroup, 63.0, 0.16, 1.835, gx(40.5), yBase - 0.08, gz(-0.9175), MAT.corridorFloor);
+        //    North pipe shafts / storage closets (管道間兼儲藏室, Z = -1.835 ~ 0 per A1-1~A1-3 & A2-2)
+        addBox(targetGroup, 0.88, FLOOR_H, 1.835, gx(9.44), yBase + FLOOR_H * 0.5, gz(-0.9175), MAT.wallFrameGray);
+        [18, 27, 36, 45, 54, 63, 72].forEach((px) => {
+          if (floorNum === 1 && px === 54) {
+            // Keep Grid ⑦ rear stair entry clear on 1F; slender pier only
+            addBox(targetGroup, 0.70, FLOOR_H, 1.835, gx(53.65), yBase + FLOOR_H * 0.5, gz(-0.9175), MAT.wallFrameGray);
+          } else {
+            addBox(targetGroup, 1.28, FLOOR_H, 1.835, gx(px), yBase + FLOOR_H * 0.5, gz(-0.9175), MAT.wallFrameGray);
+          }
+        });
+        //    North rear balcony railings between pipe shafts
+        const northBayRanges = [[9.9, 17.3], [18.7, 26.3], [27.7, 35.3], [36.7, 44.3], [45.7, 53.3], [54.7, 62.3], [63.7, 71.3]];
+        northBayRanges.forEach(([nx0, nx1], idx) => {
+          if (floorNum === 1 && idx === 5) return; // 1F breezeway opens to north landing & stairs
+          if (floorNum === 2 && idx === 5) return; // 2F breezeway has angled projecting north balcony below
+          addRailingX(targetGroup, nx0, nx1, yBase, -1.78, 1.10);
+        });
+        //    2F Breezeway North Angled Balcony (陽台 +500, A1-2 & A2-2)
+        if (floorNum === 2) {
+          addFlatPoly(targetGroup, [[52.5, -1.835], [63.4, -1.835], [63.8, -4.10], [52.0, -2.50]], yBase - 0.16, yBase, MAT.corridorFloor);
+          addRailingSeg(targetGroup, 52.05, -2.50, 63.75, -4.05, yBase, 1.15);
+          addRailingSeg(targetGroup, 63.75, -4.05, 63.4, -1.835, yBase, 1.15);
+          addRailingSeg(targetGroup, 52.5, -1.835, 52.05, -2.50, yBase, 1.15);
         }
 
         // Colored mosaic horizontal accent strip along floor line (per A2-1 / A2-2)
         addBox(targetGroup, 82.75, 0.14, 0.06, gx(41.35), yBase + 0.07, gz(10.87), MAT.mosaicStrip, false);
 
-        // 2. Structural RC Columns along Grids ①–⑪ on Lines D, C, B
+        // 2. Structural RC Columns along Grids ①–⑩ on Lines D, C, B (Grid ⑪ has no full structural column)
         GRID_X.forEach((rx, idx) => {
           if (idx <= 9) {
             addBox(targetGroup, 0.60, FLOOR_H, 0.70, gx(rx), yBase + FLOOR_H * 0.5, gz(GRID_Z.D), MAT.wallFrameGray);
+            addBox(targetGroup, 0.85, FLOOR_H, 0.60, gx(rx), yBase + FLOOR_H * 0.5, gz(GRID_Z.C), MAT.wallFrameGray);
+            addBox(targetGroup, 0.60, FLOOR_H, 0.60, gx(rx), yBase + FLOOR_H * 0.5, gz(GRID_Z.B), MAT.wallFrameGray);
           }
-          addBox(targetGroup, 0.90, FLOOR_H, 0.60, gx(rx), yBase + FLOOR_H * 0.5, gz(GRID_Z.C), MAT.wallFrameGray);
-          addBox(targetGroup, 0.60, FLOOR_H, 0.60, gx(rx), yBase + FLOOR_H * 0.5, gz(GRID_Z.B), MAT.wallFrameGray);
         });
+        // Grid ⑨' (X=76.40m) column on Line B supporting Stair A
+        addBox(targetGroup, 0.55, FLOOR_H, 0.55, gx(76.40), yBase + FLOOR_H * 0.5, gz(GRID_Z.B), MAT.wallFrameGray);
 
         // 3. Corridor Railing along South Edge (Grid B, Z = 10.85m)
-        //    Note: On 1F, keep Grid ②–⑤ & Breezeway ⑦–⑧ open for grand steps, AND keep West Grid ① (X=0) completely open for Central Kitchen Covered Walkway!
         if (floorNum === 1) {
-          addRailingX(targetGroup, 1.5, 9.5, yBase, 10.82, 1.05);
-          addRailingX(targetGroup, 45.5, 53.5, yBase, 10.82, 1.05);
-          addRailingX(targetGroup, 64.5, 71.5, yBase, 10.82, 1.05);
+          addRailingX(targetGroup, 42.6, 53.4, yBase, 10.82, 1.05);
+          addRailingX(targetGroup, 64.5, 70.4, yBase, 10.82, 1.05);
+        } else if (floorNum === 2) {
+          addRailingX(targetGroup, 7.2, 19.0, yBase, 10.82, 1.10);
+          addRailingX(targetGroup, 43.2, 71.8, yBase, 10.82, 1.10);
+          addRailingX(targetGroup, 79.1, 82.5, yBase, 10.82, 1.10);
         } else {
-          addRailingX(targetGroup, 0.5, 71.8, yBase, 10.82, 1.10);
-          addRailingX(targetGroup, 76.6, 82.5, yBase, 10.82, 1.10);
+          // 3F: open at 3F diagonal terrace (42.3~66.5) and Stair A (72~76.4)
+          addRailingX(targetGroup, 0.4, 42.3, yBase, 10.82, 1.10);
+          addRailingX(targetGroup, 66.5, 71.8, yBase, 10.82, 1.10);
+          addRailingX(targetGroup, 79.1, 82.5, yBase, 10.82, 1.10);
         }
 
-        // 4. West Side Feature Balcony & Overhanging Beige Frame Box (A2-1 signature element!)
+        // 4. West Side Slanted Peach-Orange Feature Wall & West Balconies (依 A1-2, A1-8, A2-1, A3-8 & 現況照片 04133.jpg)
         if (floorNum === 2) {
-          // 西端蜜桃橘框體：由 2F 樓板延伸到 3F 頂，正面開大方孔（依現況照片與 A2-1 南向立面）
-          const fh = FLOOR_H * 2 + 0.4;
-          const fy = yBase - 0.12;
-          addBox(targetGroup, 10.2, 0.25, 2.2, gx(4.0), fy, gz(11.75), MAT.wallFrameBeige);           // 底板
-          addBox(targetGroup, 10.2, 0.30, 2.2, gx(4.0), fy + fh, gz(11.75), MAT.wallFrameBeige);      // 頂板
-          addBox(targetGroup, 10.2, 1.6, 0.35, gx(4.0), fy + 0.8, gz(12.75), MAT.wallFrameBeige);     // 正面下緣
-          addBox(targetGroup, 10.2, 2.1, 0.35, gx(4.0), fy + fh - 1.05, gz(12.75), MAT.wallFrameBeige); // 正面上緣
-          addBox(targetGroup, 2.6, fh - 3.7, 0.35, gx(0.2), fy + 1.6 + (fh - 3.7) / 2, gz(12.75), MAT.wallFrameBeige);
-          addBox(targetGroup, 2.6, fh - 3.7, 0.35, gx(7.8), fy + 1.6 + (fh - 3.7) / 2, gz(12.75), MAT.wallFrameBeige);
-          addBox(targetGroup, 0.35, fh, 2.2, gx(-0.95), fy + fh / 2, gz(11.75), MAT.wallFrameBeige);  // 西側板
-          addRailingX(targetGroup, 1.9, 6.1, yBase + 0.1, 12.62, 1.05);
+          // 2F 西側陽台 (X=-1.75~0, Z=7.85~13.75) ＋ 2F 斜向露台 (Z=10.85 至斜牆)
+          addFlatPoly(targetGroup, [[-1.75, 7.85], [0.0, 7.85], [0.0, 10.85], [6.95, 10.85], [6.95, 12.40], [-1.75, 13.75]], yBase - 0.18, yBase, MAT.corridorFloor);
+          addRailingZ(targetGroup, 7.85, 13.65, yBase, -1.70, 1.10);
+          // 斜向 30cm RC 蜜桃橘造型牆（由 (-1.75, 13.75) 至 (6.95, 12.40)，夾角 8.82°，高 6.20m，中開大方孔）
+          const wx0 = -1.75, wz0 = 13.75, wx1 = 6.95, wz1 = 12.40;
+          const wLen = Math.hypot(wx1 - wx0, wz1 - wz0);
+          const wAng = Math.atan2(-(wz1 - wz0), wx1 - wx0);
+          const wH = 6.20; // y = 4.45 -> 10.65 (spans 2FL - 0.55 to 3FL + 1.85)
+          const wShape = new THREE.Shape();
+          wShape.moveTo(-wLen / 2, 0); wShape.lineTo(wLen / 2, 0);
+          wShape.lineTo(wLen / 2, wH); wShape.lineTo(-wLen / 2, wH); wShape.closePath();
+          // Rectangular cutout opening (width 3.2m, bottom at 2FL+1.05=6.05 -> v=1.60, top at 3FL-0.15=8.65 -> v=4.20)
+          const hole = new THREE.Path();
+          hole.moveTo(-1.35, 1.60); hole.lineTo(1.85, 1.60);
+          hole.lineTo(1.85, 4.20); hole.lineTo(-1.35, 4.20); hole.closePath();
+          wShape.holes.push(hole);
+          const wGeo = new THREE.ExtrudeGeometry(wShape, { depth: 0.30, bevelEnabled: false });
+          wGeo.translate(0, 0, -0.15);
+          const peachWall = new THREE.Mesh(wGeo, MAT.wallFrameBeige);
+          peachWall.position.set(gx((wx0 + wx1) * 0.5), yBase - 0.55, gz((wz0 + wz1) * 0.5));
+          peachWall.rotation.y = wAng;
+          peachWall.castShadow = true; peachWall.receiveShadow = true;
+          targetGroup.add(peachWall);
+          // 2F cutout safety railing directly behind the opening
+          const ux = (wx1 - wx0) / wLen, uz = (wz1 - wz0) / wLen;
+          const midX = (wx0 + wx1) * 0.5, midZ = (wz0 + wz1) * 0.5;
+          addRailingSeg(targetGroup, midX - 1.45 * ux, midZ - 1.45 * uz - 0.25, midX + 1.95 * ux, midZ + 1.95 * uz - 0.25, yBase, 1.10);
+
+          // 2F 南側漸變陽台 (Grid ③–⑥: X=19~42.6, Z=10.85 漸寬至 13.0，依 A1-2)
+          addFlatPoly(targetGroup, [[19.0, 10.85], [42.6, 10.85], [42.8, 13.0], [19.0, 11.1]], yBase - 0.16, yBase, MAT.corridorFloor);
+          addRailingSeg(targetGroup, 19.0, 11.05, 42.75, 12.95, yBase, 1.10);
         }
         if (floorNum === 3) {
-          // 3F South cantilevered viewing terrace (露台, Grid ⑤–⑧, Z=10.85~14.2m)
-          const terraceShape = new THREE.Shape();
-          terraceShape.moveTo(gx(45.0), -gz(10.85));
-          terraceShape.lineTo(gx(68.0), -gz(10.85));
-          terraceShape.lineTo(gx(68.0), -gz(12.2));
-          terraceShape.lineTo(gx(46.0), -gz(14.8));
-          terraceShape.closePath();
-          const tGeo = new THREE.ExtrudeGeometry(terraceShape, { depth: 0.22, bevelEnabled: false });
-          tGeo.rotateX(-Math.PI / 2);
-          const terrace = new THREE.Mesh(tGeo, MAT.corridorFloor);
-          terrace.position.y = yBase - 0.18;
-          terrace.castShadow = true;
-          terrace.receiveShadow = true;
-          targetGroup.add(terrace);
-          addRailingX(targetGroup, 46.2, 67.8, yBase, 13.4, 1.1);
+          // 3F 西側懸挑灰色 RC 露台（X=-1.75~0, Z=7.85~10.85，依 A1-8 / A2-2 / 現況照片 04133.jpg 左上角）
+          addBox(targetGroup, 1.75, 0.20, 3.0, gx(-0.875), yBase - 0.10, gz(9.35), MAT.wallFrameGray);
+          addBox(targetGroup, 0.18, 1.15, 3.0, gx(-1.66), yBase + 0.575, gz(9.35), MAT.wallFrameGray);
+          addBox(targetGroup, 1.75, 1.15, 0.18, gx(-0.875), yBase + 0.575, gz(7.94), MAT.wallFrameGray);
+          addBox(targetGroup, 1.75, 1.15, 0.18, gx(-0.875), yBase + 0.575, gz(10.76), MAT.wallFrameGray);
+
+          // 3F 南側斜向景觀大露台（露台 +880，傾角 9°，依 A1-3 與 A2-1）
+          addFlatPoly(targetGroup, [[42.3, 10.85], [66.5, 10.85], [66.31, 12.10], [42.85, 15.80]], yBase - 0.20, yBase, MAT.corridorFloor);
+          // 沿露台實際 9° 斜邊施作欄杆(3)（修復原本欄杆水平懸空 Bug）
+          addRailingSeg(targetGroup, 42.90, 15.68, 66.24, 12.00, yBase, 1.15);
+          addRailingSeg(targetGroup, 42.32, 10.88, 42.90, 15.68, yBase, 1.15);
+          addRailingSeg(targetGroup, 66.24, 12.00, 66.48, 10.88, yBase, 1.15);
         }
 
-        // 5. Breezeway Dark Portal Frame (Grid ⑥–⑧, spanning 1F & 2F south facade per A2-1!)
+        // 5. Breezeway Dark Angled Portal Frame (WF5, 9° diagonal matching A1-1, A1-2, A1-3 & A2-1!)
         if (floorNum === 1 || floorNum === 2) {
-          addBox(targetGroup, 0.70, FLOOR_H, 0.90, gx(45.0), yBase + FLOOR_H * 0.5, gz(13.2), MAT.wallFrameDark);
-          addBox(targetGroup, 0.70, FLOOR_H, 0.90, gx(54.0), yBase + FLOOR_H * 0.5, gz(13.2), MAT.wallFrameDark);
-          addBox(targetGroup, 0.70, FLOOR_H, 0.90, gx(63.0), yBase + FLOOR_H * 0.5, gz(13.2), MAT.wallFrameDark);
-          addBox(targetGroup, 0.70, FLOOR_H, 0.90, gx(68.0), yBase + FLOOR_H * 0.5, gz(13.2), MAT.wallFrameDark);
+          const pAng = 9 * Math.PI / 180;
+          const pux = Math.cos(pAng), puz = -Math.sin(pAng);
+          const pnx = -Math.sin(pAng), pnz = -Math.cos(pAng); // inward normal toward north
+          const p0x = 43.0, p0z = 15.65;
+          const pierY0 = floorNum === 1 ? 0.0 : ELEV.F2;
+          const pierH = floorNum === 1 ? ELEV.F2 : FLOOR_H;
+          // 5 piers at blueprint spacing: west wall pier (s=0.25), paired piers @ ⑦ (11.6, 13.6), paired piers @ ⑧ (21.2, 23.2)
+          [0.25, 11.6, 13.6, 21.2, 23.2].forEach((s, idx) => {
+            const depth = idx === 0 ? 3.8 : 1.15;
+            const width = idx === 0 ? 0.45 : 0.55;
+            const cx = p0x + s * pux + (depth * 0.5 - 0.35) * pnx;
+            const cz = p0z + s * puz + (depth * 0.5 - 0.35) * pnz;
+            const pier = addBox(targetGroup, width, pierH, depth, gx(cx), pierY0 + pierH * 0.5, gz(cz), MAT.wallFrameDark);
+            pier.rotation.y = pAng;
+          });
           if (floorNum === 2) {
-            // Thick dark horizontal portal fascia beam across top of 2F
-            addBox(targetGroup, 24.4, 0.85, 1.10, gx(56.5), yBase + FLOOR_H - 0.25, gz(13.2), MAT.wallFrameDark);
+            // Thick dark diagonal fascia beam spanning across top of 2F supporting 3F terrace edge
+            const bLen = 24.0;
+            const bcx = p0x + 11.8 * pux;
+            const bcz = p0z + 11.8 * puz;
+            const beam = addBox(targetGroup, bLen, 1.05, 0.95, gx(bcx), ELEV.F3 - 0.25, gz(bcz), MAT.wallFrameDark);
+            beam.rotation.y = pAng;
           }
         }
 
-        // 6. West Toilet & Stair B Block (Grid ①–②, X=0~9m, Z=0~7.85m)
-        addBox(targetGroup, 0.20, FLOOR_H, 7.85, gx(0.10), yBase + FLOOR_H * 0.5, gz(3.925), MAT.wallExt); // West exterior wall
+        // 6. West Toilet & Stair B Block (Grid ①–②, X=0~9m, Z=0~7.85m, per A1-8 & A2-2 West Elevation)
+        //    West exterior wall with 2 vertical W9 toilet window columns (North=Female, South=Male)
+        addBox(targetGroup, 0.20, FLOOR_H, 1.25, gx(0.10), yBase + FLOOR_H * 0.5, gz(0.625), MAT.wallExt);
+        addBox(targetGroup, 0.20, FLOOR_H, 1.45, gx(0.10), yBase + FLOOR_H * 0.5, gz(3.85), MAT.wallExt);
+        addBox(targetGroup, 0.20, FLOOR_H, 1.25, gx(0.10), yBase + FLOOR_H * 0.5, gz(7.225), MAT.wallExt);
+        [2.18, 5.60].forEach((wz) => {
+          addBox(targetGroup, 0.20, 1.20, 1.90, gx(0.10), yBase + 0.60, gz(wz), MAT.wallExt);
+          addBox(targetGroup, 0.20, 1.00, 1.90, gx(0.10), yBase + 3.30, gz(wz), MAT.wallExt);
+          addBox(targetGroup, 0.04, 1.60, 1.90, gx(0.10), yBase + 2.00, gz(wz), MAT.glass, false, false);
+          addBox(targetGroup, 0.08, 1.60, 0.06, gx(0.10), yBase + 2.00, gz(wz), MAT.alFrame, false, false);
+        });
         addWindowWallX(targetGroup, 0.2, 5.2, yBase, FLOOR_H, 0.10, MAT.wallExt, 3.2, 1.4, 1.3);
         addWindowWallX(targetGroup, 0.2, 5.2, yBase, FLOOR_H, 7.75, MAT.wallExt, 2.2, 1.4, 1.3);
         // Stair B flights (X=5.4~8.8)
@@ -1278,7 +1427,6 @@
 
           // Skip enclosing Breezeway (穿堂) on 1F (bay === 5: Grid ⑦–⑧, X=54~63m)
           if (floorNum === 1 && bay === 5) {
-            // Circular mosaic medallion floor in Breezeway
             const med = new THREE.Mesh(new THREE.CylinderGeometry(3.1, 3.1, 0.05, 32), MAT.breezewayCenter);
             med.position.set(gx(58.5), yBase + 0.04, gz(4.1));
             targetGroup.add(med);
@@ -1290,24 +1438,42 @@
             continue;
           }
 
-          // North exterior wall with classroom windows & rear door
+          // 3F Bay 0 & Bay 1: custom window/door walls matching A1-3 (X=9.0~15.6 資源班, X=15.6~27.0 理化實驗室＋雙儲藏室)
+          if (floorNum === 3 && bay === 0) {
+            addWindowWallX(targetGroup, 9.3, 15.45, yBase, FLOOR_H, 0.10, MAT.wallExt, 4.0, 1.85, 0.95);
+            addWindowWallX(targetGroup, 10.2, 14.5, yBase, FLOOR_H, 7.75, MAT.wallExt, 3.2, 1.90, 0.90);
+            addBox(targetGroup, 0.92, 2.20, 0.12, gx(9.65), yBase + 1.10, gz(7.75), MAT.woodDoor);
+            addBox(targetGroup, 0.92, 2.20, 0.12, gx(15.05), yBase + 1.10, gz(7.75), MAT.woodDoor);
+            addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(9.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
+            addBox(targetGroup, 0.08, 1.20, 3.40, gx(9.14), yBase + 1.55, gz(3.9), CHALKBOARD_MAT, false);
+            continue;
+          }
+          if (floorNum === 3 && bay === 1) {
+            // Partition at X=15.6m + twin storage closets (north/south) + lab chalkboard
+            addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(15.6), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
+            [[0.15, 2.1], [5.75, 7.7]].forEach(([z0, z1]) => {
+              addBox(targetGroup, 1.2, FLOOR_H - 0.15, z1 - z0, gx(16.25), yBase + (FLOOR_H - 0.15) * 0.5, gz((z0 + z1) / 2), MAT.wallInt);
+            });
+            addBox(targetGroup, 0.08, 1.2, 3.4, gx(16.90), yBase + 1.55, gz(3.9), CHALKBOARD_MAT, false);
+            // Solid exterior wall segments closing storage ends (X=15.6~17.0)
+            addBox(targetGroup, 1.4, FLOOR_H, 0.18, gx(16.3), yBase + FLOOR_H * 0.5, gz(0.10), MAT.wallExt);
+            addBox(targetGroup, 1.4, FLOOR_H, 0.18, gx(16.3), yBase + FLOOR_H * 0.5, gz(7.75), MAT.wallExt);
+            // Lab windows & doors cleanly east of storage closets (X=17.0~27.0)
+            addWindowWallX(targetGroup, 17.0, 26.7, yBase, FLOOR_H, 0.10, MAT.wallExt, 6.8, 1.85, 0.95);
+            addWindowWallX(targetGroup, 18.1, 25.8, yBase, FLOOR_H, 7.75, MAT.wallExt, 5.6, 1.90, 0.90);
+            addBox(targetGroup, 0.92, 2.20, 0.12, gx(17.55), yBase + 1.10, gz(7.75), MAT.woodDoor);
+            addBox(targetGroup, 0.92, 2.20, 0.12, gx(26.35), yBase + 1.10, gz(7.75), MAT.woodDoor);
+            continue;
+          }
+
+          // Standard 9.0m bay exterior walls & dual corridor doors
           addWindowWallX(targetGroup, bx0 + 0.3, bx1 - 0.3, yBase, FLOOR_H, 0.10, MAT.wallExt, 5.6, 1.85, 0.95);
-          // South corridor wall with classroom windows & dual entry doors
           addWindowWallX(targetGroup, bx0 + 1.2, bx1 - 1.2, yBase, FLOOR_H, 7.75, MAT.wallExt, 4.8, 1.90, 0.90);
           addBox(targetGroup, 0.92, 2.20, 0.12, gx(bx0 + 0.65), yBase + 1.10, gz(7.75), MAT.woodDoor);
           addBox(targetGroup, 0.92, 2.20, 0.12, gx(bx1 - 0.65), yBase + 1.10, gz(7.75), MAT.woodDoor);
 
-          // Interior partition wall on west boundary of each bay (omit between merged bays on 1F Library)
-          // 1F 圖書室跨 ③–⑤；3F 資源班／理化實驗室隔牆不在軸線③，在②往東 6.6 m（A1-3）
-          const omitWestWall = (floorNum === 1 && bay === 2) || (floorNum === 3 && bay === 1);
-          if (floorNum === 3 && bay === 1) {
-            addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(15.6), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
-            // 實驗室西側儲藏室（南北兩端）與中段黑板
-            [[0.15, 2.1], [5.75, 7.7]].forEach(([z0, z1]) => {
-              addBox(targetGroup, 1.2, FLOOR_H - 0.15, z1 - z0, gx(16.3), yBase + (FLOOR_H - 0.15) * 0.5, gz((z0 + z1) / 2), MAT.wallInt);
-            });
-            addBox(targetGroup, 0.08, 1.2, 3.4, gx(16.95), yBase + 1.55, gz(3.9), makeMat(0x1f4d36, { roughness: 0.7 }), false);
-          }
+          // Interior partition wall on west boundary of each bay (omit between merged bays on 1F Library ③–⑤)
+          const omitWestWall = (floorNum === 1 && bay === 2);
           if (!omitWestWall) {
             addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(bx0), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
           }
@@ -1316,107 +1482,193 @@
           if (floorNum === 1 && bay === 6) {
             addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(67.5), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
           }
+          // 2F 軸線⑦–⑧ 東北角隔間（原休息室兼哺乳室／現輔導室與諮商室隔間，依 A1-2）
+          if (floorNum === 2 && bay === 5) {
+            addBox(targetGroup, 4.3, FLOOR_H - 0.15, 0.12, gx(60.8), yBase + (FLOOR_H - 0.15) * 0.5, gz(2.35), MAT.wallInt);
+            addBox(targetGroup, 0.12, FLOOR_H - 0.15, 2.25, gx(58.65), yBase + (FLOOR_H - 0.15) * 0.5, gz(1.22), MAT.wallInt);
+          }
 
-          // Classroom chalkboard & desks inside (visible on cutaway / X-ray / Street View!)
-          if (!(floorNum === 3 && bay === 1)) addBox(targetGroup, 0.08, 1.20, 3.80, gx(bx0 + 0.14), yBase + 1.55, gz(3.9), makeMat(0x1f4d36, { roughness: 0.7 }), false);
+          // Chalkboard ONLY in actual classroom bays (fixes floating chalkboard in 1F Library & admin offices!)
+          const isTeachingRoom =
+            (floorNum === 1 && (bay === 0 || bay === 3)) ||
+            (floorNum === 2 && (bay === 0 || bay === 1)) ||
+            (floorNum === 3 && bay >= 2);
+          if (isTeachingRoom) {
+            addBox(targetGroup, 0.08, 1.20, 3.80, gx(bx0 + 0.14), yBase + 1.55, gz(3.9), CHALKBOARD_MAT, false);
+          }
         }
         // East boundary wall of classroom bay 6 (Grid ⑨, X=72m)
         addBox(targetGroup, 0.18, FLOOR_H - 0.15, 7.65, gx(72.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
 
         // 8. East Renovated Restroom Block (Grid ⑨–⑩, X=72.0~79.05m, Z=0~7.85m)
         addWindowWallX(targetGroup, 72.3, 78.8, yBase, FLOOR_H, 0.10, MAT.wallExt, 4.4, 1.65, 1.15); // North window wall
-        addBox(targetGroup, 0.20, FLOOR_H, 7.85, gx(79.05), yBase + FLOOR_H * 0.5, gz(3.925), MAT.wallExt); // East wall
+        // East exterior wall with W6/stair window per A2-1 East Elevation
+        addBox(targetGroup, 0.20, FLOOR_H, 7.85, gx(79.05), yBase + FLOOR_H * 0.5, gz(3.925), MAT.wallExt);
         buildEastRenovatedRestroom(targetGroup, floorNum, yBase);
 
-        // 9. East Stair A & 1F Generator / Fire Pump Room (Grid ⑨–⑩, south of corridor Z=10.85~16.65m)
-        if (floorNum === 1) {
-          // 1F Fire Pump / Generator Room (east half of south wing)
-          addBox(targetGroup, 3.2, FLOOR_H, 5.6, gx(77.4), yBase + FLOOR_H * 0.5, gz(13.7), MAT.wallFrameGray);
+        // 8b. East Corridor End Balcony & Architectural Frame (Grid ⑩–⑪, X=79.05~82.70m, Z=7.85~10.85m per A2-1)
+        addBox(targetGroup, 0.25, FLOOR_H, 0.55, gx(82.58), yBase + FLOOR_H * 0.5, gz(8.12), MAT.wallFrameGray);
+        addBox(targetGroup, 0.25, FLOOR_H, 0.55, gx(82.58), yBase + FLOOR_H * 0.5, gz(10.58), MAT.wallFrameGray);
+        addBox(targetGroup, 0.25, 0.55, 3.0, gx(82.58), yBase + FLOOR_H - 0.275, gz(9.35), MAT.wallFrameGray);
+        if (floorNum >= 2) {
+          addBox(targetGroup, 0.22, 1.15, 2.0, gx(82.58), yBase + 0.575, gz(9.35), MAT.wallFrameGray);
+          addRailingX(targetGroup, 79.1, 82.45, yBase, 7.92, 1.10);
         }
-        // Stair A enclosure & flights (X=72.0~76.0, Z=11.0~16.6)
-        addBox(targetGroup, 0.22, FLOOR_H, 5.6, gx(72.1), yBase + FLOOR_H * 0.5, gz(13.7), MAT.wallFrameGray);
-        addBox(targetGroup, 4.2, FLOOR_H, 0.22, gx(74.1), yBase + FLOOR_H * 0.5, gz(16.5), MAT.wallFrameGray);
-        for (let s = 0; s < 10; s++) {
-          addBox(targetGroup, 1.6, 0.18, 0.34, gx(73.1), yBase + 0.18 * (s + 1), gz(12.2 + s * 0.34), MAT.concreteBase);
-          addBox(targetGroup, 1.6, 0.18, 0.34, gx(74.9), yBase + 1.90 + 0.18 * (s + 1), gz(15.6 - s * 0.34), MAT.concreteBase);
-        }
-        addBox(targetGroup, 3.6, 0.18, 1.2, gx(74.0), yBase + 1.90, gz(16.0), MAT.concreteBase);
 
-        // 10. Corridor Vertical Decorative Fins on South Facade (per A2-1)
-        [15, 24, 33, 42, 51, 60, 69].forEach((fx) => {
-          addBox(targetGroup, 0.95, FLOOR_H - 0.1, 0.45, gx(fx), yBase + FLOOR_H * 0.5, gz(10.95), MAT.wallFrameGray);
+        // 9. East Stair A (Grid ⑨–⑨', X=72.0~76.4m, Z=10.85~18.20m) & 1F Generator/Pump Room (⑨'–⑩, X=76.4~79.05m)
+        if (floorNum === 1) {
+          // 1F Fire Pump / Generator Room (X=76.4~79.05, Z=10.85~16.65, floor +0.45 -> 4.80m below 2F slab to avoid Z-fighting)
+          addBox(targetGroup, 2.65, 4.35, 5.8, gx(77.725), 0.45 + 2.175, gz(13.75), MAT.wallFrameGray);
+          addBox(targetGroup, 0.08, 1.2, 1.4, gx(79.07), 2.3, gz(13.8), MAT.steelDark, false); // East louver W15
+        } else if (floorNum === 2) {
+          // 2F Roof Terrace over Generator Room (露台 +500, X=76.4~79.05, Z=10.85~16.65 per A1-6)
+          addBox(targetGroup, 2.65, 0.18, 5.8, gx(77.725), yBase - 0.09, gz(13.75), MAT.corridorFloor);
+          addBox(targetGroup, 0.18, 1.20, 5.8, gx(78.96), yBase + 0.60, gz(13.75), MAT.wallFrameGray);
+          addBox(targetGroup, 2.65, 1.20, 0.18, gx(77.725), yBase + 0.60, gz(16.56), MAT.wallFrameGray);
+        } else if (floorNum === 3) {
+          // 3F Small cantilevered balcony beside Stair A (露台 +880, X=76.4~79.05, Z=10.85~12.35 per A1-7)
+          addBox(targetGroup, 2.65, 0.18, 1.50, gx(77.725), yBase - 0.09, gz(11.60), MAT.corridorFloor);
+          addRailingX(targetGroup, 76.45, 79.0, yBase, 12.30, 1.10);
+          addRailingZ(targetGroup, 10.85, 12.30, yBase, 79.0, 1.10);
+        }
+
+        // Stair A enclosure (open-windowed south facade on 2F & 3F per A2-1 South Elevation!)
+        addBox(targetGroup, 0.22, FLOOR_H, 7.35, gx(72.11), yBase + FLOOR_H * 0.5, gz(14.525), MAT.wallFrameGray);
+        addBox(targetGroup, 0.22, FLOOR_H, 7.35, gx(76.29), yBase + FLOOR_H * 0.5, gz(14.525), MAT.wallFrameGray);
+        if (floorNum === 1) {
+          // 1F Stair A south wall with ventilation louver W14
+          addBox(targetGroup, 4.4, FLOOR_H, 0.22, gx(74.2), yBase + FLOOR_H * 0.5, gz(18.09), MAT.wallFrameGray);
+          addBox(targetGroup, 1.4, 0.95, 0.08, gx(74.2), yBase + 1.05, gz(18.22), MAT.steelDark, false);
+        } else {
+          // 2F & 3F Stair A south wall: 1.15m spandrel + railing + open gallery + 0.55m top fascia (matching A2-1!)
+          addBox(targetGroup, 4.4, 1.15, 0.22, gx(74.2), yBase + 0.575, gz(18.09), MAT.wallFrameGray);
+          addBox(targetGroup, 4.4, 0.55, 0.22, gx(74.2), yBase + FLOOR_H - 0.275, gz(18.09), MAT.wallFrameGray);
+          addRailingX(targetGroup, 72.25, 76.15, yBase + 0.05, 18.02, 1.15);
+        }
+        // Stair A concrete flights & mid-landing
+        for (let s = 0; s < 10; s++) {
+          addBox(targetGroup, 1.75, 0.18, 0.36, gx(73.2), yBase + 0.18 * (s + 1), gz(12.2 + s * 0.36), MAT.concreteBase);
+          addBox(targetGroup, 1.75, 0.18, 0.36, gx(75.2), yBase + 1.90 + 0.18 * (s + 1), gz(15.8 - s * 0.36), MAT.concreteBase);
+        }
+        addBox(targetGroup, 4.0, 0.18, 1.6, gx(74.2), yBase + 1.90, gz(17.1), MAT.concreteBase);
+
+        // 10. Corridor Vertical Architectural Feature Walls on South Facade (WF4, 102cm wide per A1-1~A1-3 & A2-1!)
+        //     6 exact shafts: [13.5, 22.5, 31.5] stop at 3FL+1.75m; [40.5, 49.5, 67.5] rise to RFL. Breezeway ⑦–⑧ (58.5) is OPEN!
+        [13.5, 22.5, 31.5, 40.5, 49.5, 67.5].forEach((fx) => {
+          const shortOn3F = (floorNum === 3 && fx < 36);
+          const finH = shortOn3F ? 1.75 : FLOOR_H;
+          const finY = floorNum === 1 ? (yBase + finH * 0.5 - 0.55) : (yBase + finH * 0.5);
+          const actualH = floorNum === 1 ? (finH + 1.10) : finH;
+          addBox(targetGroup, 1.02, actualH, 0.58, gx(fx), finY, gz(10.98), MAT.wallFrameGray);
         });
       }
 
       function buildMainRoof() {
-        // Main RC flat roof slab + parapet (RFL = +12.60m)
-        addBox(roofGroup, 82.9, 0.24, 11.0, gx(41.35), ELEV.RF + 0.12, gz(5.45), MAT.slabFloor);
-        addBox(roofGroup, 82.9, 0.70, 0.22, gx(41.35), ELEV.RF + 0.55, gz(0.0), MAT.wallExt);
-        addBox(roofGroup, 82.9, 0.70, 0.22, gx(41.35), ELEV.RF + 0.55, gz(10.85), MAT.wallExt);
-        addRailingX(roofGroup, 0.2, 82.5, ELEV.RF + 0.75, 0.0, 0.7);
-        addRailingX(roofGroup, 0.2, 82.5, ELEV.RF + 0.75, 10.85, 0.7);
+        // 1. Main RC flat roof slab + parapet (RFL = +12.60m, stops at Grid ⑩ X=79.05m + east corridor strip ⑩–⑪ per A1-4!)
+        addBox(roofGroup, 79.15, 0.24, 11.0, gx(39.525), ELEV.RF + 0.12, gz(5.45), MAT.slabFloor);
+        addBox(roofGroup, 3.65, 0.24, 3.05, gx(80.875), ELEV.RF + 0.12, gz(9.35), MAT.slabFloor);
+        //    North rear balcony roof lip (Grid ②–⑨)
+        addBox(roofGroup, 63.0, 0.20, 1.835, gx(40.5), ELEV.RF + 0.10, gz(-0.9175), MAT.slabFloor);
+        //    Parapets (+12.60 -> +13.20m, H=60cm per A2-1/A2-2) + roof safety railings 欄杆(4)
+        addBox(roofGroup, 79.15, 0.60, 0.22, gx(39.525), ELEV.RF + 0.50, gz(0.0), MAT.wallExt);
+        addBox(roofGroup, 82.80, 0.60, 0.22, gx(41.35), ELEV.RF + 0.50, gz(10.85), MAT.wallExt);
+        addBox(roofGroup, 0.22, 0.60, 10.85, gx(0.05), ELEV.RF + 0.50, gz(5.425), MAT.wallExt);
+        addBox(roofGroup, 0.22, 0.60, 7.85, gx(79.05), ELEV.RF + 0.50, gz(3.925), MAT.wallExt);
+        addBox(roofGroup, 3.65, 0.60, 0.22, gx(80.875), ELEV.RF + 0.50, gz(7.85), MAT.wallExt);
+        addBox(roofGroup, 0.22, 0.60, 3.0, gx(82.65), ELEV.RF + 0.50, gz(9.35), MAT.wallExt);
+        addRailingX(roofGroup, 0.2, 78.9, ELEV.RF + 0.78, 0.0, 0.58);
+        addRailingX(roofGroup, 0.2, 82.5, ELEV.RF + 0.78, 10.85, 0.58);
 
-        // East Stair A roof penthouse + 15T combined water tank
-        addBox(roofGroup, 4.4, 2.8, 5.6, gx(74.2), ELEV.RF + 1.4, gz(13.7), MAT.wallFrameGray);
-        addBox(roofGroup, 2.2, 1.4, 3.6, gx(74.2), ELEV.RF + 3.5, gz(13.7), MAT.steelSilver);
+        // 2. East Stair A low roof & parapet (+12.80 slab / +13.80 parapet per A1-4 & A2-1!) + 15T Combined Water Tank
+        addBox(roofGroup, 4.4, 0.24, 7.35, gx(74.2), ELEV.RF + 0.20, gz(14.525), MAT.slabFloor);
+        addBox(roofGroup, 4.4, 1.05, 0.22, gx(74.2), ELEV.RF + 0.75, gz(18.09), MAT.wallFrameGray);
+        addBox(roofGroup, 0.22, 1.05, 7.35, gx(72.11), ELEV.RF + 0.75, gz(14.525), MAT.wallFrameGray);
+        addBox(roofGroup, 0.22, 1.05, 7.35, gx(76.29), ELEV.RF + 0.75, gz(14.525), MAT.wallFrameGray);
+        addBox(roofGroup, 2.4, 1.35, 3.6, gx(74.2), ELEV.RF + 1.00, gz(14.3), MAT.steelSilver);
 
-        // Tall South Pipe Columns (SC1 PIPE 400x15 @ Grid ②, ③, ④, ⑤ on Line A, GL to Canopy)
+        // 3. West Long Pitched Steel Canopy Roof (Grid ②–⑤ + 1.8m overhangs: X=7.2~37.8m, Z=5.95~17.65m per A1-4 & A3-2!)
+        //    Slopes smoothly down toward south: North edge (Z=5.95) = +15.19m, South edge (Z=17.65) = +13.75m
+        const westSlope = Math.atan2(1.44, 11.70);
+        const westCanopy = new THREE.Group();
+        westCanopy.position.set(gx(22.5), 14.47, gz(11.80));
+        westCanopy.rotation.x = westSlope;
+        // Metal roof sheet + aluminum fascia edges (鋁包板)
+        addBox(westCanopy, 30.6, 0.16, 11.70, 0, 0, 0, MAT.roofSheet);
+        addBox(westCanopy, 30.8, 0.36, 0.18, 0, -0.05, 5.82, MAT.steelSilver);
+        addBox(westCanopy, 30.8, 0.36, 0.18, 0, -0.05, -5.82, MAT.steelSilver);
+        addBox(westCanopy, 0.18, 0.36, 11.70, -15.32, -0.05, 0, MAT.steelSilver);
+        addBox(westCanopy, 0.18, 0.36, 11.70, 15.32, -0.05, 0, MAT.steelSilver);
+        // Underside steel rafters & purlins (visible from playground, matching photo 04133.jpg!)
+        [-13.5, -4.5, 4.5, 13.5].forEach((lx) => {
+          addBox(westCanopy, 0.24, 0.34, 11.3, lx, -0.25, 0, MAT.steelDark);
+        });
+        [-4.2, -1.4, 1.4, 4.2].forEach((lz) => {
+          addBox(westCanopy, 30.2, 0.14, 0.12, 0, -0.18, lz, MAT.steelSilver, false);
+        });
+        // Rooftop Solar PV Array cleanly seated on tilted canopy
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < 10; col++) {
+            addBox(westCanopy, 2.6, 0.07, 3.0, -13.0 + col * 2.88, 0.16, -3.4 + row * 3.4, MAT.solarPanel, false);
+          }
+        }
+        roofGroup.add(westCanopy);
+
+        // Tall South Pipe Columns (SC1 PIPE 400x15 @ Grid ②, ③, ④, ⑤ on Line A, GL to canopy underside)
         [9, 18, 27, 36].forEach((cx) => {
-          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 14.3, 18), MAT.roofColumnPurple);
-          col.position.set(gx(cx), 7.15, gz(GRID_Z.A));
+          const topA = 14.47 - (GRID_Z.A - 11.80) * Math.tan(westSlope) - 0.18;
+          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, topA, 18), MAT.roofColumnPurple);
+          col.position.set(gx(cx), topA * 0.5, gz(GRID_Z.A));
           col.castShadow = true;
           roofGroup.add(col);
-          // Lower concrete plinth collar on column base
-          const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.34, 4.2, 16), MAT.wallFrameGray);
-          collar.position.set(gx(cx), 2.1, gz(GRID_Z.A));
+          // Lower concrete plinth collar (GL to ~2FL, matching photo 04133.jpg!)
+          const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.34, 4.6, 16), MAT.wallFrameGray);
+          collar.position.set(gx(cx), 2.3, gz(GRID_Z.A));
           roofGroup.add(collar);
-          // Rear support stub on Line C
-          const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, 2.2, 14), MAT.roofColumnPurple);
-          stub.position.set(gx(cx), ELEV.RF + 1.1, gz(GRID_Z.C));
+          // Rear steel column on Line C (RFL to canopy underside)
+          const topC = 14.47 + (11.80 - GRID_Z.C) * Math.tan(westSlope) - 0.18;
+          const stubH = topC - ELEV.RF;
+          const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, stubH, 14), MAT.roofColumnPurple);
+          stub.position.set(gx(cx), ELEV.RF + stubH * 0.5, gz(GRID_Z.C));
           roofGroup.add(stub);
         });
 
-        // West Long Steel Canopy Roof (Grid ②–⑤ with 1.8m overhangs: X=7.2~37.8m, Z=6.35~17.25m)
-        const westRoof = addBox(roofGroup, 30.8, 0.32, 11.2, gx(22.5), ELEV.RF + 1.85, gz(11.75), MAT.roofSheet);
-        westRoof.rotation.x = 0.085; // Slopes gently down toward south gutter
-        // Rooftop Solar PV Array on West Canopy
-        for (let row = 0; row < 3; row++) {
-          for (let col = 0; col < 10; col++) {
-            const pv = addBox(roofGroup, 2.6, 0.08, 2.8, gx(9.6 + col * 2.85), ELEV.RF + 2.38 - row * 0.26, gz(8.4 + row * 3.1), MAT.solarPanel, false);
-            pv.rotation.x = 0.085;
-          }
-        }
-
-        // 平屋頂太陽能板（衛星圖顯示主校舍屋頂幾乎全面設置）
-        [[1.0, 7.0], [38.5, 52.0], [64.5, 71.5]].forEach(([x0, x1]) => {
+        // 4. Flat-Roof Solar PV Arrays (satellite imagery: West ①–②, Center ⑤–⑦, East ⑧–⑨, clearing canopies)
+        [[1.0, 6.8], [38.6, 51.6], [65.2, 71.5]].forEach(([x0, x1]) => {
           for (let x = x0 + 1.3; x < x1; x += 2.7) {
             for (let r = 0; r < 3; r++) {
-              const pv = addBox(roofGroup, 2.4, 0.08, 2.6, gx(x), ELEV.RF + 1.0, gz(1.6 + r * 3.0), MAT.solarPanel, false);
+              const pv = addBox(roofGroup, 2.4, 0.08, 2.6, gx(x), ELEV.RF + 1.05, gz(1.6 + r * 3.0), MAT.solarPanel, false);
               pv.rotation.x = -0.18;
             }
           }
         });
 
-        // East Breezeway High Canopy Roof (Grid ⑦–⑧ with 1.8m overhangs: X=52.2~64.8m, Z=-4.0~11.85m)
+        // 5. East Breezeway High Gable Canopy Roof (Grid ⑦–⑧ + 1.8m overhangs: X=52.2~64.8m, Z=-4.00~+11.85m per A1-4!)
+        //    Ridge along Z=3.925 at +15.46m; eaves at Z=-4.00 & Z=+11.85 at +14.46m
+        const eastHalfD = 7.925;
+        const eastSlope = Math.atan2(1.00, eastHalfD);
         [54, 63].forEach((cx) => {
           [GRID_Z.D, GRID_Z.C].forEach((cz) => {
-            const p = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, 2.5, 14), MAT.roofColumnPurple);
-            p.position.set(gx(cx), ELEV.RF + 1.25, gz(cz));
+            const topY = 15.46 - Math.abs(cz - 3.925) * Math.tan(eastSlope) - 0.18;
+            const pH = topY - ELEV.RF;
+            const p = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, pH, 14), MAT.roofColumnPurple);
+            p.position.set(gx(cx), ELEV.RF + pH * 0.5, gz(cz));
             roofGroup.add(p);
           });
         });
-        // Double-pitched / gable-ridge canopy over Breezeway
-        const eastRoofN = addBox(roofGroup, 12.8, 0.30, 8.2, gx(58.5), ELEV.RF + 2.35, gz(0.0), MAT.roofSheet);
-        eastRoofN.rotation.x = -0.075;
-        const eastRoofS = addBox(roofGroup, 12.8, 0.30, 8.2, gx(58.5), ELEV.RF + 2.35, gz(7.9), MAT.roofSheet);
-        eastRoofS.rotation.x = 0.075;
-        // Solar panels on East Canopy
-        for (let col = 0; col < 4; col++) {
-          [[0.0, -0.075], [7.9, 0.075]].forEach(([z, rx]) => {
-            const pv = addBox(roofGroup, 2.6, 0.08, 7.4, gx(54.2 + col * 2.85), ELEV.RF + 2.62, gz(z), MAT.solarPanel, false);
-            pv.rotation.x = rx;
-          });
-        }
+        [[-1, 3.925 - eastHalfD * 0.5, -eastSlope], [1, 3.925 + eastHalfD * 0.5, eastSlope]].forEach(([dir, cz, rx]) => {
+          const panel = new THREE.Group();
+          panel.position.set(gx(58.5), 14.96, gz(cz));
+          panel.rotation.x = rx;
+          addBox(panel, 12.6, 0.16, eastHalfD + 0.1, 0, 0, 0, MAT.roofSheet);
+          addBox(panel, 12.8, 0.34, 0.16, 0, -0.05, dir * eastHalfD * 0.5, MAT.steelSilver); // Eave fascia
+          addBox(panel, 0.16, 0.34, eastHalfD + 0.1, -6.32, -0.05, 0, MAT.steelSilver);
+          addBox(panel, 0.16, 0.34, eastHalfD + 0.1, 6.32, -0.05, 0, MAT.steelSilver);
+          [-4.5, 4.5].forEach((lx) => addBox(panel, 0.22, 0.30, eastHalfD - 0.3, lx, -0.22, 0, MAT.steelDark));
+          for (let col = 0; col < 4; col++) {
+            addBox(panel, 2.6, 0.07, 6.8, -4.35 + col * 2.9, 0.15, 0, MAT.solarPanel, false);
+          }
+          roofGroup.add(panel);
+        });
       }
 
       // =========================================================================
@@ -1928,13 +2180,13 @@
         const PN = SITE.parkingNE;
         addBox(campusSiteGroup, PN.x1 - PN.x0, 0.06, PN.z1 - PN.z0, gx((PN.x0 + PN.x1) / 2), 0.03, gz((PN.z0 + PN.z1) / 2), MAT.asphalt, false, true);
 
-        // 學生、教職員車棚（103.10，主校舍北側；避開穿堂後方樓梯）
+        // 學生、教職員車棚（103.10，主校舍北側，貼近北側圍牆留出後方通行空間）
         SITE.bikeShed.forEach(([x0, x1]) => {
           const cx = (x0 + x1) / 2, len = x1 - x0;
-          addBox(campusSiteGroup, len, 0.06, 4.2, gx(cx), 0.03, gz(SITE.bikeShedZ), MAT.asphalt, false, true);
-          addBox(campusSiteGroup, len, 0.16, 4.5, gx(cx), 2.75, gz(SITE.bikeShedZ), MAT.ckWhite);
+          addBox(campusSiteGroup, len, 0.06, 3.2, gx(cx), 0.03, gz(SITE.bikeShedZ), MAT.asphalt, false, true);
+          addBox(campusSiteGroup, len, 0.16, 3.5, gx(cx), 2.75, gz(SITE.bikeShedZ), MAT.ckWhite);
           for (let px = x0 + 0.5; px <= x1 - 0.4; px += 6.0) {
-            addBox(campusSiteGroup, 0.16, 2.75, 0.16, gx(px), 1.38, gz(SITE.bikeShedZ + 1.6), MAT.steelDark);
+            addBox(campusSiteGroup, 0.16, 2.75, 0.16, gx(px), 1.38, gz(SITE.bikeShedZ + 1.2), MAT.steelDark);
           }
         });
 
@@ -1959,7 +2211,7 @@
         // 樹木（沿地界與廣場周邊，示意）
         const treeCoords = [
           [-44, -6], [-55, 20], [-58, 40], [-62, 58], [-20, 70], [-35, 85], [20, 90], [35, 75],
-          [40, 62], [70, 68], [95, 60], [100, 40], [88, 30], [82, 8], [92, -3], [40, -9], [-10, -9], [118, 60], [118, 85]
+          [40, 62], [70, 68], [95, 60], [100, 40], [88, 30], [82, 8], [92, -3], [40, -11.5], [-10, -11.5], [118, 60], [118, 85]
         ];
         treeCoords.forEach(([tx, tz], i) => {
           const g = new THREE.Group();
@@ -2015,9 +2267,9 @@
         north: { pos: [8, 22, -62], target: [8, 6.5, -10] },
         kitchen: { pos: [-62, 26, 42], target: [-65, 3.0, -16] },
         walkway: { pos: [-38, 9, 14], target: [-42, 3.0, -8] },
-        breezewayNorth: { pos: [24, 10, -40], target: [26, 2.5, -18], floor: '1F' },
+        breezewayNorth: { pos: [24, 11, -34], target: [26, 2.0, -20], floor: '1F' },
         restroom2f: { pos: [44, 19, 1], target: [43.5, 6.2, -14.2], floor: '2F' },
-        restroomEnt: { pos: [46, 11, 12], target: [44.5, 6.5, -10.5], floor: 'all' }
+        restroomEnt: { pos: [46, 11, 14], target: [44.5, 6.5, -10.5], floor: 'all' }
       };
 
       const cameraAnim = {
@@ -2909,9 +3161,11 @@
         ctx.beginPath(); ctx.arc(px, py, Math.max(2.5, SITE.pond.waterR * sxm), 0, Math.PI * 2); ctx.fillStyle = '#2e7ba1'; ctx.fill();
 
         // 主校舍、穿堂、東端附屬區
-        drawRawRect(0, 82.7, 0, 10.85, '#cbd5e1', '#38bdf8');
-        drawRawRect(54, 63, -4.6, 10.85, '#f59e0b');
-        drawRawRect(72, 79, 10.85, 16.6, '#94a3b8');
+        drawRawRect(0, 79.05, 0, 10.85, '#cbd5e1', '#38bdf8');
+        drawRawRect(79.05, 82.7, 7.85, 10.85, '#cbd5e1', '#38bdf8');
+        drawRawRect(54, 63, -4.0, 10.85, '#f59e0b');
+        drawRawRect(72, 76.4, 10.85, 18.2, '#94a3b8');
+        drawRawRect(76.4, 79.05, 10.85, 16.65, '#94a3b8');
 
         // 中央廚房與風雨走廊
         if (state.showKitchen) {
