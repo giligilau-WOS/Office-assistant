@@ -1469,10 +1469,19 @@
         kbox(kitchenBaseGroup, 9, 14, 19, 23, 0, y1, MAT.plazaTile);
         kbox(kitchen1FGroup, 9, 14, 19, 23.3, 4.15, 4.45, MAT.ckPink);              // 頂板
         kbox(kitchen1FGroup, 9, 9.45, 22.85, 23.3, 0, 4.45, MAT.ckPink);              // 西南柱
-        kbox(kitchen1FGroup, 13.55, 14, 22.85, 23.3, 0, 4.45, MAT.ckPink);            // 東南柱
-        kbox(kitchen1FGroup, 9.45, 13.55, 22.95, 23.3, 0, y1 + 0.9, MAT.ckPink);      // 南牆下段
-        kbox(kitchen1FGroup, 9.45, 13.55, 22.95, 23.3, y1 + 2.4, 4.15, MAT.ckPink);   // 南牆上段
-        kbox(kitchen1FGroup, 11.1, 11.9, 22.95, 23.3, y1 + 0.9, y1 + 2.4, MAT.ckPink);// 兩孔間牆
+        kbox(kitchen1FGroup, 13.55, 14, 22.85, 23.3, 0, 4.45, MAT.ckPink);            // 東南柱（東側開放，接 A01 走廊）
+        // 南牆（照片 04204，由內往南看）：東側（操場側）上方大方孔約 1.4×1.25 m、西側下方小方孔約 0.75×0.75 m
+        {
+          const sh = new THREE.Shape();
+          sh.moveTo(0, 0); sh.lineTo(4.1, 0); sh.lineTo(4.1, 4.15 - y1); sh.lineTo(0, 4.15 - y1); sh.closePath();
+          [[2.35, 1.25, 1.4, 1.25], [0.55, 0.95, 0.75, 0.75]].forEach(([u, v, w, h]) => {
+            const ph = new THREE.Path(); ph.moveTo(u, v); ph.lineTo(u + w, v); ph.lineTo(u + w, v + h); ph.lineTo(u, v + h); ph.closePath(); sh.holes.push(ph);
+          });
+          const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.35, bevelEnabled: false }), MAT.ckPink);
+          const [wx, wz] = K(9.45, 22.95);
+          m.position.set(wx, y1, wz); m.castShadow = true; m.receiveShadow = true; kitchen1FGroup.add(m);
+        }
+        kbox(kitchenBaseGroup, 9.45, 13.55, 22.95, 23.3, 0, y1, MAT.ckPink);         // 南牆基座
         kbox(kitchen1FGroup, 9, 14, 19.05, 19.2, y1, 4.15, MAT.ckPinkDeep);           // 內側北牆（深粉紅）
         doorZ(kitchen1FGroup, 11.2, 12.8, 19.22);                                     // 驗收區雙門
         winZ(kitchen1FGroup, 9.6, 10.8, 19.24, y1 + 1.0, y1 + 2.2);
@@ -1481,7 +1490,6 @@
         kbox(kitchenBaseGroup, 14, 22.2, 19, 23, 0, y1, MAT.plazaTile);
         kbox(kitchen1FGroup, 14, 22.0, 19, 23.2, 4.15, 4.45, MAT.ckWhite);           // 頂板
         [[14.25, 22.95], [21.6, 22.6]].forEach(([lx, lz]) => kbox(kitchen1FGroup, lx - 0.2, lx + 0.2, lz - 0.2, lz + 0.2, 0, 4.15, MAT.ckWhite));
-        addRailingX(kitchen1FGroup, KIT.x + 14.5, KIT.x + 21.2, y1, KIT.z + 22.95, 1.0);
 
         // ── 7. 黃色食育教室量體（⑥'–⑦'，旋轉約 6.5°，女兒牆頂 +6.10）：北為 106 午餐教室、南為 A09 外廊 ──
         const dining = new THREE.Group();
@@ -1495,11 +1503,27 @@
         const H = 6.1;
         dl(8.0, y1, 10.5, 0, y1 / 2, 0, MAT.ckYellow);                      // 基座
         dl(7.8, 0.06, 10.3, 0, y1 + 0.03, 0, MAT.woodLight);
-        dl(0.3, H, 10.5, -3.85, H / 2, 0, MAT.ckYellow);                    // 西牆（全長）
+        dl(0.3, H, 6.2, -3.85, H / 2, -2.0, MAT.ckYellow);                  // 西牆（教室段）
+        dl(0.3, H - y1 - 2.6, 4.3, -3.85, (H + y1 + 2.6) / 2, 3.1, MAT.ckYellow); // 西側外廊入口上楣（下方可通行，接 A01）
         dl(8.0, H, 0.3, 0, H / 2, -5.1, MAT.ckYellow);                      // 北牆
         dl(0.3, H, 6.2, 3.85, H / 2, -2.0, MAT.ckYellow);                   // 東牆（教室段）
         dl(0.3, H - yR + 0.3, 4.3, 3.85, (H + yR - 0.3) / 2, 3.1, MAT.ckYellow); // 東側外廊上緣
-        dl(8.0, H - yR + 0.3, 0.3, 0, (H + yR - 0.3) / 2, 5.1, MAT.ckYellow);    // 南側外廊上緣
+        // 南面（面向操場）：實牆＋幾何開窗（依基本設計 3D 模擬圖），非整面開放
+        {
+          const sw = 7.7, wz = 5.1, base = y1;
+          const holes = [[-2.75, 2.6, 0.7, 0.7], [-0.7, 0.5, 2.4, 1.3], [2.3, 1.2, 1.1, 1.1], [1.4, 3.3, 1.8, 0.45], [-2.9, 0.6, 0.5, 0.5]];
+          const sh = new THREE.Shape();
+          sh.moveTo(-sw / 2, 0); sh.lineTo(sw / 2, 0); sh.lineTo(sw / 2, H - base); sh.lineTo(-sw / 2, H - base); sh.closePath();
+          holes.forEach(([hx, hy, hw, hh]) => {
+            const ph = new THREE.Path();
+            ph.moveTo(hx - hw / 2, hy); ph.lineTo(hx + hw / 2, hy); ph.lineTo(hx + hw / 2, hy + hh); ph.lineTo(hx - hw / 2, hy + hh); ph.closePath();
+            sh.holes.push(ph);
+          });
+          const wall = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: false }), MAT.ckYellow);
+          wall.position.set(0, base, wz - 0.15);
+          wall.castShadow = true; wall.receiveShadow = true;
+          dining.add(wall);
+        }
         [[-3.85, 5.05], [3.85, 5.05]].forEach(([x, z]) => dl(0.45, H, 0.45, x, H / 2, z, MAT.ckYellow));
         dl(8.0, 0.3, 10.5, 0, yR - 0.15, 0, MAT.ckWhite).userData = { isKitchenRoofPart: true };
         dl(7.4, 2.6, 0.08, 0, y1 + 1.3, 1.0, MAT.glass);                    // 教室與外廊間落地門 DW2
