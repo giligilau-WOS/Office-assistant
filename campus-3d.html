@@ -297,6 +297,21 @@
         </div>
       </section>
 
+      <!-- Drawing Layers -->
+      <section class="pt-3 border-t border-slate-700/50">
+        <h3 class="text-xs font-semibold text-sky-300 mb-1">4. 設計圖層（中央廚房）</h3>
+        <p class="text-[10px] text-slate-400 mb-2 leading-relaxed">設計圖依軸線①–⑦、Ⓐ–Ⓔ 疊在模型的實際位置與高度。「看」轉到正對視角，「原圖」開整張圖。</p>
+        <div id="dwg-layer-list" class="space-y-1.5"></div>
+        <div class="mt-2 bg-slate-900/55 rounded-xl p-2.5 border border-slate-700/40">
+          <div class="flex justify-between text-[11px] mb-1"><span class="text-slate-300">圖層不透明度</span><span id="dwg-opacity-val" class="font-mono text-sky-300">85%</span></div>
+          <input id="dwg-opacity" type="range" min="20" max="100" value="85" class="w-full accent-sky-400" />
+          <label class="flex items-center justify-between mt-2 text-[11px] text-slate-300 cursor-pointer">
+            <span>開圖層時把廚房模型變半透明</span>
+            <input id="dwg-xray" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+          </label>
+        </div>
+      </section>
+
       <!-- 4. Solar Illumination Simulator -->
       <section class="pt-3 border-t border-slate-700/50">
         <div class="flex justify-between items-center mb-1.5">
@@ -1847,7 +1862,7 @@
 
         // 樹木（沿地界與廣場周邊，示意）
         const treeCoords = [
-          [-44, -6], [-55, 20], [-58, 40], [-62, 58], [-40, 30], [-30, 28], [-20, 70], [-35, 85], [20, 90], [35, 75],
+          [-44, -6], [-55, 20], [-58, 40], [-62, 58], [-20, 70], [-35, 85], [20, 90], [35, 75],
           [40, 62], [70, 68], [95, 60], [100, 40], [88, 30], [82, 8], [92, -3], [40, -9], [-10, -9], [118, 60], [118, 85]
         ];
         treeCoords.forEach(([tx, tz], i) => {
@@ -2990,6 +3005,108 @@
       const altEl = document.getElementById('earth-alt-text');
       const svEuler = new THREE.Euler(0, 0, 0, 'YXZ');
       let lastTime = performance.now();
+
+
+      // =========================================================================
+      // 設計圖層：中央廚房 2D 設計圖（白底去除）依軸線疊在 3D 模型上
+      // =========================================================================
+      const DWG_GEOM = {"found": {"w": 42.99, "h": 34.01, "cx": 15.5, "cz": 11.99}, "ceil": {"w": 43.01, "h": 33.98, "cx": 15.51, "cz": 12.0}, "roofst": {"w": 42.99, "h": 34.01, "cx": 15.5, "cz": 11.99}, "elevS": {"w": 38.59, "h": 8.49, "cu": 15.79, "cy": 4.09}, "elevW": {"w": 27.33, "h": 8.58, "cu": 12.85, "cy": 4.05}, "secA": {"w": 34.28, "h": 8.58, "cu": 14.04, "cy": 3.94}, "secB": {"w": 34.21, "h": 8.69, "cu": 13.88, "cy": 3.89}};
+      const DWG_DIR = 'campus-3d-assets/kitchen-dwg/';
+      const DWG_LAYERS = [
+        { id: 'found', name: '壹層結構平面圖（1F）', sheet: 'ebeddfa6', kind: 'plan', y: 0.08, color: '#b4782d' },
+        { id: 'ceil', name: '一層天花板配置圖', sheet: 'dd0f0b6f', kind: 'plan', y: 4.2, color: '#3b62c8' },
+        { id: 'roofst', name: '屋頂層結構平面圖（RF）', sheet: 'b07c3528', kind: 'plan', y: 5.2, color: '#b13a3a' },
+        { id: 'elevS', name: '南向立面圖', sheet: 'd37ae4fc', kind: 'elevS', at: 25.0, color: '#64748b' },
+        { id: 'elevW', name: '西向立面圖', sheet: 'd37ae4fc', kind: 'elevW', at: -6.0, color: '#64748b' },
+        { id: 'secA', name: "AA' 剖面圖（約Ⓓ–Ⓔ 之間）", sheet: '70718a91', kind: 'secZ', at: 20.5, color: '#7c3aed' },
+        { id: 'secB', name: "BB' 剖面圖（約Ⓒ–Ⓓ 之間）", sheet: '70718a91', kind: 'secZ', at: 13.5, color: '#7c3aed' }
+      ];
+      const dwgGroup = new THREE.Group(); dwgGroup.name = 'Drawing_Layers';
+      scene.add(dwgGroup);
+      const dwgLoader = new THREE.TextureLoader();
+      const dwgState = { opacity: 0.85, xray: true, on: new Set() };
+      DWG_LAYERS.forEach((L) => {
+        const g = DWG_GEOM[L.id];
+        const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: dwgState.opacity, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(g.w, g.h), mat);
+        mesh.renderOrder = 10;
+        if (L.kind === 'plan') {
+          mesh.rotation.x = -Math.PI / 2;
+          mesh.position.set(gx(KIT.x + g.cx), L.y, gz(KIT.z + g.cz));
+          L.view = { pos: [gx(KIT.x + g.cx), L.y + 52, gz(KIT.z + g.cz) + 0.1], target: [gx(KIT.x + g.cx), L.y, gz(KIT.z + g.cz)] };
+        } else if (L.kind === 'elevW') {
+          mesh.rotation.y = -Math.PI / 2;
+          mesh.position.set(gx(KIT.x + L.at), g.cy, gz(KIT.z + g.cu));
+          L.view = { pos: [gx(KIT.x + L.at - 24), g.cy + 1, gz(KIT.z + g.cu)], target: [gx(KIT.x + L.at), g.cy, gz(KIT.z + g.cu)] };
+        } else {
+          mesh.position.set(gx(KIT.x + g.cu), g.cy, gz(KIT.z + L.at));
+          L.view = { pos: [gx(KIT.x + g.cu), g.cy + 1, gz(KIT.z + L.at + 30)], target: [gx(KIT.x + g.cu), g.cy, gz(KIT.z + L.at)] };
+        }
+        mesh.visible = false;
+        L.mesh = mesh; L.loaded = false;
+        dwgGroup.add(mesh);
+      });
+      function loadDwg(L) {
+        if (L.loaded) return;
+        L.loaded = true;
+        dwgLoader.load(DWG_DIR + L.id + '.png', (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          L.mesh.material.map = tex; L.mesh.material.needsUpdate = true;
+        }, undefined, () => { L.loaded = false; showToast(`「${L.name}」載入失敗，請用網頁伺服器或 Artifact 連結開啟`); });
+      }
+      const kitchenOpacityBackup = new Map();
+      function applyDwgXray() {
+        const fade = dwgState.xray && dwgState.on.size > 0;
+        kitchenRootGroup.traverse((o) => {
+          if (!o.isMesh || !o.material) return;
+          if (fade) {
+            if (!kitchenOpacityBackup.has(o)) kitchenOpacityBackup.set(o, { t: o.material.transparent, op: o.material.opacity, dw: o.material.depthWrite, m: o.material });
+            if (!o.userData.dwgFadeMat) { o.userData.dwgFadeMat = o.material.clone(); }
+            const fm = o.userData.dwgFadeMat;
+            fm.transparent = true; fm.opacity = 0.22; fm.depthWrite = false;
+            o.material = fm;
+          } else if (kitchenOpacityBackup.has(o)) {
+            o.material = kitchenOpacityBackup.get(o).m;
+          }
+        });
+        if (!fade) kitchenOpacityBackup.clear();
+      }
+      function setDwgLayer(L, on) {
+        if (on) { dwgState.on.add(L.id); loadDwg(L); } else { dwgState.on.delete(L.id); }
+        L.mesh.visible = on;
+        const cb = document.getElementById('dwg-' + L.id); if (cb) cb.checked = on;
+        applyDwgXray();
+      }
+      const dwgList = document.getElementById('dwg-layer-list');
+      DWG_LAYERS.forEach((L) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-2 p-1.5 rounded-xl bg-slate-800/55 hover:bg-slate-800 transition';
+        row.innerHTML = `<input id="dwg-${L.id}" type="checkbox" class="w-4 h-4 accent-sky-400 rounded cursor-pointer shrink-0" />
+          <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${L.color}"></span>
+          <label for="dwg-${L.id}" class="flex-1 min-w-0 text-[11px] text-slate-200 cursor-pointer truncate">${L.name}</label>
+          <button data-act="view" class="px-1.5 py-0.5 rounded-md bg-sky-700/70 hover:bg-sky-600 text-[10px] text-white shrink-0">看</button>
+          <button data-act="sheet" class="px-1.5 py-0.5 rounded-md bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-100 shrink-0">原圖</button>`;
+        row.querySelector('input').addEventListener('change', (e) => setDwgLayer(L, e.target.checked));
+        row.querySelector('[data-act="view"]').addEventListener('click', () => {
+          DWG_LAYERS.forEach((x) => setDwgLayer(x, x === L));
+          if (state.navMode !== 'earth') document.getElementById('mode-btn-earth').click();
+          flyToCamera(L.view.pos, L.view.target, 900);
+        });
+        row.querySelector('[data-act="sheet"]').addEventListener('click', () => {
+          const list = DWG_LAYERS.filter((x, i, a) => a.findIndex((y) => y.sheet === x.sheet) === i)
+            .map((x) => ({ src: DWG_DIR + 'sheet-' + x.sheet + '.jpg', cap: ({ ebeddfa6: '壹層結構平面圖（1F）S1-1', dd0f0b6f: '一層／二層天花板配置圖 A2-5', b07c3528: '屋頂層／屋突頂層結構平面圖 S1-2', d37ae4fc: '南、西向立面圖 A3-1', '70718a91': "AA'、BB' 剖面圖 A4-1" })[x.sheet] }));
+          const idx = list.findIndex((x) => x.src.includes(L.sheet));
+          openLightbox(list, Math.max(0, idx));
+        });
+        dwgList.appendChild(row);
+      });
+      document.getElementById('dwg-opacity').addEventListener('input', (e) => {
+        dwgState.opacity = e.target.value / 100;
+        document.getElementById('dwg-opacity-val').textContent = `${e.target.value}%`;
+        DWG_LAYERS.forEach((L) => { L.mesh.material.opacity = dwgState.opacity; });
+      });
+      document.getElementById('dwg-xray').addEventListener('change', (e) => { dwgState.xray = e.target.checked; applyDwgXray(); });
 
       function animate(now) {
         requestAnimationFrame(animate);
