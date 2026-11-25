@@ -36,39 +36,32 @@
       overflow: hidden;
       z-index: 15;
     }
-    .room-badge {
-      position: absolute;
-      transform: translate(-50%, -50%);
-      padding: 2px 7px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 600;
-      white-space: nowrap;
-      color: #f8fafc;
-      background: rgba(15, 23, 42, 0.78);
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      backdrop-filter: blur(6px);
-      pointer-events: auto;
-      cursor: pointer;
-      transition: transform 0.14s ease, background-color 0.14s ease, border-color 0.14s ease;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    /* ── 3D 空間標籤（易讀性規範 §2.3）── */
+    #labels-layer .room-badge {
+      position: absolute; left: 0; top: 0;
+      display: flex; align-items: center; gap: 5px;
+      padding: 3px 9px 3px 7px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; line-height: 1.25; white-space: nowrap;
+      color: #f8fafc; background: rgba(15, 23, 42, 0.86);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+      opacity: 0; pointer-events: none; cursor: pointer;
+      transition: opacity 0.22s ease, border-color 0.15s ease, background-color 0.15s ease;
+      will-change: transform, opacity;
     }
-    .room-badge:hover {
-      background: rgba(2, 132, 199, 0.92);
-      border-color: #7dd3fc;
-      transform: translate(-50%, -50%) scale(1.08);
-      z-index: 25;
-    }
-    .room-badge.kitchen-badge {
-      background: rgba(120, 53, 15, 0.82);
-      border-color: rgba(251, 191, 36, 0.55);
-      color: #fef3c7;
-    }
-    .room-badge.restroom-badge {
-      background: rgba(88, 28, 135, 0.82);
-      border-color: rgba(216, 180, 254, 0.55);
-      color: #f3e8ff;
-    }
+    #labels-layer .room-badge:hover { border-color: var(--cat); background: rgba(15, 23, 42, 0.96); }
+    #labels-layer .room-badge.lvl1 { font-size: 13px; font-weight: 700; padding: 4px 11px 4px 9px; }
+    #labels-layer .room-badge.lvl3 { font-size: 12.5px; font-weight: 700; border-color: var(--cat); background: rgba(15, 23, 42, 0.95); }
+    .rb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cat); flex: none; }
+    .rb-code { font-size: 11px; font-weight: 600; color: #cbd5e1; padding: 0 5px; border-radius: 6px; background: rgba(255, 255, 255, 0.1); }
+    .rb-code:empty { display: none; }
+    .rb-pin { position: absolute; left: 50%; top: 100%; width: 1.5px; height: var(--pin, 14px); margin-left: -0.75px; background: rgba(226, 232, 240, 0.75); pointer-events: none; }
+    .rb-pin::after { content: ''; position: absolute; left: 50%; bottom: -3px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--cat); box-shadow: 0 0 0 1.5px rgba(15, 23, 42, 0.9); }
+    .tabular, #earth-coords-text, #earth-alt-text, #explode-val, #sun-time-label, #sv-heading { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    .crumb-sep { margin: 0 5px; color: #64748b; }
+    #minimap-tip { transition: opacity 0.12s ease; }
     .glass-panel {
       background: rgba(15, 23, 42, 0.82);
       backdrop-filter: blur(14px);
@@ -159,7 +152,7 @@
     <div class="hidden md:flex glass-panel rounded-xl px-3 py-1.5 items-center gap-3 text-[11px] text-slate-300">
       <div>
         <div class="font-bold text-white leading-tight">溪埔國中全校區 3D</div>
-        <div class="text-[10px] text-slate-400">主校舍・中央廚房・戶外設施</div>
+        <div class="text-[11px] text-slate-400">主校舍・中央廚房・戶外設施</div>
       </div>
     </div>
     <button id="compass-btn" class="earth-btn w-10 h-10 rounded-xl flex items-center justify-center relative" title="點擊對齊正北（南向正立面）">
@@ -185,7 +178,8 @@
     <div class="glass-panel rounded-2xl px-3 py-2 pointer-events-auto flex flex-wrap items-center justify-center gap-2 max-w-[94vw]">
       <div class="flex items-center gap-1.5 pr-2 border-r border-slate-700/70">
         <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-        <span id="sv-location-label" class="text-xs font-bold text-white">街景模式・穿堂主入口</span>
+        <span id="sv-location-label" class="text-[12.5px] font-semibold text-white">溪埔國中</span>
+        <span id="sv-heading" class="ml-1 px-1.5 py-0.5 rounded-md bg-slate-800/90 text-[11px] font-semibold text-amber-200">朝北 N</span>
       </div>
       <div class="flex items-center gap-1" id="sv-floor-group">
         <button data-sv-floor="0" class="sv-floor-btn px-2 py-1 rounded-lg text-[11px] font-semibold bg-amber-500 text-slate-950 transition">地面/戶外</button>
@@ -205,21 +199,22 @@
         <button data-move="backward" class="dpad-btn h-7 rounded-lg bg-slate-800/90 hover:bg-sky-600 active:bg-sky-500 text-white text-xs font-bold flex items-center justify-center" title="後退 (S / ↓)">▼</button>
         <button data-move="right" class="dpad-btn h-7 rounded-lg bg-slate-800/90 hover:bg-sky-600 active:bg-sky-500 text-white text-xs font-bold flex items-center justify-center" title="右移 (D / →)">▶</button>
       </div>
-      <div class="text-[11px] text-slate-300 leading-snug hidden sm:block">
+      <button id="sv-help-btn" class="w-7 h-7 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-[12px] font-bold" title="顯示操作說明" hidden>?</button>
+      <div id="sv-hints" class="text-[11px] text-slate-300 leading-snug hidden sm:block">
         <div><strong class="text-amber-300">拖曳畫面</strong> 360° 環顧四周</div>
         <div><strong class="text-sky-300">點擊地面 / 藍點 / 小地圖</strong> 立即移動</div>
-        <div class="text-[10px] text-slate-400">鍵盤 WASD / 方向鍵步行・Shift 加速</div>
+        <div class="text-[11px] text-slate-400">鍵盤 WASD / 方向鍵步行・Shift 加速</div>
       </div>
     </div>
   </div>
 
   <!-- Left Collapsible Control Panel -->
-  <aside id="control-panel" class="fixed top-14 left-3 bottom-3 z-30 w-[86vw] max-w-[300px] glass-panel rounded-2xl flex flex-col overflow-hidden transition-transform duration-300 -translate-x-[120%] lg:translate-x-0">
+  <aside id="control-panel" class="fixed top-14 left-3 bottom-3 z-30 w-[86vw] max-w-[288px] glass-panel rounded-2xl flex flex-col overflow-hidden transition-transform duration-300 -translate-x-[120%] lg:translate-x-0">
     <!-- Panel Header -->
     <div class="px-4 py-3 border-b border-slate-700/60 bg-slate-900/60 flex items-center justify-between">
       <div>
         <h1 class="text-sm font-bold text-white leading-tight">高雄市大樹區溪埔國中</h1>
-        <p class="text-[10px] text-sky-300 mt-0.5">依 115 年校區配置圖</p>
+        <p class="text-[11px] text-sky-300 mt-0.5">依 115 年校區配置圖</p>
       </div>
       <button id="panel-close-btn" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition" title="收合面板">✕</button>
     </div>
@@ -266,7 +261,7 @@
           <label class="flex items-center justify-between p-2 rounded-xl bg-sky-500/15 border border-sky-400/35 hover:bg-sky-500/25 cursor-pointer transition">
             <div>
               <div class="text-sky-200 font-medium">Google Earth 操作模式</div>
-              <div class="text-[10px] text-slate-400">左鍵平移地圖・右鍵旋轉傾斜</div>
+              <div class="text-[11px] text-slate-400">左鍵平移地圖・右鍵旋轉傾斜</div>
             </div>
             <input id="toggle-earth-nav" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
           </label>
@@ -300,7 +295,7 @@
       <!-- Drawing Layers -->
       <section class="pt-3 border-t border-slate-700/50">
         <h3 class="text-xs font-semibold text-sky-300 mb-1">4. 設計圖層（中央廚房）</h3>
-        <p class="text-[10px] text-slate-400 mb-2 leading-relaxed">設計圖依軸線①–⑦、Ⓐ–Ⓔ 疊在模型的實際位置與高度。「看」轉到正對視角，「原圖」開整張圖。</p>
+        <p class="text-[11px] text-slate-400 mb-2 leading-relaxed">設計圖依軸線①–⑦、Ⓐ–Ⓔ 疊在模型的實際位置與高度。「看」轉到正對視角，「原圖」開整張圖。</p>
         <div id="dwg-layer-list" class="space-y-1.5"></div>
         <div class="mt-2 bg-slate-900/55 rounded-xl p-2.5 border border-slate-700/40">
           <div class="flex justify-between text-[11px] mb-1"><span class="text-slate-300">圖層不透明度</span><span id="dwg-opacity-val" class="font-mono text-sky-300">85%</span></div>
@@ -319,7 +314,7 @@
           <span id="sun-time-label" class="text-xs font-mono font-semibold text-amber-300">10:30</span>
         </div>
         <input id="sun-slider" type="range" min="6" max="18" step="0.25" value="10.5" class="w-full accent-amber-400 cursor-pointer" />
-        <div class="flex justify-between text-[10px] text-slate-400 mt-0.5">
+        <div class="flex justify-between text-[11px] text-slate-400 mt-0.5">
           <span>06:00 日出</span>
           <span>12:00 正午</span>
           <span>18:00 日落</span>
@@ -334,12 +329,12 @@
           <button id="export-obj" class="py-1.5 rounded-xl bg-indigo-600/85 hover:bg-indigo-500 text-white text-xs font-semibold transition">.OBJ</button>
           <button id="export-stl" class="py-1.5 rounded-xl bg-emerald-600/85 hover:bg-emerald-500 text-white text-xs font-semibold transition">.STL</button>
         </div>
-        <p class="text-[10px] text-slate-400 mt-1.5 leading-relaxed">一併匯出主校舍（含東側整修廁所）與中央廚房，可供 Blender、SketchUp 或 3D 列印使用。</p>
+        <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">一併匯出主校舍（含東側整修廁所）與中央廚房，可供 Blender、SketchUp 或 3D 列印使用。</p>
       </section>
     </div>
 
     <!-- Footer Hint -->
-    <div class="px-4 py-2 border-t border-slate-700/50 bg-slate-900/60 text-[10px] text-slate-400 flex items-center justify-between">
+    <div class="px-4 py-2 border-t border-slate-700/50 bg-slate-900/60 text-[11px] text-slate-400 flex items-center justify-between">
       <span id="nav-footer-hint">左鍵平移・右鍵旋轉傾斜・雙擊飛近</span>
       <span>點擊空間查資訊</span>
     </div>
@@ -356,28 +351,33 @@
     </div>
   </div>
 
-  <!-- Room Info Card -->
-  <div id="room-info-card" class="fixed top-20 right-3 z-30 w-[90vw] max-w-[310px] glass-panel rounded-2xl p-4 transform -translate-y-4 opacity-0 pointer-events-none transition-all duration-200">
-    <div class="flex items-start justify-between gap-2">
-      <div>
-        <div id="room-floor-badge" class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-400/30 mb-1">1F 壹層</div>
-        <h3 id="room-title" class="text-sm font-bold text-white">穿堂</h3>
+  <!-- Room Info Card（易讀性規範 §4.1）-->
+  <div id="room-info-card" class="fixed top-20 right-3 z-30 w-[90vw] max-w-[320px] glass-panel rounded-2xl p-4 flex flex-col overflow-y-auto custom-scroll transform -translate-y-4 opacity-0 pointer-events-none transition-all duration-200">
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2 flex-wrap min-w-0">
+        <span id="room-cat-badge" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border">
+          <span id="room-cat-dot" class="w-2 h-2 rounded-full"></span><span id="room-cat-text">行政辦公</span>
+        </span>
+        <span id="room-floor-badge" class="text-[12px] font-semibold text-slate-300">1F・主校舍</span>
       </div>
-      <button id="room-close-btn" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition text-xs">✕</button>
+      <button id="room-close-btn" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition text-xs" aria-label="關閉">✕</button>
     </div>
-    <p id="room-desc" class="text-xs text-slate-300 mt-2 leading-relaxed"></p>
-    <div class="mt-2.5 grid grid-cols-2 gap-1.5 text-[11px] bg-slate-900/60 rounded-xl p-2 border border-slate-700/40">
-      <div><span class="text-slate-400">樓層高程：</span><span id="room-elev" class="text-sky-300 font-mono">+1.20m</span></div>
-      <div><span class="text-slate-400">概估面積：</span><span id="room-area" class="text-amber-300 font-mono">70.6 m²</span></div>
-      <div class="col-span-2"><span class="text-slate-400">建置／保固：</span><span id="room-meta" class="text-emerald-300">—</span></div>
+    <h3 id="room-title" class="mt-2 text-[16px] font-bold text-white leading-snug">穿堂</h3>
+    <div id="room-code" class="text-[12px] text-slate-400 tabular"></div>
+    <div class="mt-2.5 grid grid-cols-2 gap-2 bg-slate-900/60 rounded-xl p-2.5 border border-slate-700/40">
+      <div><div class="text-[11px] text-slate-400">約略面積</div><div id="room-area" class="text-[13px] text-amber-300 font-semibold tabular">—</div></div>
+      <div><div class="text-[11px] text-slate-400">所屬棟別／高程</div><div id="room-elev" class="text-[13px] text-sky-300 font-semibold tabular">—</div></div>
+      <div class="col-span-2"><div class="text-[11px] text-slate-400">建置／保固</div><div id="room-meta" class="text-[12.5px] text-emerald-300">—</div></div>
     </div>
+    <p id="room-desc" class="mt-2.5 text-[12.5px] leading-[1.55] text-slate-300 line-clamp-3"></p>
+    <button id="room-desc-more" class="self-start mt-0.5 text-[11px] text-sky-300 hover:text-sky-200" hidden>展開完整說明</button>
     <div id="room-gallery-wrap" class="mt-2.5" hidden>
       <div class="text-[11px] text-slate-400 mb-1">相關圖片（點圖放大）</div>
       <div id="room-gallery" class="flex gap-1.5 overflow-x-auto custom-scroll pb-1"></div>
     </div>
     <div class="mt-3 flex gap-2">
-      <button id="room-focus-btn" class="flex-1 py-1.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition">拉近檢視</button>
-      <button id="room-street-btn" class="flex-1 py-1.5 px-3 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 text-xs font-semibold transition">空降街景</button>
+      <button id="room-focus-btn" class="flex-1 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-[12.5px] font-semibold transition">🔍 拉近檢視</button>
+      <button id="room-street-btn" class="flex-1 py-2 px-3 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 text-[12.5px] font-semibold transition">🚶 空降街景</button>
     </div>
   </div>
 
@@ -391,15 +391,20 @@
           <span class="text-[11px] font-semibold text-slate-100">校園地圖導覽</span>
         </div>
         <div class="flex items-center gap-1">
-          <button id="minimap-size-btn" class="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/70 transition text-[10px]" title="放大／縮小地圖">⤢</button>
-          <button id="minimap-collapse-btn" class="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/70 transition text-[10px]" title="收合／展開地圖">▾</button>
+          <button id="minimap-size-btn" class="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/70 transition text-[11px]" title="放大／縮小地圖">⤢</button>
+          <button id="minimap-collapse-btn" class="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/70 transition text-[11px]" title="收合／展開地圖">▾</button>
         </div>
       </div>
       <div id="minimap-body" class="relative bg-slate-950/80">
-        <canvas id="minimap-canvas" width="320" height="220" class="block w-full h-[135px] sm:h-[156px]"></canvas>
-        <div class="absolute bottom-1 left-1.5 px-1.5 py-0.5 rounded bg-slate-950/75 text-[9px] text-slate-300 pointer-events-none">點擊／拖曳地圖移動</div>
+        <canvas id="minimap-canvas" class="block w-full h-[135px] sm:h-[156px]"></canvas>
+        <div id="minimap-tip" class="absolute top-1.5 left-1/2 -translate-x-1/2 max-w-[94%] truncate px-2 py-0.5 rounded-md bg-slate-950/90 border border-slate-600/60 text-[11px] text-slate-100 pointer-events-none opacity-0"></div>
       </div>
-      <div class="px-2.5 py-1 bg-slate-950/85 border-t border-slate-800/80 text-[9.5px] font-mono text-slate-400 flex items-center justify-between gap-1">
+      <div class="px-2.5 py-1 bg-slate-950/85 border-t border-slate-800/80 text-[11px] text-slate-300 flex items-center gap-2.5 flex-wrap">
+        <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>1F／戶外街景</span>
+        <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-purple-400"></span>2F／3F 室內</span>
+        <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-white ring-2 ring-sky-400"></span>目前位置</span>
+      </div>
+      <div class="px-2.5 py-1 bg-slate-950/85 border-t border-slate-800/80 text-[11px] font-mono text-slate-400 flex items-center justify-between gap-1">
         <a id="earth-coords-text" href="https://www.google.com/maps/@22.71906,120.44350,120m/data=!3m1!1e3" target="_blank" rel="noopener" class="hover:text-sky-300 underline decoration-dotted" title="在 Google 地圖衛星圖開啟此位置">22.71906°N 120.44350°E</a>
         <span id="earth-alt-text" class="text-sky-300">高度 42m</span>
       </div>
@@ -954,6 +959,7 @@
       // 6. INTERACTIVE ROOM ZONES REGISTRY (115年最新空間配置)
       // =========================================================================
       const interactiveRoomMeshes = [];
+      let hoveredZone = null;
       const roomLabelsData = [];
 
       function registerRoom(cfg) {
@@ -971,16 +977,18 @@
         interactiveRoomMeshes.push(zone);
 
         const badge = document.createElement('div');
-        badge.className = 'room-badge' +
-          (cfg.building === 'kitchen' ? ' kitchen-badge' : '') +
-          (cfg.isRestroom ? ' restroom-badge' : '');
-        badge.textContent = cfg.shortName || cfg.name;
-        badge.addEventListener('click', (e) => {
-          e.stopPropagation();
-          selectRoom(zone);
-        });
+        badge.className = 'room-badge';
+        badge.style.setProperty('--cat', CAT_COLORS[cfg.cat] || '#94a3b8');
+        badge.innerHTML = '<span class="rb-dot"></span><span class="rb-code"></span><span class="rb-text"></span><span class="rb-pin"></span>';
+        badge.addEventListener('click', (e) => { e.stopPropagation(); selectRoom(zone); });
+        badge.addEventListener('pointerenter', () => { hoveredZone = zone; });
+        badge.addEventListener('pointerleave', () => { if (hoveredZone === zone) hoveredZone = null; });
         document.getElementById('labels-layer').appendChild(badge);
-        roomLabelsData.push({ mesh: zone, room: cfg, el: badge, baseY: cfg.y + (cfg.labelH ?? 2.3) });
+        roomLabelsData.push({
+          mesh: zone, room: cfg, el: badge,
+          txt: badge.querySelector('.rb-text'), codeEl: badge.querySelector('.rb-code'),
+          baseY: cfg.y + (cfg.labelH ?? 2.3), level: -1, wh: null, pin: 14, shown: false
+        });
       }
 
       // =========================================================================
@@ -1635,6 +1643,43 @@
       // =========================================================================
       // 9. REGISTER ALL 115-YEAR CAMPUS SPACES (互動空間資訊與標籤)
       // =========================================================================
+      // 易讀性規範 §2.4：地圖短稱、語意分類、優先權（樓層依 115 年配置圖：1F 為 1-2 102班、2F 為 1-4 302班）
+      const CAT_COLORS = { classroom: '#38bdf8', admin: '#818cf8', special: '#2dd4bf', kitchen: '#fbbf24', restroom: '#c084fc', outdoor: '#fb7185', landmark: '#e2e8f0', utility: '#94a3b8' };
+      const CAT_NAMES = { classroom: '教學教室', admin: '行政辦公', special: '專科學習', kitchen: '中央廚房與食育', restroom: '浴廁', outdoor: '校園地標與運動', landmark: '地標通道', utility: '附屬設施' };
+      const ROOM_META = [
+        ['主校舍', '主校舍', 'landmark', 80, true],
+        ['20-1', '西側廁所', 'restroom', 45], ['20-2', '西側廁所', 'restroom', 45], ['20-3', '西側廁所', 'restroom', 45],
+        ['1-1', '101班', 'classroom', 40], ['1-2', '102班', 'classroom', 40], ['1-3', '301班', 'classroom', 40],
+        ['1-4', '302班', 'classroom', 40], ['1-5', '201班', 'classroom', 40], ['1-6', '202班', 'classroom', 40],
+        ['8-1', '圖書室', 'special', 65, false, true], ['穿堂', '穿堂', 'landmark', 80, false, true],
+        ['10-1', '總務處', 'admin', 60], ['10-2', '人事會計', 'admin', 55], ['7-1', '健康中心', 'admin', 65],
+        ['20-4', '1F 荔枝廁所', 'restroom', 55], ['無障礙樓梯A', '樓梯・機房', 'utility', 20],
+        ['10-7', '教務處', 'admin', 60], ['12-1', '導師室', 'admin', 60], ['10-6', '校長室', 'admin', 65],
+        ['10-5', '輔導・諮商室', 'admin', 55], ['10-3', '學務處', 'admin', 60], ['20-5', '性別友善廁所', 'restroom', 70],
+        ['2-5', '資源班', 'special', 45], ['2-4', '理化實驗室', 'special', 50], ['2-3', '生科教室', 'special', 45],
+        ['2-2', '資訊教室', 'special', 50], ['2-1', '藝術教室', 'special', 45], ['20-6', '3F 鳳梨廁所', 'restroom', 55],
+        ['21-1', '中央廚房', 'kitchen', 80, true], ['2-7', '食育教室', 'kitchen', 70], ['10-8', '營養師室', 'admin', 45],
+        ['20-7', '廚房廁所', 'restroom', 30], ['廚工休息室', '休息室・配電', 'utility', 20], ['風雨走廊', '風雨走廊', 'kitchen', 60],
+        ['消防機房', '廚房機房', 'utility', 20],
+        ['操場', '操場', 'outdoor', 80, true], ['司令台', '司令台', 'outdoor', 65, true], ['17-2', '公用儲藏室', 'utility', 20],
+        ['籃球場', '籃球場', 'outdoor', 75], ['風雨球場', '風雨球場', 'outdoor', 75, true], ['噴水池', '噴水池', 'outdoor', 65],
+        ['14-1', '大門・警衛室', 'outdoor', 75, true], ['22-1', '備勤室', 'utility', 20], ['4-1', '體育器材室', 'utility', 20],
+        ['17-1', '檔案室', 'utility', 20], ['學生、教職員車棚', '車棚', 'utility', 20], ['大門', '大門', 'outdoor', 60]
+      ];
+      function enrichRoom(r) {
+        r.building = r.building || 'main';
+        const m = ROOM_META.find(([pre]) => r.name.startsWith(pre));
+        const codeMatch = r.name.match(/^(\d+-\d+)\s*/);
+        r.code = codeMatch ? codeMatch[1] : '';
+        r.titleNoCode = codeMatch ? r.name.slice(codeMatch[0].length) : r.name;
+        r.short = m ? m[1] : (r.shortName || r.name);
+        r.cat = m ? m[2] : (r.building === 'kitchen' ? 'kitchen' : r.building === 'site' ? 'outdoor' : 'classroom');
+        r.pri = m ? m[3] : 40;
+        r.overview = !!(m && m[4]);
+        r.keyGround = !!(m && m[5]);
+        return r;
+      }
+
       function registerAllRooms() {
         // 依「115年高雄市立溪埔國民中學校區配置圖」；欄 = 樓層，列 = 主校舍由西(軸線①)往東(軸線⑪)
         // 位置對照 99年度校舍新建工程 A1-1～A1-3 平面圖之開間
@@ -1693,7 +1738,8 @@
           { floor: 'GF', building: 'site', name: '學生、教職員車棚', shortName: '車棚', x: 41, z: SITE.bikeShedZ, w: 30, d: 4, y: 0.2, area: 290, meta: '103.10 建置・保固 10 年', desc: '主校舍北側車棚（依衛星圖，約軸線②至⑨北側）。' },
           { floor: 'GF', building: 'site', name: '大門', shortName: '大門', x: SITE.gates.main[0] - 2, z: SITE.gates.main[1], w: 3, d: 8, y: 0.2, area: 0, meta: '', desc: '東側大門（溪埔路 1 號），電動伸縮門，南側為校名牆（依街景）。' }
         ];
-        rooms.forEach((r) => registerRoom(r.building === 'site' ? Object.assign({ group: campusSiteGroup, labelH: 1.6 }, r) : r));
+        rooms.push({ floor: 'ALL', building: 'main', name: '主校舍', shortName: '主校舍', x: 41.3, z: 5.4, w: 82.7, d: 10.85, y: ELEV.RF, labelH: 2.2, area: 2700, meta: '102.8 完工・保固 10 年', desc: '三層 RC 校舍，1F–3F 共 27 個空間（教室、行政、專科教室與東西兩側廁所），屋頂設太陽能板。' });
+        rooms.forEach((r) => { enrichRoom(r); registerRoom(r.building === 'site' ? Object.assign({ group: campusSiteGroup, labelH: 1.6 }, r) : r); });
       }
 
       // =========================================================================
@@ -2028,18 +2074,30 @@
         state.selectedRoomMesh = zoneMesh;
         zoneMesh.material.opacity = 0.34;
         const rm = zoneMesh.userData.room;
-        document.getElementById('room-floor-badge').textContent =
-          rm.building === 'site' ? '戶外設施' : `${rm.floor}${rm.building === 'kitchen' ? '・中央廚房' : '・主校舍'}`;
-        document.getElementById('room-title').textContent = rm.name;
-        document.getElementById('room-desc').textContent = rm.desc;
-        document.getElementById('room-elev').textContent = `+${rm.y.toFixed(2)}m`;
+        const col = CAT_COLORS[rm.cat] || '#94a3b8';
+        const badge = document.getElementById('room-cat-badge');
+        badge.style.color = col; badge.style.borderColor = col + '66'; badge.style.background = col + '1f';
+        document.getElementById('room-cat-dot').style.background = col;
+        document.getElementById('room-cat-text').textContent = CAT_NAMES[rm.cat] || '空間';
+        const bld = rm.building === 'site' ? '校園戶外' : rm.building === 'kitchen' ? '中央廚房' : '主校舍';
+        document.getElementById('room-floor-badge').textContent = rm.building === 'site' ? '戶外' : rm.floor === 'ALL' ? '1F–3F・主校舍' : `${rm.floor}・${bld}`;
+        document.getElementById('room-title').textContent = rm.code ? rm.titleNoCode : rm.name;
+        document.getElementById('room-code').textContent = rm.code ? `115 年空間編號 ${rm.code}` : '';
+        const desc = document.getElementById('room-desc');
+        desc.textContent = rm.desc;
+        desc.classList.add('line-clamp-3');
+        const more = document.getElementById('room-desc-more');
+        more.hidden = true;
+        requestAnimationFrame(() => { more.hidden = desc.scrollHeight <= desc.clientHeight + 1; fitRoomCard(); });
+        document.getElementById('room-elev').textContent = rm.building === 'site' ? '戶外・地面' : `${bld} +${rm.y.toFixed(2)} m`;
         document.getElementById('room-area').textContent = rm.area ? `約 ${rm.area} m²` : '—';
         document.getElementById('room-meta').textContent = rm.meta || '—';
-        if (rm.building === 'site') document.getElementById('room-elev').textContent = '地面';
         renderRoomGallery(rm.images || []);
         const card = document.getElementById('room-info-card');
+        if (window.innerWidth >= 768 && window.innerWidth < 1280 && typeof mmExp !== 'undefined' && mmExp) document.getElementById('minimap-size-btn').click();
         card.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
         card.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
+        fitRoomCard();
       }
 
       // 整修設計圖縮圖與放大檢視
@@ -2089,6 +2147,24 @@
         if (e.key === 'ArrowLeft') { e.stopPropagation(); stepLightbox(-1); }
       }, true);
 
+      // 資訊卡與小地圖保持 24px 間距（§4.4）
+      function fitRoomCard() {
+        const card = document.getElementById('room-info-card');
+        const mm = document.getElementById('minimap-wrapper');
+        const top = 80;
+        let limit = window.innerHeight - 12;
+        if (mm && mm.offsetParent !== null) {
+          const r = mm.getBoundingClientRect(), c = card.getBoundingClientRect();
+          if (r.left < c.right && r.right > c.left) limit = r.top - 24;
+        }
+        card.style.maxHeight = Math.max(180, limit - top) + 'px';
+      }
+      window.addEventListener('resize', () => { if (state.selectedRoomMesh) fitRoomCard(); });
+      document.getElementById('room-desc-more').addEventListener('click', (e) => {
+        document.getElementById('room-desc').classList.remove('line-clamp-3');
+        e.currentTarget.hidden = true;
+      });
+
       function deselectRoom() {
         if (state.selectedRoomMesh) {
           state.selectedRoomMesh.material.opacity = 0.0;
@@ -2100,51 +2176,89 @@
       }
 
       function updateRoomLabels() {
+        // 易讀性規範 §2.1 LOD 三層級 + §2.2 螢幕空間防重疊
         const layer = document.getElementById('labels-layer');
         if (state.navMode === 'street' || !state.showLabels) {
           layer.style.display = 'none';
           return;
         }
         layer.style.display = 'block';
-        const w = window.innerWidth;
-        const h = window.innerHeight;
+        const W = window.innerWidth, H = window.innerHeight;
+        const FAR = 65, NEAR = 25, PAD = 6, EDGE = 40;
+        const zoomD = camera.position.distanceTo(controls.target);
+        const allFloors = state.activeFloor === 'all';
+        const overview = allFloors && zoomD > FAR;
+        const exploded = state.currentExplode > 0.3;
         const proj = new THREE.Vector3();
+        const cands = [];
 
-        roomLabelsData.forEach((item) => {
-          const rm = item.room;
-          let show = true;
-          if (rm.building === 'kitchen' && !state.showKitchen) show = false;
-          if (rm.building === 'site' && !state.showSite) show = false;
-          if (state.activeFloor !== 'all' && rm.floor !== state.activeFloor) show = false;
-          if (state.activeFloor === 'all' && rm.floor === '2F' && !rm.isRestroom && rm.building !== 'kitchen') {
-            // Avoid overcrowding labels in full-building view; show 1F, 3F, Kitchen & 2F All-Gender Restroom
-            show = false;
+        for (const it of roomLabelsData) {
+          const rm = it.room;
+          const sel = state.selectedRoomMesh === it.mesh, hov = hoveredZone === it.mesh;
+          let ok = true;
+          if (rm.building === 'kitchen' && !state.showKitchen) ok = false;
+          if (rm.building === 'site' && !state.showSite) ok = false;
+          if (ok && !allFloors) ok = rm.floor === state.activeFloor;
+          let yOff = 0;
+          if (rm.floor === '2F') yOff = state.currentExplode * 4.5;
+          if (rm.floor === '3F') yOff = state.currentExplode * 9.0;
+          proj.set(it.mesh.position.x, it.baseY + yOff, it.mesh.position.z);
+          const d = camera.position.distanceTo(proj);
+          let lvl = 0;
+          if (ok) {
+            if (sel || hov) lvl = 3;
+            else if (overview) lvl = rm.overview ? 1 : 0;
+            else if (rm.floor === 'ALL') lvl = 0;
+            else if (allFloors && !exploded && rm.building === 'main' && rm.floor !== '3F' && !rm.keyGround) lvl = 0;
+            else if (d <= NEAR) lvl = 3;
+            else if (d <= FAR || !allFloors) lvl = 2;
+            else lvl = rm.overview ? 1 : 0;
           }
-          if (!show) {
-            item.el.style.display = 'none';
-            return;
-          }
-
-          let yOffset = 0;
-          if (rm.floor === '2F') yOffset = state.currentExplode * 4.5;
-          if (rm.floor === '3F') yOffset = state.currentExplode * 9.0;
-
-          proj.set(item.mesh.position.x, item.baseY + yOffset, item.mesh.position.z);
+          if (!lvl) { it.target = 0; continue; }
           proj.project(camera);
-          if (proj.z > 1.0) {
-            item.el.style.display = 'none';
-            return;
+          if (proj.z > 1) { it.target = 0; continue; }
+          const sx = (proj.x * 0.5 + 0.5) * W, sy = (-proj.y * 0.5 + 0.5) * H;
+          if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) { it.target = 0; continue; }
+          if (it.level !== lvl) {
+            it.level = lvl;
+            it.codeEl.textContent = lvl === 3 ? rm.code : '';
+            it.txt.textContent = lvl === 3 ? (rm.code ? rm.titleNoCode : rm.name) : rm.short;
+            it.el.classList.toggle('lvl1', lvl === 1);
+            it.el.classList.toggle('lvl3', lvl === 3);
+            it.wh = null;
           }
-          const sx = (proj.x * 0.5 + 0.5) * w;
-          const sy = (-proj.y * 0.5 + 0.5) * h;
-          if (sx < 0 || sx > w || sy < 0 || sy > h) {
-            item.el.style.display = 'none';
-            return;
+          if (!it.wh) it.wh = [it.el.offsetWidth, it.el.offsetHeight];
+          const edge = Math.min(sx, W - sx, sy, H - sy);
+          let alpha = THREE.MathUtils.clamp(edge / EDGE, 0, 1);
+          if (lvl === 2 && allFloors && d > FAR - 8) alpha *= THREE.MathUtils.clamp((FAR - d) / 8, 0.25, 1);
+          cands.push({ it, sx, sy, d, alpha, pri: (sel || hov) ? 100 : rm.pri });
+        }
+
+        cands.sort((a, b) => b.pri - a.pri || a.d - b.d);
+        const placed = [];
+        const hits = (r) => placed.some((q) => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1]);
+        for (const c of cands) {
+          const [w, h] = c.it.wh;
+          let pin = 14;
+          let r = [c.sx - w / 2 - PAD, c.sy - pin - h - PAD, c.sx + w / 2 + PAD, c.sy - pin + PAD];
+          if (hits(r)) { pin = 30; r = [r[0], r[1] - 16, r[2], r[3] - 16]; }
+          if (hits(r) && c.pri < 100) { c.it.target = 0; continue; }
+          placed.push(r);
+          c.it.target = c.alpha;
+          const el = c.it.el;
+          if (c.it.pin !== pin) { el.style.setProperty('--pin', pin + 'px'); c.it.pin = pin; }
+          el.style.transform = `translate3d(${Math.round(c.sx - w / 2)}px, ${Math.round(c.sy - pin - h)}px, 0)`;
+          el.style.zIndex = String(c.pri);
+        }
+        for (const it of roomLabelsData) {
+          const t = it.target || 0;
+          const shown = t > 0.02;
+          if (shown || it.shown) {
+            it.el.style.opacity = t.toFixed(2);
+            it.el.style.pointerEvents = shown ? 'auto' : 'none';
+            it.shown = shown;
           }
-          item.el.style.display = 'block';
-          item.el.style.left = `${sx}px`;
-          item.el.style.top = `${sy}px`;
-        });
+        }
       }
 
       // =========================================================================
@@ -2321,22 +2435,67 @@
         updateStreetViewVisibility();
       }
 
+      // 街景麵包屑（§4.2）：溪埔國中 › 棟別 › 樓層 › 地點
+      const svLastCrumbPos = new THREE.Vector3(1e9, 0, 0);
+      function svBuildingOf(x, z) {
+        const rx = x - OFFSET_X, rz = z - OFFSET_Z;
+        if (rx >= -1 && rx <= 83 && rz >= -2.5 && rz <= 17) return '主校舍';
+        if (rx >= KIT.x - 3 && rx <= KIT.x + 30 && rz >= KIT.z - 1 && rz <= KIT.z + 25) return '中央廚房';
+        return '校園戶外';
+      }
       function updateStreetViewLocationText(customName = null) {
         const labelEl = document.getElementById('sv-location-label');
-        if (customName) {
-          labelEl.textContent = `街景模式・${customName}`;
-          return;
+        const p = state.svTargetPos;
+        let name = customName;
+        if (!name) {
+          let bestDist = 14;
+          STREET_VIEW_SPOTS.forEach((sp) => {
+            const d = Math.hypot(sp.x - p.x, sp.z - p.z);
+            if (d < bestDist && (sp.floor === state.svFloor || (sp.floor <= 1 && state.svFloor <= 1))) { bestDist = d; name = sp.name; }
+          });
         }
-        let bestName = state.svFloor > 0 ? `${state.svFloor}F 校舍空間` : '校園戶外區域';
-        let bestDist = 14;
-        STREET_VIEW_SPOTS.forEach((sp) => {
-          const d = Math.hypot(sp.x - state.svTargetPos.x, sp.z - state.svTargetPos.z);
-          if (d < bestDist && (sp.floor === state.svFloor || (sp.floor <= 1 && state.svFloor <= 1))) {
-            bestDist = d;
-            bestName = sp.name;
-          }
+        if (name) name = name.replace(/^[123]F\s*/, '');
+        const bld = svBuildingOf(p.x, p.z);
+        const parts = ['溪埔國中', bld];
+        if (bld !== '校園戶外') parts.push(state.svFloor > 0 ? `${state.svFloor}F` : '地面');
+        if (name && name !== bld) parts.push(name);
+        labelEl.innerHTML = '';
+        parts.forEach((t, i) => {
+          if (i) { const sep = document.createElement('span'); sep.className = 'crumb-sep'; sep.textContent = '›'; labelEl.appendChild(sep); }
+          const sp = document.createElement('span'); sp.textContent = t;
+          if (i === parts.length - 1) sp.className = 'text-amber-200';
+          labelEl.appendChild(sp);
         });
-        labelEl.textContent = `街景模式・${bestName}`;
+        svLastCrumbPos.copy(p);
+      }
+      const SV_DIRS = ['朝北 N', '朝東北 NE', '朝東 E', '朝東南 SE', '朝南 S', '朝西南 SW', '朝西 W', '朝西北 NW'];
+      let svHintsAt = 0, svHintsCollapsed = false, svPrevMode = null, svHintStart = new THREE.Vector3(), svHintYaw = 0;
+      function setSvHints(open) {
+        svHintsCollapsed = !open;
+        document.getElementById('sv-hints').style.display = open ? '' : 'none';
+        document.getElementById('sv-help-btn').hidden = open;
+      }
+      // 使用者首次操作（步行鍵、方向鍵盤、拖曳環顧）即收合操作說明
+      const svUserMoved = () => { if (state.navMode === 'street' && !svHintsCollapsed && performance.now() - svHintsAt > 400) setSvHints(false); };
+      window.addEventListener('keydown', (e) => { if (/^(Arrow|Key[WASD])/.test(e.code)) svUserMoved(); });
+      document.querySelectorAll('.dpad-btn').forEach((b) => b.addEventListener('pointerdown', svUserMoved));
+      renderer.domElement.addEventListener('pointermove', (e) => { if (e.buttons && state.navMode === 'street') svUserMoved(); });
+      document.getElementById('sv-help-btn').addEventListener('click', () => { setSvHints(true); svHintsAt = performance.now() + 4000; svHintStart.copy(state.svPos); svHintYaw = state.svYaw; });
+      function updateStreetHudFrame(azimuthDeg) {
+        if (state.navMode !== svPrevMode) {
+          const mm = document.getElementById('minimap-wrapper');
+          if (state.navMode === 'street') {
+            setSvHints(true); svHintsAt = performance.now(); svHintStart.copy(state.svPos); svHintYaw = state.svYaw;
+          }
+          mm.style.display = state.navMode === 'street' && window.innerWidth < 768 ? 'none' : '';
+          svPrevMode = state.navMode;
+        }
+        if (state.navMode !== 'street') return;
+        const idx = Math.round((((azimuthDeg % 360) + 360) % 360) / 45) % 8;
+        const hd = document.getElementById('sv-heading');
+        if (hd.textContent !== SV_DIRS[idx]) hd.textContent = SV_DIRS[idx];
+        if (!svHintsCollapsed && performance.now() - svHintsAt > 5000) setSvHints(false);
+        if (Math.hypot(state.svTargetPos.x - svLastCrumbPos.x, state.svTargetPos.z - svLastCrumbPos.z) > 1.5) updateStreetViewLocationText();
       }
 
       function enterStreetViewAt(worldX, worldZ, floorNum = null, yawRad = null, customLabel = null) {
@@ -2561,15 +2720,41 @@
           pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
           pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
           raycaster.setFromCamera(pointerNDC, camera);
-          const visZones = interactiveRoomMeshes.filter((z) => {
-            const rm = z.userData.room;
-            if (rm.building === 'kitchen' && !state.showKitchen) return false;
-            return state.activeFloor === 'all' || rm.floor === state.activeFloor;
-          });
-          const hits = raycaster.intersectObjects(visZones, false);
+          const hits = raycaster.intersectObjects(pickableZones(), false);
           if (hits.length > 0) selectRoom(hits[0].object);
         }
       });
+
+      function pickableZones() {
+        return interactiveRoomMeshes.filter((z) => {
+          const rm = z.userData.room;
+          if (rm.floor === 'ALL') return false;
+          if (rm.building === 'kitchen' && !state.showKitchen) return false;
+          if (rm.building === 'site' && !state.showSite) return false;
+          return state.activeFloor === 'all' || rm.floor === state.activeFloor;
+        });
+      }
+      // 滑鼠懸停空間：顯示 L3 完整名稱（§2.1）
+      let hoverPending = null;
+      renderer.domElement.addEventListener('pointermove', (e) => {
+        if (state.navMode === 'street' || e.pointerType === 'touch' || e.buttons) return;
+        hoverPending = [e.clientX, e.clientY];
+      });
+      renderer.domElement.addEventListener('pointerleave', () => { hoverPending = null; if (hoveredZone && hoveredZone !== state.selectedRoomMesh) hoveredZone.material.opacity = 0; hoveredZone = null; });
+      function processHover() {
+        if (!hoverPending) return;
+        const [hx, hy] = hoverPending; hoverPending = null;
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointerNDC.x = ((hx - rect.left) / rect.width) * 2 - 1;
+        pointerNDC.y = -((hy - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointerNDC, camera);
+        const hit = raycaster.intersectObjects(pickableZones(), false)[0];
+        const z = hit ? hit.object : null;
+        if (z === hoveredZone) return;
+        if (hoveredZone && hoveredZone !== state.selectedRoomMesh) hoveredZone.material.opacity = 0;
+        hoveredZone = z;
+        if (z && z !== state.selectedRoomMesh) z.material.opacity = 0.16;
+      }
 
       renderer.domElement.addEventListener('dblclick', (e) => {
         if (state.navMode === 'street' || state.pegmanDropMode) return;
@@ -2590,76 +2775,119 @@
       const mmCtx = minimapCanvas.getContext('2d');
       const MM_BOUNDS = { minX: gx(-76), maxX: gx(124), minZ: gz(-14), maxZ: gz(101) };
 
+      // HiDPI 畫布＋等比例縮放（§3.1）；靜態底圖畫在離屏畫布（§5.3）
+      let mmW = 228, mmH = 156, mmDpr = 1, mmScale = 1, mmOx = 0, mmOy = 0;
+      const mmBase = document.createElement('canvas');
+      const mmBaseCtx = mmBase.getContext('2d');
+      let mmBaseDirty = true, mmLastKey = '', mmHover = null;
+      function resizeMinimapCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const r = minimapCanvas.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        mmW = r.width; mmH = r.height; mmDpr = dpr;
+        minimapCanvas.width = Math.round(mmW * dpr); minimapCanvas.height = Math.round(mmH * dpr);
+        mmBase.width = minimapCanvas.width; mmBase.height = minimapCanvas.height;
+        const bw = MM_BOUNDS.maxX - MM_BOUNDS.minX, bh = MM_BOUNDS.maxZ - MM_BOUNDS.minZ;
+        mmScale = Math.min(mmW / bw, mmH / bh);
+        mmOx = (mmW - bw * mmScale) / 2; mmOy = (mmH - bh * mmScale) / 2;
+        mmBaseDirty = true; mmLastKey = '';
+      }
       function worldToMinimap(wx, wz) {
-        const u = (wx - MM_BOUNDS.minX) / (MM_BOUNDS.maxX - MM_BOUNDS.minX);
-        const v = (wz - MM_BOUNDS.minZ) / (MM_BOUNDS.maxZ - MM_BOUNDS.minZ);
-        return [u * minimapCanvas.width, v * minimapCanvas.height];
+        return [mmOx + (wx - MM_BOUNDS.minX) * mmScale, mmOy + (wz - MM_BOUNDS.minZ) * mmScale];
       }
       function minimapToWorld(cx, cy) {
-        const u = THREE.MathUtils.clamp(cx / minimapCanvas.width, 0.02, 0.98);
-        const v = THREE.MathUtils.clamp(cy / minimapCanvas.height, 0.02, 0.98);
-        return [
-          MM_BOUNDS.minX + u * (MM_BOUNDS.maxX - MM_BOUNDS.minX),
-          MM_BOUNDS.minZ + v * (MM_BOUNDS.maxZ - MM_BOUNDS.minZ)
-        ];
+        return [MM_BOUNDS.minX + (cx - mmOx) / mmScale, MM_BOUNDS.minZ + (cy - mmOy) / mmScale];
+      }
+      function mmText(ctx, label, x, y, size) {
+        ctx.font = `700 ${size}px "Noto Sans TC", "Inter", sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round'; ctx.lineWidth = 3.2; ctx.strokeStyle = 'rgba(15, 23, 42, 0.92)';
+        ctx.strokeText(label, x, y);
+        ctx.fillStyle = '#f8fafc'; ctx.fillText(label, x, y);
+      }
+      // 小地圖懸停目標：街景點與主要建物（§3.3-4）
+      function mmTargets() {
+        const t = [];
+        STREET_VIEW_SPOTS.forEach((sp) => t.push({ kind: 'spot', sp, name: sp.name, x: sp.x, z: sp.z, r: 6 }));
+        const box = (name, x0, x1, z0, z1) => t.push({ kind: 'area', name, box: [gx(x0), gx(x1), gz(z0), gz(z1)], x: gx((x0 + x1) / 2), z: gz((z0 + z1) / 2) });
+        box('主校舍', 0, 82.7, 0, 10.85);
+        if (state.showKitchen) box('中央廚房', KIT.x, KIT.x + 29.6, KIT.z, KIT.z + 24.4);
+        const T = SITE.track; box('操場', T.cx - T.straightHalf - T.outerR, T.cx + T.straightHalf + T.outerR, T.cz - T.outerR, T.cz + T.outerR);
+        const CO = SITE.courtOpen, CC = SITE.courtCovered, ST = SITE.stage, AX = SITE.annex;
+        box('籃球場', CO.cx - CO.w / 2, CO.cx + CO.w / 2, CO.cz - CO.d / 2, CO.cz + CO.d / 2);
+        box('風雨球場', CC.cx - CC.w / 2, CC.cx + CC.w / 2, CC.cz - CC.d / 2, CC.cz + CC.d / 2);
+        box('司令台', ST.cx - ST.w / 2, ST.cx + ST.w / 2, ST.cz - ST.d / 2, ST.cz + ST.d / 2);
+        box('大門・警衛室', AX.x0, AX.x1 + 5, AX.z0, SITE.gates.main[1] + 5);
+        return t;
+      }
+      function mmPick(cx, cy) {
+        let best = null, bestD = 1e9;
+        for (const t of mmTargets()) {
+          if (t.kind !== 'spot') continue;
+          const [mx, my] = worldToMinimap(t.x, t.z);
+          const d = Math.hypot(mx - cx, my - cy);
+          if (d < t.r && d < bestD) { best = t; bestD = d; }
+        }
+        if (best) return best;
+        const [wx, wz] = minimapToWorld(cx, cy);
+        return mmTargets().find((t) => t.kind === 'area' && wx >= t.box[0] && wx <= t.box[1] && wz >= t.box[2] && wz <= t.box[3]) || null;
       }
 
-      function drawMiniMap() {
-        const w = minimapCanvas.width;
-        const h = minimapCanvas.height;
-        mmCtx.clearRect(0, 0, w, h);
-        mmCtx.fillStyle = '#1b2a24';
-        mmCtx.fillRect(0, 0, w, h);
+      function drawMinimapBase(ctx) {
+        const w = mmW, h = mmH;
+        ctx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = '#1b2a24';
+        ctx.fillRect(0, 0, w, h);
 
         const drawRawRect = (rx0, rx1, rz0, rz1, fill, stroke = null) => {
           const [x0, y0] = worldToMinimap(gx(rx0), gz(rz0));
           const [x1, y1] = worldToMinimap(gx(rx1), gz(rz1));
-          mmCtx.fillStyle = fill;
-          mmCtx.fillRect(x0, y0, x1 - x0, y1 - y0);
+          ctx.fillStyle = fill;
+          ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
           if (stroke) {
-            mmCtx.strokeStyle = stroke;
-            mmCtx.lineWidth = 1.1;
-            mmCtx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = 1.1;
+            ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
           }
         };
 
         // 校地範圍
-        mmCtx.beginPath();
+        ctx.beginPath();
         SITE.boundary.forEach(([bx, bz], i) => {
           const [mx, my] = worldToMinimap(gx(bx), gz(bz));
-          if (i === 0) mmCtx.moveTo(mx, my); else mmCtx.lineTo(mx, my);
+          if (i === 0) ctx.moveTo(mx, my); else ctx.lineTo(mx, my);
         });
-        mmCtx.closePath();
-        mmCtx.fillStyle = '#23382e'; mmCtx.fill();
-        mmCtx.strokeStyle = '#3a5948'; mmCtx.lineWidth = 1.1; mmCtx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = '#23382e'; ctx.fill();
+        ctx.strokeStyle = '#3a5948'; ctx.lineWidth = 1.1; ctx.stroke();
 
         // 200 m 跑道
         const T = SITE.track;
         const [tcx, tcy] = worldToMinimap(gx(T.cx), gz(T.cz));
-        const sxm = minimapCanvas.width / (MM_BOUNDS.maxX - MM_BOUNDS.minX);
-        const sym = minimapCanvas.height / (MM_BOUNDS.maxZ - MM_BOUNDS.minZ);
+        const sxm = mmScale, sym = mmScale;
         const stadium = (r) => {
-          mmCtx.beginPath();
-          mmCtx.ellipse(tcx - T.straightHalf * sxm, tcy, r * sxm, r * sym, 0, Math.PI / 2, Math.PI * 1.5);
-          mmCtx.ellipse(tcx + T.straightHalf * sxm, tcy, r * sxm, r * sym, 0, -Math.PI / 2, Math.PI / 2);
-          mmCtx.closePath();
+          ctx.beginPath();
+          ctx.ellipse(tcx - T.straightHalf * sxm, tcy, r * sxm, r * sym, 0, Math.PI / 2, Math.PI * 1.5);
+          ctx.ellipse(tcx + T.straightHalf * sxm, tcy, r * sxm, r * sym, 0, -Math.PI / 2, Math.PI / 2);
+          ctx.closePath();
         };
-        stadium(T.outerR); mmCtx.fillStyle = '#8f3f33'; mmCtx.fill();
-        stadium(T.innerR); mmCtx.fillStyle = '#36613e'; mmCtx.fill();
+        stadium(T.outerR); ctx.fillStyle = '#8f3f33'; ctx.fill();
+        stadium(T.innerR); ctx.fillStyle = '#36613e'; ctx.fill();
         const SP = SITE.sprint;
         drawRawRect(SP.cx - SP.len / 2, SP.cx + SP.len / 2, SP.cz - SP.w / 2, SP.cz + SP.w / 2, '#8f3f33');
 
         // 球場
         const CO = SITE.courtOpen, CC = SITE.courtCovered;
-        drawRawRect(CO.cx - CO.w / 2, CO.cx + CO.w / 2, CO.cz - CO.d / 2, CO.cz + CO.d / 2, '#275966', '#94a3b8');
-        drawRawRect(CC.cx - CC.w / 2, CC.cx + CC.w / 2, CC.cz - CC.d / 2, CC.cz + CC.d / 2, '#336c7d', '#e2e8f0');
+        drawRawRect(CO.cx - CO.w / 2, CO.cx + CO.w / 2, CO.cz - CO.d / 2, CO.cz + CO.d / 2, '#5b5a9e', '#fb7185');
+        drawRawRect(CC.cx - CC.w / 2, CC.cx + CC.w / 2, CC.cz - CC.d / 2, CC.cz + CC.d / 2, '#3b4a5c', '#fb7185');
 
         // 廣場與水池
         const EP = SITE.entryPlaza;
         drawRawRect(EP.x0, EP.x1, EP.z0, EP.z1, '#5b5a55');
         const [px, py] = worldToMinimap(gx(SITE.pond.cx), gz(SITE.pond.cz));
-        mmCtx.beginPath(); mmCtx.arc(px, py, SITE.pond.plazaR * sxm, 0, Math.PI * 2); mmCtx.fillStyle = '#6b6a64'; mmCtx.fill();
-        mmCtx.beginPath(); mmCtx.arc(px, py, Math.max(2.5, SITE.pond.waterR * sxm), 0, Math.PI * 2); mmCtx.fillStyle = '#2e7ba1'; mmCtx.fill();
+        ctx.beginPath(); ctx.arc(px, py, SITE.pond.plazaR * sxm, 0, Math.PI * 2); ctx.fillStyle = '#6b6a64'; ctx.fill();
+        ctx.beginPath(); ctx.arc(px, py, Math.max(2.5, SITE.pond.waterR * sxm), 0, Math.PI * 2); ctx.fillStyle = '#2e7ba1'; ctx.fill();
 
         // 主校舍、穿堂、東端附屬區
         drawRawRect(0, 82.7, 0, 10.85, '#cbd5e1', '#38bdf8');
@@ -2668,7 +2896,7 @@
 
         // 中央廚房與風雨走廊
         if (state.showKitchen) {
-          drawRawRect(KIT.x, KIT.x + 24.5, KIT.z, KIT.z + 19, '#e5e7eb', '#fef08a');
+          drawRawRect(KIT.x, KIT.x + 24.5, KIT.z, KIT.z + 19, '#e5e7eb', '#fbbf24');
           drawRawRect(KIT.x - 0.1, KIT.x + 5, KIT.z + 11.5, KIT.z + 19, '#eeb07e');
           drawRawRect(KIT.x + 9, KIT.x + 14, KIT.z + 19, KIT.z + 23, '#e8837f');
           drawRawRect(KIT.x + 14, KIT.x + 21.5, KIT.z + 19, KIT.z + 23, '#e5e7eb');
@@ -2685,54 +2913,102 @@
         drawRawRect(PN.x0, PN.x1, PN.z0, PN.z1, '#475569');
         SITE.bikeShed.forEach(([x0, x1]) => drawRawRect(x0, x1, SITE.bikeShedZ - 2, SITE.bikeShedZ + 2, '#475569'));
         // Blue Street View Routes & Nodes
-        mmCtx.strokeStyle = 'rgba(56, 189, 248, 0.72)';
-        mmCtx.lineWidth = 1.8;
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.72)';
+        ctx.lineWidth = 1.8;
         svPathSegments.forEach((seg) => {
-          mmCtx.beginPath();
+          ctx.beginPath();
           seg.forEach(([rx, rz], idx) => {
             const [mx, my] = worldToMinimap(gx(rx), gz(rz));
-            if (idx === 0) mmCtx.moveTo(mx, my); else mmCtx.lineTo(mx, my);
+            if (idx === 0) ctx.moveTo(mx, my); else ctx.lineTo(mx, my);
           });
-          mmCtx.stroke();
+          ctx.stroke();
         });
         STREET_VIEW_SPOTS.forEach((sp) => {
           const [mx, my] = worldToMinimap(sp.x, sp.z);
-          mmCtx.beginPath(); mmCtx.arc(mx, my, 2.8, 0, Math.PI * 2);
-          mmCtx.fillStyle = sp.floor >= 2 ? '#c084fc' : '#38bdf8'; mmCtx.fill();
+          ctx.beginPath(); ctx.arc(mx, my, 2.8, 0, Math.PI * 2);
+          ctx.fillStyle = sp.floor >= 2 ? '#c084fc' : '#38bdf8'; ctx.fill();
         });
 
-        // Live Camera / Walker View Cone
+        // 地名（深色描邊，§3.2）
+        const fs = mmExp ? 12 : 11;
+        const lab = (t, rx, rz) => { const [x, y] = worldToMinimap(gx(rx), gz(rz)); mmText(ctx, t, x, y, fs); };
+        lab('主校舍', 41, -4.5);
+        if (state.showKitchen) lab('中央廚房', KIT.x + 12, KIT.z - 4);
+        lab('操場', SITE.track.cx, SITE.track.cz);
+        lab('風雨球場', SITE.courtCovered.cx, SITE.courtCovered.cz);
+        lab('大門', SITE.gates.main[0] - 12, SITE.gates.main[1] + 9);
+        // 指北角標（§3.3-1）
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'; ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect ? ctx.roundRect(w - 34, 6, 28, 22, 6) : ctx.rect(w - 34, 6, 28, 22); ctx.fill(); ctx.stroke();
+        ctx.font = '700 11px "Inter", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fb7185'; ctx.fillText('▲', w - 26, 17); ctx.fillStyle = '#f8fafc'; ctx.fillText('N', w - 15, 17.5);
+        // 20 m 比例尺（§3.3-2）
+        const L = 20 * mmScale, sx0 = 10, sy0 = h - 12;
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.92)'; ctx.lineWidth = 5; ctx.lineCap = 'butt';
+        ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.lineTo(sx0 + L, sy0); ctx.stroke();
+        ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(sx0, sy0 - 4); ctx.lineTo(sx0, sy0); ctx.lineTo(sx0 + L, sy0); ctx.lineTo(sx0 + L, sy0 - 4); ctx.stroke();
+        ctx.restore();
+        mmText(ctx, '20m', sx0 + L + 16, sy0 - 1, 11);
+      }
+
+      let mmBaseKey = '';
+      function drawMiniMap(force = false) {
+        if (!mmW || minimapCanvas.offsetParent === null) return;
+        const bk = `${state.showKitchen}|${state.showSite}|${mmExp}|${mmW}x${mmH}`;
+        if (bk !== mmBaseKey) { mmBaseDirty = true; mmBaseKey = bk; }
         const posRef = state.navMode === 'street' ? state.svPos : controls.target;
-        const [vx, vy] = worldToMinimap(posRef.x, posRef.z);
         const lookDir = new THREE.Vector3();
         camera.getWorldDirection(lookDir);
         const heading = Math.atan2(lookDir.z, lookDir.x);
-        mmCtx.beginPath();
-        mmCtx.moveTo(vx, vy);
-        mmCtx.arc(vx, vy, 22, heading - 0.5, heading + 0.5);
-        mmCtx.closePath();
-        mmCtx.fillStyle = state.navMode === 'street' ? 'rgba(251, 191, 36, 0.38)' : 'rgba(56, 189, 248, 0.30)';
-        mmCtx.fill();
+        // 節流：位移 < 0.05 m 且轉角 < 0.005 rad 不重繪（§5.3）
+        const key = [Math.round(posRef.x / 0.05), Math.round(posRef.z / 0.05), Math.round(heading / 0.005), state.navMode, mmHover ? mmHover.name : ''].join('|');
+        if (!force && !mmBaseDirty && key === mmLastKey) return;
+        mmLastKey = key;
+        if (mmBaseDirty) { drawMinimapBase(mmBaseCtx); mmBaseDirty = false; }
+        const ctx = mmCtx;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+        ctx.drawImage(mmBase, 0, 0);
+        ctx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
+        // 懸停目標高亮
+        if (mmHover) {
+          ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 2;
+          if (mmHover.kind === 'spot') {
+            const [hx, hy] = worldToMinimap(mmHover.x, mmHover.z);
+            ctx.beginPath(); ctx.arc(hx, hy, 6, 0, Math.PI * 2); ctx.stroke();
+          } else {
+            const [x0, y0] = worldToMinimap(mmHover.box[0], mmHover.box[2]);
+            const [x1, y1] = worldToMinimap(mmHover.box[1], mmHover.box[3]);
+            ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+          }
+        }
+        // Live Camera / Walker View Cone
+        const [vx, vy] = worldToMinimap(posRef.x, posRef.z);
+        ctx.beginPath();
+        ctx.moveTo(vx, vy);
+        ctx.arc(vx, vy, 22, heading - 0.5, heading + 0.5);
+        ctx.closePath();
+        ctx.fillStyle = state.navMode === 'street' ? 'rgba(251, 191, 36, 0.38)' : 'rgba(56, 189, 248, 0.30)';
+        ctx.fill();
 
-        mmCtx.beginPath(); mmCtx.arc(vx, vy, 4.8, 0, Math.PI * 2);
-        mmCtx.fillStyle = state.navMode === 'street' ? '#f59e0b' : '#38bdf8'; mmCtx.fill();
-        mmCtx.lineWidth = 1.8; mmCtx.strokeStyle = '#ffffff'; mmCtx.stroke();
+        ctx.beginPath(); ctx.arc(vx, vy, 4.8, 0, Math.PI * 2);
+        ctx.fillStyle = state.navMode === 'street' ? '#f59e0b' : '#38bdf8'; ctx.fill();
+        ctx.lineWidth = 1.8; ctx.strokeStyle = '#ffffff'; ctx.stroke();
 
-        mmCtx.fillStyle = 'rgba(248, 250, 252, 0.88)';
-        mmCtx.font = 'bold 10px Noto Sans TC, sans-serif';
-        const [mbX, mbY] = worldToMinimap(gx(36), gz(-2.5));
-        mmCtx.fillText('主校舍', mbX - 14, mbY);
-        const [ckX, ckY] = worldToMinimap(gx(-30), gz(-9.5));
-        mmCtx.fillText('中央廚房', ckX - 18, ckY);
-        mmCtx.fillText('操場', tcx - 10, tcy + 4);
       }
 
       let minimapDragging = false;
       function handleMinimapInteract(clientX, clientY, isClick = false) {
         const rect = minimapCanvas.getBoundingClientRect();
-        const cx = ((clientX - rect.left) / rect.width) * minimapCanvas.width;
-        const cy = ((clientY - rect.top) / rect.height) * minimapCanvas.height;
+        const cx = clientX - rect.left, cy = clientY - rect.top;
         const [wx, wz] = minimapToWorld(cx, cy);
+        const picked = isClick ? mmPick(cx, cy) : null;
+        if (picked && picked.kind === 'spot' && state.navMode !== 'street' && !state.pegmanDropMode) {
+          enterStreetViewAt(picked.sp.x, picked.sp.z, picked.sp.floor, picked.sp.yaw, picked.sp.name);
+          return;
+        }
 
         if (state.navMode === 'street' || state.pegmanDropMode) {
           let nearest = null;
@@ -2777,6 +3053,22 @@
         if (minimapDragging) handleMinimapInteract(e.clientX, e.clientY, false);
       });
       window.addEventListener('pointerup', () => { minimapDragging = false; });
+      const mmTip = document.getElementById('minimap-tip');
+      minimapCanvas.addEventListener('pointermove', (e) => {
+        if (minimapDragging || e.pointerType === 'touch') return;
+        const r = minimapCanvas.getBoundingClientRect();
+        const t = mmPick(e.clientX - r.left, e.clientY - r.top);
+        if ((t && t.name) !== (mmHover && mmHover.name)) {
+          mmHover = t;
+          mmTip.textContent = t ? `點擊前往：${t.name}` : '';
+          mmTip.style.opacity = t ? '1' : '0';
+          minimapCanvas.style.cursor = t ? 'pointer' : 'crosshair';
+        }
+      });
+      minimapCanvas.addEventListener('pointerleave', () => { mmHover = null; mmTip.style.opacity = '0'; });
+      new ResizeObserver(() => resizeMinimapCanvas()).observe(minimapCanvas);
+      window.addEventListener('resize', resizeMinimapCanvas);
+      if (window.matchMedia) window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener?.('change', resizeMinimapCanvas);
 
       // =========================================================================
       // 17. UI EVENT LISTENERS & EXPORTERS
@@ -2949,8 +3241,8 @@
         if (!state.selectedRoomMesh) return;
         if (state.navMode === 'street') { state.navMode = 'earth'; controls.enabled = true; updateModeButtonsUI(); }
         const p = state.selectedRoomMesh.position;
-        const fl = state.selectedRoomMesh.userData.room.floor;
-        if (state.activeFloor === 'all' && fl !== '3F') setActiveFloor(fl);
+        const sr = state.selectedRoomMesh.userData.room, fl = sr.floor;
+        if (state.activeFloor === 'all' && sr.building === 'main' && (fl === '1F' || fl === '2F')) setActiveFloor(fl);
         flyToCamera([p.x + 12, p.y + 11, p.z + 18], [p.x, p.y, p.z], 700);
       });
       document.getElementById('room-street-btn').addEventListener('click', () => {
@@ -2958,7 +3250,7 @@
         const rm = state.selectedRoomMesh.userData.room;
         const p = state.selectedRoomMesh.position;
         const flMap = { '1F': 1, '2F': 2, '3F': 3 };
-        enterStreetViewAt(p.x, p.z, flMap[rm.floor] ?? 1, 0, rm.name);
+        enterStreetViewAt(p.x, p.z, rm.building === 'site' ? 0 : (flMap[rm.floor] ?? 1), 0, rm.short || rm.name);
       });
 
       // Mini-map resize & collapse
@@ -2975,10 +3267,12 @@
         minimapCanvas.classList.toggle('sm:h-[156px]', !mmExp);
         minimapCanvas.classList.toggle('h-[195px]', mmExp);
         minimapCanvas.classList.toggle('sm:h-[230px]', mmExp);
+        requestAnimationFrame(() => { resizeMinimapCanvas(); if (state.selectedRoomMesh) fitRoomCard(); });
       });
       document.getElementById('minimap-collapse-btn').addEventListener('click', (e) => {
         mmCol = !mmCol;
         document.getElementById('minimap-body').style.display = mmCol ? 'none' : 'block';
+        requestAnimationFrame(() => { resizeMinimapCanvas(); if (state.selectedRoomMesh) fitRoomCard(); });
         e.currentTarget.textContent = mmCol ? '▴' : '▾';
       });
 
@@ -3116,8 +3410,8 @@
         row.innerHTML = `<input id="dwg-${L.id}" type="checkbox" class="w-4 h-4 accent-sky-400 rounded cursor-pointer shrink-0" />
           <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${L.color}"></span>
           <label for="dwg-${L.id}" class="flex-1 min-w-0 text-[11px] text-slate-200 cursor-pointer truncate">${L.name}</label>
-          <button data-act="view" class="px-1.5 py-0.5 rounded-md bg-sky-700/70 hover:bg-sky-600 text-[10px] text-white shrink-0">看</button>
-          <button data-act="sheet" class="px-1.5 py-0.5 rounded-md bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-100 shrink-0">原圖</button>`;
+          <button data-act="view" class="px-1.5 py-0.5 rounded-md bg-sky-700/70 hover:bg-sky-600 text-[11px] text-white shrink-0">看</button>
+          <button data-act="sheet" class="px-1.5 py-0.5 rounded-md bg-slate-700 hover:bg-slate-600 text-[11px] text-slate-100 shrink-0">原圖</button>`;
         row.querySelector('input').addEventListener('change', (e) => setDwgLayer(L, e.target.checked));
         row.querySelector('[data-act="view"]').addEventListener('click', () => {
           DWG_LAYERS.forEach((x) => setDwgLayer(x, x === L));
@@ -3203,6 +3497,7 @@
         camera.getWorldDirection(dir);
         const azimuthDeg = THREE.MathUtils.radToDeg(Math.atan2(dir.x, -dir.z));
         compassNeedle.style.transform = `rotate(${-azimuthDeg}deg)`;
+        updateStreetHudFrame(azimuthDeg);
 
         const ref = state.navMode === 'street' ? state.svPos : controls.target;
         // 以 Google 地圖「高雄市立溪埔國民中學」地標 (22.7190601, 120.4435042) 對齊校地中心（配置圖座標 x25, z45），假設配置圖北向＝正北，誤差約數十公尺
@@ -3216,6 +3511,7 @@
 
         updateRoomLabels();
         drawMiniMap();
+        processHover();
         renderer.render(scene, camera);
       }
 
