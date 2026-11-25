@@ -449,28 +449,32 @@
 
       // 校園配置（依中央廚房統包工程「現況全區配置圖」1/600 量測，原點＝主校舍軸線①×D，+X 東、+Z 南）
       const SITE = {
-        boundary: [[-51, -10.5], [120, -7], [120, 97], [5, 96.5], [-70, 72]],
-        track: { cx: 8.0, cz: 41.5, straightHalf: 28.8, outerR: 19.5, innerR: 12.2 },
-        sprint: { cx: 8.0, cz: 66.0, len: 118.0, w: 8.0 },
-        stage: { cx: -6.6, cz: 77.0, w: 9.0, d: 4.4 },
-        storage172: { cx: 0.5, cz: 86.5, w: 10.0, d: 12.5 },
-        courtOpen: { cx: 59.0, cz: 82.0, w: 24.5, d: 17.0 },
-        courtCovered: { cx: 86.5, cz: 82.0, w: 24.5, d: 17.0 },
-        pond: { cx: 76.0, cz: 46.0, plazaR: 11.0, waterR: 4.0 },
-        entryPlaza: { x0: 76.0, x1: 119.0, z0: 37.5, z1: 53.5 },
-        annex: { x0: 110.0, x1: 115.0, z0: 16.0, z1: 37.0 },
-        parkingNE: { x0: 97.0, x1: 109.0, z0: 2.0, z1: 30.0 },
-        parkingSE: { cx: 106.0, cz: 73.0, w: 13.0, d: 42.0, rot: 0.17 },
-        bikeShed: [[10.0, 51.5], [64.0, 76.0]],
-        bikeShedZ: -5.2,
-        kitchenRoad: { from: [-66.0, 72.0], to: [-47.0, -2.0], w: 5.5 },
+        // 依 Google 衛星圖（比例尺 20 m）與現況全區配置圖校正；原點＝主校舍軸線①×D，+X 東、+Z 南
+        boundary: [[-48, -23], [-9, -23], [-9, -11], [123.5, -11], [123.5, 100], [110, 100], [8, 94], [-50, 78], [-69, 68], [-56, 53]],
+        track: { cx: 8.9, cz: 43.8, straightHalf: 25.7, outerR: 21.7, innerR: 14.4 },
+        sprint: { cx: 1.0, cz: 66.5, len: 104.0, w: 8.0 },
+        stage: { cx: 6.3, cz: 74.7, w: 11.0, d: 7.0 },
+        storage172: { cx: 0.4, cz: 85.5, w: 14.0, d: 14.5 },
+        containers: { cx: 26.0, cz: 80.0 },
+        courtOpen: { cx: 55.5, cz: 80.0, w: 22.0, d: 18.0 },
+        courtCovered: { cx: 82.0, cz: 81.5, w: 27.0, d: 22.0 },
+        pond: { cx: 72.5, cz: 47.2, plazaR: 7.8, waterR: 3.0 },
+        entryPlaza: { x0: 78.0, x1: 123.5, z0: 38.0, z1: 55.0 },
+        plazaCanopy: { x0: 82.0, x1: 112.0, z0: 55.2, z1: 58.0 },
+        annex: { x0: 112.0, x1: 119.0, z0: 27.0, z1: 41.0 },
+        parkingNE: { x0: 99.0, x1: 111.0, z0: 0.0, z1: 37.0 },
+        bikeShed: [[9.0, 73.0]],
+        bikeShedZ: -7.3,
+        northShed: { x0: -8.0, x1: -0.8, z0: -10.0, z1: -4.4 },
+        kitchenRoad: { from: [-64.0, 66.0], to: [-51.0, -6.0], w: 6.0 },
         gates: {
-          main: [119.0, 45.5],
-          east: [119.0, 6.0],
-          south: [11.0, 96.5],
-          southwest: [-67.0, 70.0]
+          main: [123.5, 47.5],
+          south: [13.0, 95.5],
+          southwest: [-66.0, 69.0]
         }
       };
+      // 中央廚房（110 年統包工程 A2 一層平面圖）：軸線①×Ⓐ 的校園座標；①–⑦ = 0/4/9/14/17/21/25 m，Ⓐ–Ⓔ = 0/4.5/12/19/23 m
+      const KIT = { x: -45.0, z: -9.0 };
 
       // =========================================================================
       // 2. THREE.JS SCENE, RENDERER, CAMERA & LIGHTING SETUP
@@ -807,6 +811,12 @@
         porcelain: makeMat(0xf8fafc, { roughness: 0.22, metalness: 0.08 }),
         // Central Kitchen Exterior Palette (matching 2021-10-07 基本設計簡報 3D renders!)
         ckWhite: makeMat(0xf4f4f2, { roughness: 0.82, xrayable: true }),
+        ckPeach: makeMat(0xeeb07e, { roughness: 0.85, xrayable: true }),
+        ckPink: makeMat(0xe8837f, { roughness: 0.85, xrayable: true }),
+        ckYellow: makeMat(0xf2d238, { roughness: 0.85, xrayable: true }),
+        ckCream: makeMat(0xe9e2cd, { roughness: 0.85, xrayable: true }),
+        containerPurple: makeMat(0x8d7fb8, { roughness: 0.7 }),
+        courtPurple: makeMat(0x6f6aa8, { roughness: 0.8 }),
         ckGray: makeMat(0xbec4cb, { roughness: 0.82, xrayable: true }),
         ckYellowGreen: makeMat(0xf2cc3a, { roughness: 0.82, xrayable: true }), // 2-7 食育教室外廊黃色牆（依現況照片）
         ckTerracotta: makeMat(0xea8682, { roughness: 0.82, xrayable: true }),  // 珊瑚粉紅量體（依現況照片）
@@ -1333,6 +1343,16 @@
           }
         }
 
+        // 平屋頂太陽能板（衛星圖顯示主校舍屋頂幾乎全面設置）
+        [[1.0, 7.0], [38.5, 52.0], [64.5, 71.5]].forEach(([x0, x1]) => {
+          for (let x = x0 + 1.3; x < x1; x += 2.7) {
+            for (let r = 0; r < 3; r++) {
+              const pv = addBox(roofGroup, 2.4, 0.08, 2.6, gx(x), ELEV.RF + 1.0, gz(1.6 + r * 3.0), MAT.solarPanel, false);
+              pv.rotation.x = -0.18;
+            }
+          }
+        });
+
         // East Breezeway High Canopy Roof (Grid ⑦–⑧ with 1.8m overhangs: X=52.2~64.8m, Z=-4.0~11.85m)
         [54, 63].forEach((cx) => {
           [GRID_Z.D, GRID_Z.C].forEach((cz) => {
@@ -1348,8 +1368,10 @@
         eastRoofS.rotation.x = 0.075;
         // Solar panels on East Canopy
         for (let col = 0; col < 4; col++) {
-          const pv = addBox(roofGroup, 2.6, 0.08, 5.2, gx(54.2 + col * 2.85), ELEV.RF + 2.68, gz(7.5), MAT.solarPanel, false);
-          pv.rotation.x = 0.075;
+          [[0.0, -0.075], [7.9, 0.075]].forEach(([z, rx]) => {
+            const pv = addBox(roofGroup, 2.6, 0.08, 7.4, gx(54.2 + col * 2.85), ELEV.RF + 2.62, gz(z), MAT.solarPanel, false);
+            pv.rotation.x = rx;
+          });
         }
       }
 
@@ -1362,212 +1384,144 @@
       //    Covered Walkway: seamlessly connects X = -17.5m -> X = 0.0m @ 1FL (+1.20m)
       // =========================================================================
       function buildCentralKitchen() {
-        const kx0 = -42.5; // Kitchen Grid ①
-        const kz0 = -7.0;  // Kitchen Grid A
-        const y1 = ELEV.F1; // +1.20m flush with Main Building 1F!
-        const kh = 3.70;    // RFL = +4.90m
+        // 依「中央廚房統包新建工程」A2 一層平面、A3 立面圖與完工照片重建
+        // 1FL +1.20、RFL +4.90、2F 機房頂 +7.90；外觀：白色主體＋蜜桃橘、珊瑚粉紅、黃色、米色量體
+        const y1 = 1.2, yR = 4.9, yP = 7.9;
+        const K = (lx, lz) => [gx(KIT.x + lx), gz(KIT.z + lz)];
+        const kbox = (grp, x0, x1, z0, z1, ya, yb, mat, cast = true) => {
+          const [cx, cz] = K((x0 + x1) / 2, (z0 + z1) / 2);
+          return addBox(grp, x1 - x0, yb - ya, z1 - z0, cx, (ya + yb) / 2, cz, mat, cast, true);
+        };
+        // 窗：貼在牆面外側的玻璃片
+        const winZ = (grp, x0, x1, z, ya, yb) => kbox(grp, x0, x1, z - 0.04, z + 0.04, ya, yb, MAT.glass, false);
+        const winX = (grp, x, z0, z1, ya, yb) => kbox(grp, x - 0.04, x + 0.04, z0, z1, ya, yb, MAT.glass, false);
 
-        // 1. Kitchen Elevated Base Plinth (+0.0m to +1.20m)
-        addBox(kitchenBaseGroup, 25.4, y1, 19.2, gx(kx0 + 12.6), y1 * 0.5, gz(kz0 + 9.6), MAT.concreteBase);
-        // Protruding South Receiving Platform Plinth (進貨平台, X=-33.5~-25.5, Z=12.0~16.0)
-        addBox(kitchenBaseGroup, 8.2, y1, 4.2, gx(-29.5), y1 * 0.5, gz(14.0), MAT.concreteBase);
-        // West Dispatch Dock (出餐平台, X=-45.2~-42.5, Z=-2.5~11.8)
-        addBox(kitchenBaseGroup, 2.8, y1, 14.5, gx(-43.85), y1 * 0.5, gz(4.65), MAT.plazaTile);
-        addStepsX(kitchenBaseGroup, -45.2, -42.5, 0, y1, 11.8, 13.8, 6, MAT.plazaTile);
+        // 1. 基座（GL → 1FL +1.20）
+        kbox(kitchenBaseGroup, 0, 21, 4.5, 19, 0, y1, MAT.ckWhite);
+        kbox(kitchenBaseGroup, 4, 21, 0, 4.5, 0, y1, MAT.ckWhite);
+        kbox(kitchenBaseGroup, 21, 24.5, 4.5, 12, 0, y1, MAT.ckWhite);
+        kbox(kitchenBaseGroup, 9, 14, 19, 23, 0, y1, MAT.plazaTile);                  // 南側門廊
+        kbox(kitchenBaseGroup, -2.6, 0, 11.5, 19, 0, y1, MAT.plazaTile);              // 西側出餐平台
+        addStepsX(kitchenBaseGroup, gx(KIT.x - 2.6) - OFFSET_X, gx(KIT.x + 4) - OFFSET_X, 0, y1, KIT.z + 21.2, KIT.z + 19, 5, MAT.plazaTile);
 
-        // ★ 2. FULLY CONNECTED COVERED WALKWAY (風雨走廊) — X = -17.5m -> X = 0.2m @ 1FL (+1.20m)
-        // Flush deck directly entering Main Building 1F West Corridor (Grid ①, Z = 7.85 ~ 10.85m)
-        // Slight angle matching site plan, overlapping cleanly at both ends so there is ZERO gap!
-        const walkLen = 17.8;
-        const walkMidX = -8.7;
-        const walkMidZ = 10.3;
-        const walkDeck = addBox(kitchenBaseGroup, walkLen, y1, 4.4, gx(walkMidX), y1 * 0.5, gz(walkMidZ), MAT.plazaTile);
-        walkDeck.rotation.y = 0.11;
+        // 2. 白色主體（廚房作業區，Ⓐ–Ⓓ × ②–⑥）
+        kbox(kitchen1FGroup, 4, 21, 0, 19, y1, yR, MAT.ckWhite);
+        kbox(kitchen1FGroup, 0, 4, 4.5, 11.5, y1, yR, MAT.ckWhite);
+        winZ(kitchen1FGroup, 5.5, 8.5, -0.02, y1 + 1.9, y1 + 2.9);       // 北向高窗
+        winZ(kitchen1FGroup, 10, 20, -0.02, y1 + 1.0, y1 + 2.2);
+        winZ(kitchen1FGroup, 15, 16.5, 19.02, y1 + 1.0, y1 + 2.4);       // 南向窗
+        winZ(kitchen1FGroup, 17.5, 19.5, 19.02, y1 + 1.0, y1 + 2.4);
+        winX(kitchen1FGroup, -0.02, 6, 9, y1 + 1.0, y1 + 2.4);           // 西向窗
 
-        // Wide Amphitheater South Steps descending from Walkway (+1.20m) to Trackside Lawn (+0.0m)
-        const southStepsGrp = new THREE.Group();
-        southStepsGrp.position.set(gx(-7.2), 0, gz(12.6));
-        southStepsGrp.rotation.y = 0.11;
-        for (let i = 0; i < 6; i++) {
-          const h = ((6 - i) / 6) * y1;
-          const st = new THREE.Mesh(new THREE.BoxGeometry(15.2, h, 0.42), MAT.plazaTile);
-          st.position.set(0, h * 0.5, 0.21 + i * 0.42);
-          st.castShadow = true;
-          st.receiveShadow = true;
-          southStepsGrp.add(st);
+        // 3. 蜜桃橘量體：西南角（①–②×Ⓒ–Ⓓ，頂 +6.0）與東側（⑥–⑦×Ⓑ–Ⓒ）
+        kbox(kitchen1FGroup, -0.05, 5, 11.5, 19.05, 0, 6.0, MAT.ckPeach);
+        winZ(kitchen1FGroup, 1.2, 3.0, 19.1, y1 + 0.9, y1 + 2.6);
+        winX(kitchen1FGroup, -0.1, 13.0, 15.5, y1 + 1.3, y1 + 1.9);
+        kbox(kitchen1FGroup, 21, 24.6, 4.5, 12, 0, 5.4, MAT.ckPeach);
+        winX(kitchen1FGroup, 24.65, 7.0, 8.2, y1 + 0.3, y1 + 2.6);
+
+        // 4. 西側出餐平台白色雨遮＋圓柱
+        kbox(kitchen1FGroup, -4.2, 0, 10.8, 19.6, y1 + 3.0, y1 + 3.35, MAT.ckWhite);
+        {
+          const [cx, cz] = K(-3.6, 19.0);
+          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 3.0, 16), MAT.ckWhite);
+          col.position.set(cx, y1 + 1.5, cz); col.castShadow = true; kitchen1FGroup.add(col);
         }
-        kitchenBaseGroup.add(southStepsGrp);
 
-        // North Courtyard Steps from Walkway down to +0.0m
-        const northStepsGrp = new THREE.Group();
-        northStepsGrp.position.set(gx(-9.2), 0, gz(8.0));
-        northStepsGrp.rotation.y = 0.11;
-        for (let i = 0; i < 6; i++) {
-          const h = ((6 - i) / 6) * y1;
-          const st = new THREE.Mesh(new THREE.BoxGeometry(7.2, h, 0.36), MAT.plazaTile);
-          st.position.set(0, h * 0.5, -(0.18 + i * 0.36));
-          st.castShadow = true;
-          st.receiveShadow = true;
-          northStepsGrp.add(st);
+        // 5. 珊瑚粉紅門廊（③–④×Ⓓ–Ⓔ）：南牆開兩個方孔、西側開放
+        kbox(kitchen1FGroup, 9, 14, 19, 23.2, yR - 0.3, yR, MAT.ckPink);            // 頂板
+        kbox(kitchen1FGroup, 9, 9.5, 19, 23.2, 0, yR, MAT.ckPink);                   // 西柱
+        kbox(kitchen1FGroup, 13.6, 14, 19, 23.2, 0, yR, MAT.ckPink);                 // 東牆
+        kbox(kitchen1FGroup, 9.5, 13.6, 22.9, 23.2, 0, y1 + 0.9, MAT.ckPink);        // 南牆（下）
+        kbox(kitchen1FGroup, 9.5, 13.6, 22.9, 23.2, y1 + 2.4, yR - 0.3, MAT.ckPink); // 南牆（上）
+        kbox(kitchen1FGroup, 11.0, 12.0, 22.9, 23.2, y1 + 0.9, y1 + 2.4, MAT.ckPink);
+
+        // 6. 黃色食育教室量體（⑥'–⑨，旋轉約 6.5°，頂 +6.1）：北半為教室、南半為外廊
+        const dining = new THREE.Group();
+        const [dcx, dcz] = K(25.0, 18.7);
+        dining.position.set(dcx, 0, dcz);
+        dining.rotation.y = 0.112;
+        const dl = (w, h, d, x, y, z, mat) => {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+          m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; dining.add(m); return m;
+        };
+        dl(8.0, y1, 10.5, 0, y1 / 2, 0, MAT.ckYellow);
+        dl(7.8, 0.06, 10.3, 0, y1 + 0.03, 0, MAT.woodLight);
+        dl(0.25, 6.1 - y1, 10.5, -3.9, (6.1 + y1) / 2, 0, MAT.ckYellow);          // 西牆
+        dl(0.25, 6.1 - y1, 10.5, 3.9, (6.1 + y1) / 2, 0, MAT.ckYellow);           // 東牆
+        dl(8.0, 6.1 - y1, 0.25, 0, (6.1 + y1) / 2, -5.15, MAT.ckYellow);          // 北牆
+        dl(8.0, 0.35, 10.5, 0, 6.1 - 0.17, 0, MAT.ckYellow).userData = { isKitchenRoofPart: true };
+        dl(8.0, 6.1 - yR, 0.3, 0, (6.1 + yR) / 2, 5.1, MAT.ckYellow);             // 外廊南側上緣
+        dl(7.4, 2.6, 0.06, 0, y1 + 1.3, 0.9, MAT.glass);                          // 教室與外廊間玻璃門
+        dl(0.06, 1.4, 3.0, -4.05, y1 + 1.9, -2.0, MAT.glass);                     // 西側窗
+        dl(0.06, 1.2, 1.2, 4.05, y1 + 2.0, 2.8, MAT.glass);                       // 東側小窗
+        [-2.0, 0.6].forEach((tx) => dl(1.0, 0.75, 2.6, tx, y1 + 0.38, -2.2, MAT.woodLight));
+        dl(2.2, 0.9, 0.9, 1.8, y1 + 0.45, -4.2, MAT.woodLight);                    // 示範中島
+        kitchen1FGroup.add(dining);
+
+        // 7. 東側上屋頂樓梯：白色實牆量體（內為儲藏空間），頂面由南往北爬升至屋頂（照片 04107）
+        {
+          const prof = new THREE.Shape();
+          prof.moveTo(0, 0); prof.lineTo(6.6, 0); prof.lineTo(6.6, yR); prof.lineTo(0, y1 + 0.4); prof.closePath();
+          const g = new THREE.ExtrudeGeometry(prof, { depth: 3.0, bevelEnabled: false });
+          const m = new THREE.Mesh(g, MAT.ckWhite);
+          // 剖面 (u=往北距離, v=高度) → 世界：u 沿 -Z、擠出方向沿 +X
+          m.rotation.y = Math.PI / 2;
+          const [sx, sz] = K(24.6, 13.0);
+          m.position.set(sx, 0, sz);
+          m.castShadow = true; m.receiveShadow = true;
+          kitchen1FGroup.add(m);
+          winX(kitchen1FGroup, 27.65, 8.6, 11.6, 1.6, 2.1);
+          for (let k = 0; k < 12; k++) {
+            const u = 0.3 + k * 0.53, h = y1 + 0.4 + (u / 6.6) * (yR - y1 - 0.4);
+            const [tx, tz] = K(25.2, 13.0 - u - 0.25);
+            addBox(kitchen1FGroup, 1.2, 0.08, 0.5, tx, h + 0.05, tz, MAT.concreteBase, false);
+          }
         }
-        kitchenBaseGroup.add(northStepsGrp);
 
-        // Covered Walkway Steel Columns & Corrugated Galvanized Roof Canopy (H = 3.1m above 1FL)
-        const walkRoofGrp = new THREE.Group();
-        walkRoofGrp.position.set(gx(walkMidX), y1, gz(walkMidZ));
-        walkRoofGrp.rotation.y = 0.11;
-        // Corrugated silver-white steel canopy
-        const canopy = new THREE.Mesh(new THREE.BoxGeometry(walkLen + 0.6, 0.24, 4.5), MAT.ckWhite);
-        canopy.position.set(0, 3.15, 0);
-        canopy.castShadow = true;
-        walkRoofGrp.add(canopy);
-        // White-painted H-steel columns (4 pairs)
-        [-7.2, -2.5, 2.5, 7.2].forEach((lx) => {
-          [-1.65, 1.65].forEach((lz) => {
-            const col = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.15, 0.18), MAT.ckWhite);
-            col.position.set(lx, 1.575, lz);
-            col.castShadow = true;
-            walkRoofGrp.add(col);
-          });
-        });
-        kitchenBaseGroup.add(walkRoofGrp);
-
-        // Iconic Preserved Big Tree beside Walkway & Yellow-Green Dining Classroom (per 3D render!)
-        const bigTree = new THREE.Group();
-        bigTree.position.set(gx(-14.6), 0, gz(14.8));
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.45, 5.4, 10), MAT.bark);
-        trunk.position.y = 2.7; trunk.castShadow = true; bigTree.add(trunk);
-        [[0, 6.8, 0, 3.2], [-1.6, 5.8, 0.8, 2.3], [1.7, 6.2, -0.7, 2.4], [0.4, 8.2, 0.4, 2.1]].forEach(([tx, ty, tz, r]) => {
-          const leaf = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 1), MAT.foliage1);
-          leaf.position.set(tx, ty, tz); leaf.castShadow = true; bigTree.add(leaf);
-        });
-        kitchenBaseGroup.add(bigTree);
-
-        // ★ 3. CENTRAL KITCHEN COLOR-BLOCKED VOLUMES (matching 2021-10-07 基本設計簡報!)
-        // (A) Core White Kitchen Block (烹飪區 / 蔬果處理區 / 洗滌消毒 / 儲藏室)
-        addBox(kitchen1FGroup, 24.8, 0.06, 18.8, gx(kx0 + 12.4), y1 + 0.03, gz(kz0 + 9.4), MAT.slabFloor, false, true);
-        // North wall (with strip high windows)
-        addWindowWallX(kitchen1FGroup, kx0 + 0.2, kx0 + 24.8, y1, kh, kz0 + 0.15, MAT.ckWhite, 16.0, 0.9, 1.85);
-        // West wall (dispatch side) with twin entrance doors & canopies
-        addBox(kitchen1FGroup, 0.22, kh, 12.0, gx(kx0 + 0.11), y1 + kh * 0.5, gz(kz0 + 6.2), MAT.ckWhite);
-        addBox(kitchen1FGroup, 1.4, 0.16, 2.4, gx(kx0 - 0.65), y1 + 2.45, gz(kz0 + 9.5), MAT.ckWhite); // Canopy 1
-        addBox(kitchen1FGroup, 1.4, 0.16, 2.4, gx(kx0 - 0.65), y1 + 2.45, gz(kz0 + 14.5), MAT.ckWhite); // Canopy 2
-
-        // (B) Warm Sand-Beige Southwest Volume (取餐區 / 餐食放置區, X=-42.6~-35.2, Z=5.0~12.2)
-        addBox(kitchen1FGroup, 7.6, kh + 0.9, 0.24, gx(-38.8), y1 + (kh + 0.9) * 0.5, gz(12.2), MAT.ckSand);
-        addBox(kitchen1FGroup, 0.24, kh + 0.9, 7.2, gx(-42.5), y1 + (kh + 0.9) * 0.5, gz(8.6), MAT.ckSand);
-        // Signature horizontal strip window on sand-beige box
-        addBox(kitchen1FGroup, 4.8, 0.55, 0.28, gx(-38.8), y1 + 2.65, gz(12.22), MAT.glass, false);
-
-        // (C) Terracotta Protruding Frame Box (驗收區 / 進貨平台, X=-33.6~-27.0, Z=12.0~15.8)
-        // Open on west side for truck unloading, warm terracotta box on south & east with square cutout windows
-        addBox(kitchen1FGroup, 6.6, kh + 0.5, 0.26, gx(-30.3), y1 + (kh + 0.5) * 0.5, gz(15.7), MAT.ckTerracotta);
-        addBox(kitchen1FGroup, 0.26, kh + 0.5, 3.8, gx(-27.0), y1 + (kh + 0.5) * 0.5, gz(13.8), MAT.ckTerracotta);
-        addBox(kitchen1FGroup, 6.6, 0.24, 3.8, gx(-30.3), y1 + kh + 0.35, gz(13.8), MAT.ckTerracotta);
-        // Cutout window in terracotta south facade
-        addBox(kitchen1FGroup, 1.9, 1.5, 0.30, gx(-28.8), y1 + 2.0, gz(15.72), MAT.glass, false);
-        addBox(kitchen1FGroup, 0.9, 0.9, 0.30, gx(-32.2), y1 + 0.95, gz(15.72), MAT.glass, false);
-
-        // (D) Light Gray Recessed Office & Restroom Block (10-8 營養師辦公室 & 20-7 廁所, X=-27.0~-20.5, Z=6.0~12.2)
-        addWindowWallX(kitchen1FGroup, -26.8, -20.5, y1, kh, 12.15, MAT.ckGray, 4.2, 1.35, 1.10);
-
-        // (E) ★ Iconic Rotated 8.5° Yellow-Green Box: 2-7 食育教室 (午餐教室) + Open Veranda!
-        const diningGrp = new THREE.Group();
-        diningGrp.position.set(gx(-19.5), y1, gz(10.6));
-        diningGrp.rotation.y = 0.148; // ~8.5° CCW matching A2 plan & 3D render
-        // Plinth under rotated classroom
-        const dPlinth = new THREE.Mesh(new THREE.BoxGeometry(8.4, y1, 10.8), MAT.concreteBase);
-        dPlinth.position.set(0, -y1 * 0.5, 0);
-        diningGrp.add(dPlinth);
-        // Dining classroom floor
-        const dFloor = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.08, 10.6), MAT.woodLight);
-        dFloor.position.set(0, 0.04, 0);
-        diningGrp.add(dFloor);
-        // Yellow-green signature south/west/east walls with playful scattered square windows (per 3D render!)
-        // West wall of dining + veranda (solid yellow-green with small window)
-        const dWallW = new THREE.Mesh(new THREE.BoxGeometry(0.24, kh + 0.85, 10.5), MAT.ckYellowGreen);
-        dWallW.position.set(-4.0, (kh + 0.85) * 0.5, 0); dWallW.castShadow = true; diningGrp.add(dWallW);
-        // South facade of veranda (yellow-green signature wall with 3 playful rectangular cutouts!)
-        const dWallS = new THREE.Mesh(new THREE.BoxGeometry(8.2, kh + 0.85, 0.26), MAT.ckTerracotta);
-        dWallS.position.set(0, (kh + 0.85) * 0.5, 5.2); dWallS.castShadow = true; diningGrp.add(dWallS);
-        // Visual dark-glass cutouts on yellow-green facade (matching p.1 & p.16 render)
-        [[-2.2, 1.3, 1.0, 1.0], [-0.4, 2.0, 0.85, 0.85], [1.9, 1.75, 1.85, 1.65], [-1.3, 3.25, 0.55, 0.45]].forEach(([wx, wy, ww, wh]) => {
-          const wMesh = new THREE.Mesh(new THREE.BoxGeometry(ww, wh, 0.30), MAT.glass);
-          wMesh.position.set(wx, wy, 5.22);
-          diningGrp.add(wMesh);
-        });
-        // East wall of dining room (leaves veranda opening on south side so Walkway enters directly!)
-        const dWallE = new THREE.Mesh(new THREE.BoxGeometry(0.24, kh + 0.85, 6.2), MAT.ckYellowGreen);
-        dWallE.position.set(4.0, (kh + 0.85) * 0.5, -2.15); dWallE.castShadow = true; diningGrp.add(dWallE);
-        // Folding glass doors between interior Dining Classroom & open veranda (DW2)
-        const dw2 = new THREE.Mesh(new THREE.BoxGeometry(7.5, 2.70, 0.08), MAT.glass);
-        dw2.position.set(0, 1.35, 1.25);
-        diningGrp.add(dw2);
-        // Dining tables inside 2-7 食育教室
-        [-2.0, 0, 2.0].forEach((tx) => {
-          const tbl = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.75, 2.6), MAT.woodLight);
-          tbl.position.set(tx, 0.38, -1.6);
-          diningGrp.add(tbl);
-        });
-        // Roof over rotated dining box (added to kitchenRoofGroup via world transform or own roof group)
-        const dRoof = new THREE.Mesh(new THREE.BoxGeometry(8.3, 0.24, 10.6), MAT.ckWhite);
-        dRoof.position.set(0, kh + 0.05, 0);
-        dRoof.userData = { isKitchenRoofPart: true };
-        diningGrp.add(dRoof);
-        kitchen1FGroup.add(diningGrp);
-
-        // (F) East White Outdoor Staircase rising from Walkway (+1.20m) up to Kitchen Roof (+4.90m)
-        const kStairGrp = new THREE.Group();
-        kStairGrp.position.set(gx(-15.0), y1, gz(6.2));
-        kStairGrp.rotation.y = 0.148;
-        for (let s = 0; s < 16; s++) {
-          const sh = ((s + 1) / 16) * kh;
-          const st = new THREE.Mesh(new THREE.BoxGeometry(1.6, sh, 0.34), MAT.ckWhite);
-          st.position.set(0, sh * 0.5, 2.6 - s * 0.34);
-          st.castShadow = true;
-          kStairGrp.add(st);
+        // 8. 屋頂層（白色屋頂板＋不鏽鋼欄杆＋太陽能板）
+        kbox(kitchenRoofGroup, 4, 21, 0, 19, yR, yR + 0.25, MAT.ckWhite);
+        kbox(kitchenRoofGroup, 0, 4, 4.5, 11.5, yR, yR + 0.25, MAT.ckWhite);
+        addRailingX(kitchenRoofGroup, KIT.x + 4, KIT.x + 21, yR + 0.25, KIT.z + 19, 1.1);
+        addRailingZ(kitchenRoofGroup, KIT.z + 0, KIT.z + 19, yR + 0.25, KIT.x + 21, 1.1);
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 6; c++) {
+            const [px, pz] = K(5.6 + c * 2.5, 7.0 + r * 2.9);
+            const pv = addBox(kitchenRoofGroup, 2.3, 0.08, 2.4, px, yR + 0.9, pz, MAT.solarPanel, false);
+            pv.rotation.x = -0.18;
+          }
         }
-        kitchen1FGroup.add(kStairGrp);
-
-        // (G) East White Curved Locker Room / Staff Restroom & Storage Box (廚工休息室 / 配電室)
-        addBox(kitchen1FGroup, 4.2, kh, 6.2, gx(-19.5), y1 + kh * 0.5, gz(1.2), MAT.ckWhite);
-        // Interior Kitchen Equipment (Cooking kettles, worktables, dishwashers — visible in 1F cutaway / X-Ray!)
-        for (let i = 0; i < 4; i++) {
-          const kettle = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.45, 0.85, 16), MAT.steelSilver);
-          kettle.position.set(gx(-27.2), y1 + 0.45, gz(-4.5 + i * 2.1));
-          kitchen1FGroup.add(kettle);
+        // 米色 2F 機房（③–⑥×Ⓐ–Ⓑ，頂 +7.90）
+        kbox(kitchenRoofGroup, 9, 21, 0, 5, yR, yP, MAT.ckCream);
+        winZ(kitchenRoofGroup, 11, 13, 5.03, yR + 0.6, yR + 2.2);
+        winZ(kitchenRoofGroup, 15, 16, 5.03, yR + 0.3, yR + 2.4);
+        for (let c = 0; c < 4; c++) {
+          const [px, pz] = K(10.4 + c * 2.9, 2.5);
+          const pv = addBox(kitchenRoofGroup, 2.6, 0.08, 4.0, px, yP + 0.5, pz, MAT.solarPanel, false);
+          pv.rotation.x = -0.15;
         }
-        addBox(kitchen1FGroup, 1.4, 0.85, 6.2, gx(-23.2), y1 + 0.45, gz(-1.5), MAT.steelSilver); // Veg/meat prep table
-        addBox(kitchen1FGroup, 2.0, 1.9, 1.1, gx(-32.2), y1 + 0.95, gz(-2.0), MAT.steelSilver); // Steam rice cabinets
-        addBox(kitchen1FGroup, 1.6, 1.1, 6.0, gx(-40.2), y1 + 0.55, gz(-0.5), MAT.steelSilver); // Dishwashing line
-
-        // 4. Kitchen Roof Slab, Stainless Railings, 2F Sage-Green Mechanical Penthouse & Water Tanks
-        addBox(kitchenRoofGroup, 25.0, 0.22, 19.0, gx(kx0 + 12.5), y1 + kh + 0.11, gz(kz0 + 9.5), MAT.ckWhite);
-        addRailingX(kitchenRoofGroup, kx0 + 0.3, kx0 + 24.5, y1 + kh + 0.22, kz0 + 18.8, 1.15);
-        addRailingZ(kitchenRoofGroup, kz0 + 0.3, kz0 + 18.8, y1 + kh + 0.22, kx0 + 0.3, 1.15);
-
-        // ★ 2F Sage-Green Rooftop Mechanical Box (消防機房 / RO機房 / 儲藏室, +4.90m to +7.90m)
-        addBox(kitchenRoofGroup, 12.4, 3.05, 5.0, gx(-27.5), y1 + kh + 1.55, gz(-4.4), MAT.ckSage);
-        // Doors on south side of 2F mech room
-        [-30.5, -26.2, -23.5].forEach((dx) => {
-          addBox(kitchenRoofGroup, 1.0, 2.1, 0.08, gx(dx), y1 + kh + 1.1, gz(-1.88), MAT.steelDark);
+        // 屋頂水塔（衛星圖可見）
+        [[6.0, 1.5], [7.8, 1.5]].forEach(([lx, lz]) => {
+          const [tx, tz] = K(lx, lz);
+          const t = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 1.8, 18), MAT.steelSilver);
+          t.position.set(tx, yR + 1.15, tz); t.castShadow = true; kitchenRoofGroup.add(t);
         });
 
-        // Rooftop 8T x 2 Stainless Water Tanks (Northwest of 2F Mech Room)
-        [-37.2, -35.0].forEach((tx, idx) => {
-          const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 2.35, 18), MAT.steelSilver);
-          tank.position.set(gx(tx), y1 + kh + 1.35, gz(-4.8 + idx * 1.1));
-          tank.castShadow = true;
-          kitchenRoofGroup.add(tank);
+        // 9. 地面 5T 不鏽鋼水塔 ×3（⑥–⑦×Ⓐ–Ⓑ）
+        [[22.3, 1.3], [24.0, 1.3], [23.1, 3.2]].forEach(([lx, lz]) => {
+          const [tx, tz] = K(lx, lz);
+          const t = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 2.4, 18), MAT.steelSilver);
+          t.position.set(tx, 1.2, tz); t.castShadow = true; kitchenBaseGroup.add(t);
         });
 
-        // Ground-level 5T x 3 Stainless Water Tanks (Northeast courtyard)
-        [[-19.8, -5.2], [-18.2, -5.2], [-19.0, -3.5]].forEach(([tx, tz]) => {
-          const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.2, 16), MAT.steelSilver);
-          tank.position.set(gx(tx), 1.3, gz(tz));
-          tank.castShadow = true;
-          kitchenBaseGroup.add(tank);
-        });
+        // 10. 風雨走廊：食育教室東側 → 主校舍一樓西側走廊（+1.20）
+        const wx0 = KIT.x + 29.6, wx1 = 0.4, wz0 = 7.9, wz1 = 11.0;
+        addBox(kitchenBaseGroup, wx1 - wx0, y1, wz1 - wz0, gx((wx0 + wx1) / 2), y1 / 2, gz((wz0 + wz1) / 2), MAT.plazaTile);
+        addBox(kitchenBaseGroup, wx1 - wx0 + 0.6, 0.22, wz1 - wz0 + 0.8, gx((wx0 + wx1) / 2), y1 + 3.1, gz((wz0 + wz1) / 2), MAT.ckWhite);
+        for (let x = wx0 + 0.6; x < wx1; x += 3.6) {
+          [wz0 + 0.2, wz1 - 0.2].forEach((z) => addBox(kitchenBaseGroup, 0.16, 3.0, 0.16, gx(x), y1 + 1.5, gz(z), MAT.ckWhite));
+        }
+        addStepsX(kitchenBaseGroup, wx0 + 1, wx1 - 4, 0, y1, wz1 + 2.4, wz1, 6, MAT.plazaTile);
       }
 
       // =========================================================================
@@ -1610,26 +1564,26 @@
           { floor: '3F', name: '1-5 普通教室（201班）', shortName: '1-5 教室(201)', x: 67.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '八年級 201 班（軸線⑧–⑨）。' },
           { floor: '3F', name: '20-6 廁所（東側）', shortName: '20-6 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F3, area: 52, isRestroom: true, meta: W, desc: '溪埔國中廁所整修工程（細部設計圖 2026.01 第四版，超聖工程顧問）。入口為台農 17 號「金鑽鳳梨」意象牆；配置與 1F 相同：男廁小便斗 3（含無障礙 1）、坐式 1、蹲式 1；女廁坐式 1、蹲式 4；無障礙廁所 1。', images: [{ src: 'campus-3d-assets/restroom/d05-3f-pineapple.jpg', cap: 'D-05 3F廁所鳳梨水果意象設計' }, { src: 'campus-3d-assets/restroom/b02-1f3f-plan.jpg', cap: 'B-02 A梯1F及3F廁所平面配置與地板計畫' }] },
           // ── 中央廚房（111.11 完工・保固 5 年）──
-          { floor: '1F', building: 'kitchen', name: '21-1 中央廚房', shortName: '21-1 中央廚房', x: -31.5, z: 1.5, w: 18.0, d: 13.0, y: ELEV.F1, area: 485, meta: '111.11 完工・保固 5 年', desc: '聯合供餐中央廚房，供應本校及興田、姑山、水寮、大樹國小約 1,500 人午餐。地上一層（局部二層機房），樓板抬高 +1.20 m 與教學大樓一樓走廊同高。', images: [{ src: 'campus-3d-assets/kitchen/04188.jpg', cap: '現況照片：東南側入口與坡道（蜜桃橘、珊瑚粉紅量體）' }, { src: 'campus-3d-assets/kitchen/04107.jpg', cap: '現況照片：北側外觀與不鏽鋼水塔、上屋頂樓梯' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：食育教室外廊（珊瑚粉紅框，面向操場）' }, { src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04008.jpg', cap: '現況照片：走道緩衝區' }, { src: 'campus-3d-assets/kitchen/04052.jpg', cap: '現況照片：出餐／取餐區' }, { src: 'campus-3d-assets/kitchen/04063.jpg', cap: '現況照片：入口洗手台與泡鞋池' }, { src: 'campus-3d-assets/kitchen/04103.jpg', cap: '現況照片：瓦斯間入口' }, { src: 'campus-3d-assets/kitchen/04097.jpg', cap: '現況照片：鍋爐與軟水設備' }, { src: 'campus-3d-assets/kitchen/04133.jpg', cap: '現況照片：主校舍西端與風雨走廊' }] },
-          { floor: '1F', building: 'kitchen', name: '10-8 營養師辦公室', shortName: '10-8 營養師', x: -26.0, z: 9.2, w: 3.4, d: 5.2, y: ELEV.F1, area: 15, meta: '111.11 完工・保固 5 年', desc: '營養師辦公室（規劃面積約 15.45 m²）。' },
-          { floor: '1F', building: 'kitchen', name: '20-7 廁所（中央廚房）', shortName: '20-7 廁所', x: -22.4, z: 9.2, w: 3.4, d: 5.2, y: ELEV.F1, area: 18, isRestroom: true, meta: '111.11 完工・保固 5 年', desc: '廚房衛生區：淋浴間、座式馬桶、無障礙廁所（規劃約 18.30 m²）。' },
-          { floor: '1F', building: 'kitchen', name: '2-7 食育教室', shortName: '2-7 食育教室', x: -19.5, z: 10.6, w: 7.8, d: 9.5, y: ELEV.F1, area: 57, meta: '111.11 完工・保固 5 年', desc: '午餐教育教室（規劃約 57.2 m²），外廊作為餐食教育區，連接風雨走廊。', images: [{ src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：食育教室外廊' }] },
-          { floor: '1F', building: 'kitchen', name: '廚工休息室・配電室', shortName: '休息室・配電', x: -19.5, z: 1.2, w: 4.2, d: 6.2, y: ELEV.F1, area: 26, meta: '111.11 完工・保固 5 年', desc: '中央廚房東側：廚工休息室與配電室。' },
-          { floor: '1F', building: 'kitchen', name: '風雨走廊', shortName: '風雨走廊', x: -8.7, z: 10.3, w: 16.5, d: 4.2, y: ELEV.F1, area: 58, meta: '111.11 完工', desc: '連接中央廚房與主校舍一樓西側走廊（+1.20 m）。' },
-          { floor: '2F', building: 'kitchen', name: '消防機房（中央廚房 2F）', shortName: '廚房2F 消防機房', x: -27.5, z: -4.4, w: 12.0, d: 4.8, y: ELEV.F1 + 3.7, area: 60, meta: '111.11 完工・保固 5 年', desc: '中央廚房局部二層機房（消防機房）。' },
+          { floor: '1F', building: 'kitchen', name: '21-1 中央廚房', shortName: '21-1 中央廚房', x: -34, z: 0, w: 16.0, d: 12.0, y: ELEV.F1, area: 485, meta: '111.11 完工・保固 5 年', desc: '聯合供餐中央廚房，供應本校及興田、姑山、水寮、大樹國小約 1,500 人午餐。地上一層（局部二層機房），樓板抬高 +1.20 m 與教學大樓一樓走廊同高。', images: [{ src: 'campus-3d-assets/kitchen/04188.jpg', cap: '現況照片：東南側入口與坡道（蜜桃橘、珊瑚粉紅量體）' }, { src: 'campus-3d-assets/kitchen/04107.jpg', cap: '現況照片：北側外觀與不鏽鋼水塔、上屋頂樓梯' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：食育教室外廊（珊瑚粉紅框，面向操場）' }, { src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04008.jpg', cap: '現況照片：走道緩衝區' }, { src: 'campus-3d-assets/kitchen/04052.jpg', cap: '現況照片：出餐／取餐區' }, { src: 'campus-3d-assets/kitchen/04063.jpg', cap: '現況照片：入口洗手台與泡鞋池' }, { src: 'campus-3d-assets/kitchen/04103.jpg', cap: '現況照片：瓦斯間入口' }, { src: 'campus-3d-assets/kitchen/04097.jpg', cap: '現況照片：鍋爐與軟水設備' }, { src: 'campus-3d-assets/kitchen/04133.jpg', cap: '現況照片：主校舍西端與風雨走廊' }] },
+          { floor: '1F', building: 'kitchen', name: '10-8 營養師辦公室', shortName: '10-8 營養師', x: -29.5, z: 7.5, w: 3.0, d: 4.5, y: ELEV.F1, area: 15, meta: '111.11 完工・保固 5 年', desc: '營養師辦公室（規劃面積約 15.45 m²）。' },
+          { floor: '1F', building: 'kitchen', name: '20-7 廁所（中央廚房）', shortName: '20-7 廁所', x: -26, z: 7.5, w: 3.6, d: 4.5, y: ELEV.F1, area: 18, isRestroom: true, meta: '111.11 完工・保固 5 年', desc: '廚房衛生區：淋浴間、座式馬桶、無障礙廁所（規劃約 18.30 m²）。' },
+          { floor: '1F', building: 'kitchen', name: '2-7 食育教室', shortName: '2-7 食育教室', x: -20, z: 7.5, w: 7.6, d: 6.0, y: ELEV.F1, area: 57, meta: '111.11 完工・保固 5 年', desc: '午餐教育教室（規劃約 57.2 m²），外廊作為餐食教育區，連接風雨走廊。', images: [{ src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：食育教室外廊' }] },
+          { floor: '1F', building: 'kitchen', name: '廚工休息室・配電室', shortName: '休息室・配電', x: -22.2, z: -0.8, w: 3.4, d: 7.0, y: ELEV.F1, area: 26, meta: '111.11 完工・保固 5 年', desc: '中央廚房東側：廚工休息室與配電室。' },
+          { floor: '1F', building: 'kitchen', name: '風雨走廊', shortName: '風雨走廊', x: -7.6, z: 9.45, w: 15.0, d: 3.0, y: ELEV.F1, area: 58, meta: '111.11 完工', desc: '連接中央廚房與主校舍一樓西側走廊（+1.20 m）。' },
+          { floor: '2F', building: 'kitchen', name: '消防機房（中央廚房 2F）', shortName: '廚房2F 消防機房', x: -30, z: -6.5, w: 12.0, d: 5.0, y: 4.9, area: 60, meta: '111.11 完工・保固 5 年', desc: '中央廚房局部二層機房（消防機房，約 60 m²），米色量體，屋頂設太陽能板。' },
           // ── 戶外設施 ──
           { floor: 'GF', building: 'site', name: '操場（200 m 跑道）', shortName: '操場', x: SITE.track.cx, z: SITE.track.cz, w: 30, d: 16, y: 0, area: 3200, meta: '跑道 99 年度工程重新施作', desc: '200 m 跑道＋南側直線跑道。' },
           { floor: 'GF', building: 'site', name: '司令台', shortName: '司令台', x: SITE.stage.cx, z: SITE.stage.cz, w: SITE.stage.w, d: SITE.stage.d, y: 0.6, area: 40, meta: '78.7 建置（21 年以上）', desc: '操場南側司令台。' },
-          { floor: 'GF', building: 'site', name: '17-2 公用儲藏室', shortName: '17-2 公用儲藏室', x: SITE.storage172.cx, z: SITE.storage172.cz, w: SITE.storage172.w, d: SITE.storage172.d, y: 0.2, area: 120, meta: '83.12 建置（21 年以上）', desc: '司令台旁一層舊建物（配置圖標 1R）。' },
-          { floor: 'GF', building: 'site', name: '籃球場', shortName: '籃球場', x: SITE.courtOpen.cx, z: SITE.courtOpen.cz, w: SITE.courtOpen.w, d: SITE.courtOpen.d, y: 0.1, area: 416, meta: '103.4 建置・保固 10 年', desc: '校地東南側室外籃球場。' },
-          { floor: 'GF', building: 'site', name: '風雨球場', shortName: '風雨球場', x: SITE.courtCovered.cx, z: SITE.courtCovered.cz, w: SITE.courtCovered.w, d: SITE.courtCovered.d, y: 0.1, area: 416, meta: '103.4 建置・保固 10 年', desc: '有頂蓋風雨球場（屋頂是否設太陽能板待核對）。' },
+          { floor: 'GF', building: 'site', name: '17-2 公用儲藏室', shortName: '17-2 公用儲藏室', x: SITE.storage172.cx, z: SITE.storage172.cz, w: SITE.storage172.w, d: SITE.storage172.d, y: 0.2, area: 120, meta: '83.12 建置（21 年以上）', desc: '司令台南側紅色屋頂舊建物（配置圖標 1R），臨南側溪埔路1巷1弄側門。' },
+          { floor: 'GF', building: 'site', name: '籃球場', shortName: '籃球場', x: SITE.courtOpen.cx, z: SITE.courtOpen.cz, w: SITE.courtOpen.w, d: SITE.courtOpen.d, y: 0.1, area: 416, meta: '103.4 建置・保固 10 年', desc: '校地南側室外籃球場（紫色球場面）。' },
+          { floor: 'GF', building: 'site', name: '風雨球場', shortName: '風雨球場', x: SITE.courtCovered.cx, z: SITE.courtCovered.cz, w: SITE.courtCovered.w, d: SITE.courtCovered.d, y: 0.1, area: 416, meta: '103.4 建置・保固 10 年', desc: '有頂蓋風雨球場，屋頂設太陽能板（依衛星圖）。' },
           { floor: 'GF', building: 'site', name: '噴水池・中央廣場', shortName: '噴水池', x: SITE.pond.cx, z: SITE.pond.cz, w: 8, d: 8, y: 0.3, area: 380, meta: '', desc: '穿堂東南側圓形廣場與水池，連接東側大門。' },
-          { floor: 'GF', building: 'site', name: '14-1 警衛室', shortName: '14-1 警衛室', x: 112.5, z: 34.5, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '東側大門旁警衛室（位置依配置圖示意）。' },
-          { floor: 'GF', building: 'site', name: '22-1 備勤室', shortName: '22-1 備勤室', x: 112.5, z: 29.3, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '警衛室旁備勤室。' },
-          { floor: 'GF', building: 'site', name: '4-1 體育器材室', shortName: '4-1 體育器材室', x: 112.5, z: 24.1, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '體育器材室。' },
-          { floor: 'GF', building: 'site', name: '17-1 檔案室', shortName: '17-1 檔案室', x: 112.5, z: 18.9, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '檔案室。' },
-          { floor: 'GF', building: 'site', name: '學生、教職員車棚', shortName: '車棚', x: 31, z: SITE.bikeShedZ, w: 20, d: 4, y: 0.2, area: 300, meta: '103.10 建置・保固 10 年', desc: '主校舍北側車棚（位置與長度為示意，待現場核對）。' },
-          { floor: 'GF', building: 'site', name: '大門', shortName: '大門', x: SITE.gates.main[0] - 2, z: SITE.gates.main[1], w: 3, d: 8, y: 0.2, area: 0, meta: '', desc: '東側大門（依配置圖推定，待核對）。' }
+          { floor: 'GF', building: 'site', name: '14-1 警衛室', shortName: '14-1 警衛室', x: 115.5, z: 38.6, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '東側大門（溪埔路）北側警衛室，與備勤室、體育器材室、檔案室同一棟，屋頂設太陽能板棚架（依街景與衛星圖）。' },
+          { floor: 'GF', building: 'site', name: '22-1 備勤室', shortName: '22-1 備勤室', x: 115.5, z: 35.1, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '警衛室旁備勤室。' },
+          { floor: 'GF', building: 'site', name: '4-1 體育器材室', shortName: '4-1 體育器材室', x: 115.5, z: 31.6, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '體育器材室。' },
+          { floor: 'GF', building: 'site', name: '17-1 檔案室', shortName: '17-1 檔案室', x: 115.5, z: 28.6, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '檔案室。' },
+          { floor: 'GF', building: 'site', name: '學生、教職員車棚', shortName: '車棚', x: 41, z: SITE.bikeShedZ, w: 30, d: 4, y: 0.2, area: 290, meta: '103.10 建置・保固 10 年', desc: '主校舍北側車棚（依衛星圖，約軸線②至⑨北側）。' },
+          { floor: 'GF', building: 'site', name: '大門', shortName: '大門', x: SITE.gates.main[0] - 2, z: SITE.gates.main[1], w: 3, d: 8, y: 0.2, area: 0, meta: '', desc: '東側大門（溪埔路 1 號），電動伸縮門，南側為校名牆（依街景）。' }
         ];
         rooms.forEach((r) => registerRoom(r.building === 'site' ? Object.assign({ group: campusSiteGroup, labelH: 1.6 }, r) : r));
       }
@@ -1675,8 +1629,14 @@
         lawn.receiveShadow = true;
         campusSiteGroup.add(lawn);
         const fencePts = SITE.boundary.concat([SITE.boundary[0]]).map(([bx, bz]) => new THREE.Vector3(gx(bx), 0.9, gz(bz)));
-        campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fencePts),
-          new THREE.LineBasicMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.55 })));
+        // 圍牆／木柵欄（高約 1.5 m，示意）
+        const fenceMat = makeMat(0x9a6b4a, { roughness: 0.9, transparent: true, opacity: 0.55 });
+        for (let k = 0; k < SITE.boundary.length; k++) {
+          const [ax, az] = SITE.boundary[k], [bx, bz] = SITE.boundary[(k + 1) % SITE.boundary.length];
+          const len = Math.hypot(bx - ax, bz - az);
+          const f = addBox(campusSiteGroup, 0.12, 1.5, len, gx((ax + bx) / 2), 0.75, gz((az + bz) / 2), fenceMat, false, false);
+          f.rotation.y = Math.atan2(bx - ax, bz - az);
+        }
 
         // 200 m 跑道（中心約在主校舍軸線①東側 8 m、北牆以南 41.5 m）
         const T = SITE.track;
@@ -1725,17 +1685,34 @@
 
         // 17-2 公用儲藏室（83.12，配置圖 1R）
         const S2 = SITE.storage172;
-        addBox(campusSiteGroup, S2.w, 3.4, S2.d, gx(S2.cx), 1.7, gz(S2.cz), MAT.wallExt);
-        addBox(campusSiteGroup, S2.w + 0.6, 0.3, S2.d + 0.6, gx(S2.cx), 3.55, gz(S2.cz), makeMat(0xb94a3e));
+        addBox(campusSiteGroup, S2.w, 2.2, S2.d, gx(S2.cx), 1.1, gz(S2.cz), MAT.ckWhite);                 // 白色下部牆
+        addBox(campusSiteGroup, S2.w - 1.0, 2.2, S2.d - 1.0, gx(S2.cx), 3.3, gz(S2.cz), MAT.wallFrameDark); // 內牆
+        for (let k = 0; k <= 7; k++) {                                                                       // 外圍格柵柱
+          const fx = S2.cx - S2.w / 2 + (k / 7) * S2.w;
+          [S2.cz - S2.d / 2, S2.cz + S2.d / 2].forEach((fz) => addBox(campusSiteGroup, 0.18, 2.2, 0.18, gx(fx), 3.3, gz(fz), MAT.steelDark));
+        }
+        addRailingX(campusSiteGroup, S2.cx - S2.w / 2, S2.cx + S2.w / 2, 2.2, S2.cz + S2.d / 2, 1.2);
+        {
+          const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(S2.w, S2.d) * 0.78, 2.6, 4, 1), makeMat(0xb8463c, { roughness: 0.7 }));
+          roof.rotation.y = Math.PI / 4;
+          roof.scale.set(S2.w / Math.max(S2.w, S2.d), 1, S2.d / Math.max(S2.w, S2.d));
+          roof.position.set(gx(S2.cx), 4.4 + 1.3, gz(S2.cz)); roof.castShadow = true;
+          campusSiteGroup.add(roof);
+        }
+        // 紫色貨櫃（南側側門東邊，依街景）
+        [[0, 0], [7.0, 0.4]].forEach(([dx, dz]) => addBox(campusSiteGroup, 6.0, 2.6, 2.4, gx(SITE.containers.cx + dx), 1.3, gz(SITE.containers.cz + dz), MAT.containerPurple));
 
         // 籃球場＋風雨球場（103.4）
         const CO = SITE.courtOpen, CC = SITE.courtCovered;
-        addBox(campusSiteGroup, CO.w, 0.08, CO.d, gx(CO.cx), 0.04, gz(CO.cz), MAT.courtBlue, false, true);
+        addBox(campusSiteGroup, CO.w, 0.08, CO.d, gx(CO.cx), 0.04, gz(CO.cz), MAT.courtPurple, false, true);
         addBox(campusSiteGroup, CC.w, 0.08, CC.d, gx(CC.cx), 0.04, gz(CC.cz), MAT.courtBlue, false, true);
         [CC.cx - CC.w / 2 + 0.5, CC.cx, CC.cx + CC.w / 2 - 0.5].forEach((cx) => {
           [CC.cz - CC.d / 2 - 0.5, CC.cz + CC.d / 2 + 0.5].forEach((cz) => addBox(campusSiteGroup, 0.45, 8.5, 0.45, gx(cx), 4.25, gz(cz), MAT.steelDark));
         });
-        addBox(campusSiteGroup, CC.w + 2.0, 0.45, CC.d + 2.0, gx(CC.cx), 8.6, gz(CC.cz), MAT.roofSheet);
+        addBox(campusSiteGroup, CC.w + 2.0, 0.45, CC.d + 2.0, gx(CC.cx), 8.6, gz(CC.cz), MAT.ckWhite);
+        for (let r = 0; r < 7; r++) {
+          addBox(campusSiteGroup, CC.w - 2.0, 0.08, 2.2, gx(CC.cx), 8.9, gz(CC.cz - CC.d / 2 + 1.8 + r * 3.0), MAT.solarPanel, false);
+        }
 
         // 中央廣場＋水池
         const PD = SITE.pond;
@@ -1750,28 +1727,39 @@
         pondWater.position.set(gx(PD.cx), 0.28, gz(PD.cz));
         campusSiteGroup.add(pondWater);
         const EP = SITE.entryPlaza;
-        addBox(campusSiteGroup, EP.x1 - EP.x0, 0.06, EP.z1 - EP.z0, gx((EP.x0 + EP.x1) / 2), 0.03, gz((EP.z0 + EP.z1) / 2), MAT.plazaTile, false, true);
+        addBox(campusSiteGroup, EP.x1 - EP.x0, 0.06, EP.z1 - EP.z0, gx((EP.x0 + EP.x1) / 2), 0.03, gz((EP.z0 + EP.z1) / 2), MAT.asphalt, false, true);
         // 穿堂往廣場的斜向鋪面
         const diagWalk = addBox(campusSiteGroup, 7.0, 0.06, 30.0, gx(69.0), 0.035, gz(27.0), MAT.plazaTile, false, true);
         diagWalk.rotation.y = 0.42;
 
         // 東側附屬建物：17-1 檔案室／4-1 體育器材室／22-1 備勤室／14-1 警衛室（103.4，北→南）
         const AX = SITE.annex;
-        addBox(campusSiteGroup, AX.x1 - AX.x0, 3.3, AX.z1 - AX.z0, gx((AX.x0 + AX.x1) / 2), 1.65, gz((AX.z0 + AX.z1) / 2), MAT.wallExt);
-        addBox(campusSiteGroup, AX.x1 - AX.x0 + 0.6, 0.3, AX.z1 - AX.z0 + 0.6, gx((AX.x0 + AX.x1) / 2), 3.45, gz((AX.z0 + AX.z1) / 2), MAT.wallFrameGray);
+        addBox(campusSiteGroup, AX.x1 - AX.x0, 3.3, AX.z1 - AX.z0, gx((AX.x0 + AX.x1) / 2), 1.65, gz((AX.z0 + AX.z1) / 2), makeMat(0xc9ddd6, { roughness: 0.85 }));
+        addBox(campusSiteGroup, AX.x1 - AX.x0 + 0.4, 0.3, AX.z1 - AX.z0 + 0.4, gx((AX.x0 + AX.x1) / 2), 3.45, gz((AX.z0 + AX.z1) / 2), MAT.wallFrameGray);
+        // 屋頂太陽能棚架
+        [[AX.x0 + 0.5, AX.z0 + 0.5], [AX.x1 - 0.5, AX.z0 + 0.5], [AX.x0 + 0.5, AX.z1 - 0.5], [AX.x1 - 0.5, AX.z1 - 0.5]].forEach(([px, pz]) => addBox(campusSiteGroup, 0.14, 2.0, 0.14, gx(px), 4.6, gz(pz), MAT.steelDark));
+        addBox(campusSiteGroup, AX.x1 - AX.x0 + 1.6, 0.1, AX.z1 - AX.z0 + 1.0, gx((AX.x0 + AX.x1) / 2), 5.65, gz((AX.z0 + AX.z1) / 2), MAT.solarPanel, false);
+        // 校名牆（大門南側）
+        addBox(campusSiteGroup, 0.5, 1.8, 9.0, gx(SITE.gates.main[0] - 0.6), 0.9, gz(SITE.gates.main[1] + 9.0), makeMat(0x8a6f63, { roughness: 0.9 }));
+        // 大門內通道南側風雨廊（紫色柱）
+        const PC = SITE.plazaCanopy;
+        addBox(campusSiteGroup, PC.x1 - PC.x0, 0.2, PC.z1 - PC.z0, gx((PC.x0 + PC.x1) / 2), 3.3, gz((PC.z0 + PC.z1) / 2), MAT.roofSheet);
+        for (let x = PC.x0 + 0.5; x <= PC.x1; x += 4.0) {
+          [PC.z0 + 0.3, PC.z1 - 0.3].forEach((z) => addBox(campusSiteGroup, 0.2, 3.2, 0.2, gx(x), 1.6, gz(z), MAT.roofColumnPurple));
+        }
+        // 主校舍西北側小型附屬建物（衛星圖可見）
+        const NS = SITE.northShed;
+        addBox(campusSiteGroup, NS.x1 - NS.x0, 2.8, NS.z1 - NS.z0, gx((NS.x0 + NS.x1) / 2), 1.4, gz((NS.z0 + NS.z1) / 2), MAT.ckWhite);
 
         // 停車場（東北側既設汽車停車場、東南側既設停車場）
         const PN = SITE.parkingNE;
         addBox(campusSiteGroup, PN.x1 - PN.x0, 0.06, PN.z1 - PN.z0, gx((PN.x0 + PN.x1) / 2), 0.03, gz((PN.z0 + PN.z1) / 2), MAT.asphalt, false, true);
-        const PS = SITE.parkingSE;
-        const pse = addBox(campusSiteGroup, PS.w, 0.06, PS.d, gx(PS.cx), 0.03, gz(PS.cz), MAT.asphalt, false, true);
-        pse.rotation.y = PS.rot;
 
         // 學生、教職員車棚（103.10，主校舍北側；避開穿堂後方樓梯）
         SITE.bikeShed.forEach(([x0, x1]) => {
           const cx = (x0 + x1) / 2, len = x1 - x0;
           addBox(campusSiteGroup, len, 0.06, 4.2, gx(cx), 0.03, gz(SITE.bikeShedZ), MAT.asphalt, false, true);
-          addBox(campusSiteGroup, len, 0.16, 4.0, gx(cx), 2.75, gz(SITE.bikeShedZ), MAT.roofSheet);
+          addBox(campusSiteGroup, len, 0.16, 4.5, gx(cx), 2.75, gz(SITE.bikeShedZ), MAT.ckWhite);
           for (let px = x0 + 0.5; px <= x1 - 0.4; px += 6.0) {
             addBox(campusSiteGroup, 0.16, 2.75, 0.16, gx(px), 1.38, gz(SITE.bikeShedZ + 1.6), MAT.steelDark);
           }
@@ -1784,9 +1772,15 @@
         road.rotation.y = Math.atan2(kdx, kdz);
 
         // 校門（門柱示意）
-        Object.values(SITE.gates).forEach(([gxr, gzr]) => {
-          addBox(campusSiteGroup, 0.8, 2.2, 0.8, gx(gxr), 1.1, gz(gzr - 3.2), MAT.wallFrameDark);
-          addBox(campusSiteGroup, 0.8, 2.2, 0.8, gx(gxr), 1.1, gz(gzr + 3.2), MAT.wallFrameDark);
+        Object.entries(SITE.gates).forEach(([k, [gxr, gzr]]) => {
+          const half = k === 'main' ? 5.0 : 3.0;
+          if (k === 'south') {
+            addBox(campusSiteGroup, 0.5, 2.0, 0.5, gx(gxr - half), 1.0, gz(gzr), makeMat(0x6b4a3a));
+            addBox(campusSiteGroup, 0.5, 2.0, 0.5, gx(gxr + half), 1.0, gz(gzr), makeMat(0x6b4a3a));
+          } else {
+            addBox(campusSiteGroup, 0.8, 2.2, 0.8, gx(gxr), 1.1, gz(gzr - half), MAT.wallFrameGray);
+            addBox(campusSiteGroup, 0.8, 2.2, 0.8, gx(gxr), 1.1, gz(gzr + half), MAT.wallFrameGray);
+          }
         });
 
         // 樹木（沿地界與廣場周邊，示意）
@@ -1846,8 +1840,8 @@
         campus: { pos: [26, 52, 92], target: [-2, 4, 14] },
         south: { pos: [8, 16, 62], target: [8, 6.5, -10] },
         north: { pos: [8, 22, -62], target: [8, 6.5, -10] },
-        kitchen: { pos: [-82, 24, 30], target: [-60, 4.0, -14] },
-        walkway: { pos: [-40, 10, 26], target: [-42, 2.8, -8] },
+        kitchen: { pos: [-62, 26, 42], target: [-65, 3.0, -16] },
+        walkway: { pos: [-38, 9, 14], target: [-42, 3.0, -8] },
         breezewayNorth: { pos: [24, 10, -40], target: [26, 2.5, -18], floor: '1F' },
         restroom2f: { pos: [44, 19, 1], target: [43.5, 6.2, -14.2], floor: '2F' },
         restroomEnt: { pos: [46, 11, 12], target: [44.5, 6.5, -10.5], floor: 'all' }
@@ -2050,15 +2044,15 @@
       // =========================================================================
       const SV_EYE_HEIGHT = 1.65;
       const STREET_VIEW_SPOTS = [
-        { id: 'sv_gate', name: '東側大門・14-1 警衛室前', x: gx(108.0), z: gz(42.0), floor: 0, yaw: Math.PI * 0.5 },
-        { id: 'sv_pond', name: '噴水池中央廣場', x: gx(84.0), z: gz(46.0), floor: 0, yaw: Math.PI * 0.38 },
+        { id: 'sv_gate', name: '東側大門・14-1 警衛室前', x: gx(110.0), z: gz(47.5), floor: 0, yaw: Math.PI * 0.5 },
+        { id: 'sv_pond', name: '噴水池中央廣場', x: gx(82.0), z: gz(47.0), floor: 0, yaw: Math.PI * 0.38 },
         { id: 'sv_breezeway', name: '1F 主穿堂中央', x: gx(58.5), z: gz(5.0), floor: 1, yaw: 0 },
         { id: 'sv_breezeway_north', name: '1F 穿堂後方樓梯口 (往北側車棚)', x: gx(56.5), z: gz(-5.5), floor: 0, yaw: Math.PI },
         { id: 'sv_1f_corridor', name: '1F 主校舍南向走廊', x: gx(32.0), z: gz(9.4), floor: 1, yaw: Math.PI * 0.5 },
         { id: 'sv_1f_west_junc', name: '1F 西側走廊與風雨走廊銜接口', x: gx(0.5), z: gz(9.5), floor: 1, yaw: Math.PI * 0.5 },
-        { id: 'sv_walkway', name: '中央廚房風雨走廊 (貫通通道)', x: gx(-9.0), z: gz(10.3), floor: 1, yaw: Math.PI * 0.5 },
-        { id: 'sv_dining_veranda', name: '2-7 食育教室戶外外廊', x: gx(-19.0), z: gz(13.2), floor: 1, yaw: 0.2 },
-        { id: 'sv_kitchen_plaza', name: '中央廚房南向景觀草坪', x: gx(-27.0), z: gz(22.5), floor: 0, yaw: 0 },
+        { id: 'sv_walkway', name: '中央廚房風雨走廊 (貫通通道)', x: gx(-8.0), z: gz(9.45), floor: 1, yaw: Math.PI * 0.5 },
+        { id: 'sv_dining_veranda', name: '2-7 食育教室戶外外廊', x: gx(-19.8), z: gz(12.5), floor: 1, yaw: 0.2 },
+        { id: 'sv_kitchen_plaza', name: '中央廚房南側（粉紅門廊前）', x: gx(-33.5), z: gz(19.5), floor: 0, yaw: 0 },
         { id: 'sv_1f_restroom', name: '1F 東側 20-4 廁所入口', x: gx(75.6), z: gz(9.4), floor: 1, yaw: 0 },
         { id: 'sv_2f_corridor', name: '2F 走廊（導師室・校長室前）', x: gx(45.0), z: gz(9.4), floor: 2, yaw: -Math.PI * 0.45 },
         { id: 'sv_2f_restroom_ent', name: '2F 東側 20-5 廁所入口', x: gx(75.6), z: gz(9.4), floor: 2, yaw: 0 },
@@ -2066,15 +2060,15 @@
         { id: 'sv_3f_corridor', name: '3F 專科教室走廊・景觀露台', x: gx(54.0), z: gz(11.5), floor: 3, yaw: Math.PI * 0.7 },
         { id: 'sv_3f_restroom', name: '3F 東側 20-6 廁所入口', x: gx(75.6), z: gz(9.4), floor: 3, yaw: 0 },
         { id: 'sv_track', name: '200m 操場・面向主校舍', x: gx(8.0), z: gz(48.0), floor: 0, yaw: 0 },
-        { id: 'sv_courts', name: '籃球場・風雨球場之間', x: gx(72.5), z: gz(80.0), floor: 0, yaw: Math.PI * 0.5 }
+        { id: 'sv_courts', name: '籃球場・風雨球場之間', x: gx(67.5), z: gz(80.0), floor: 0, yaw: Math.PI * 0.5 }
       ];
 
       function getWalkableFloorY(worldX, worldZ, svFloor = 0) {
         const rx = worldX - OFFSET_X;
         const rz = worldZ - OFFSET_Z;
         const inMain = rx >= -1.0 && rx <= 82.8 && rz >= -2.2 && rz <= 16.5;
-        const inWalkway = rx >= -18.0 && rx <= 0.5 && rz >= 7.5 && rz <= 13.0;
-        const inKitchen = rx >= -45.5 && rx <= -15.0 && rz >= -7.5 && rz <= 16.5;
+        const inWalkway = rx >= KIT.x + 29 && rx <= 0.5 && rz >= 7.8 && rz <= 11.2;
+        const inKitchen = rx >= KIT.x - 2.6 && rx <= KIT.x + 29.6 && rz >= KIT.z && rz <= KIT.z + 24.4;
 
         if (inMain) {
           if (svFloor === 3) return ELEV.F3;
@@ -2125,10 +2119,10 @@
       });
 
       const svPathSegments = [
-        [[108.0, 42.0, 0.12], [84.0, 46.0, 0.12], [64.0, 20.0, 0.12], [58.5, 9.4, 1.28], [58.5, -1.2, 1.28], [56.5, -5.5, 0.12]],
-        [[75.6, 9.4, 1.28], [58.5, 9.4, 1.28], [0.5, 9.5, 1.28], [-9.0, 10.3, 1.28], [-19.0, 13.2, 1.28], [-27.0, 22.5, 0.12]],
-        [[8.0, 48.0, 0.12], [-27.0, 22.5, 0.12]],
-        [[8.0, 48.0, 0.12], [84.0, 46.0, 0.12], [72.5, 80.0, 0.12]]
+        [[110.0, 47.5, 0.12], [82.0, 47.0, 0.12], [64.0, 20.0, 0.12], [58.5, 9.4, 1.28], [58.5, -1.2, 1.28], [56.5, -5.5, 0.12]],
+        [[75.6, 9.4, 1.28], [58.5, 9.4, 1.28], [0.5, 9.5, 1.28], [-8.0, 9.45, 1.28], [-19.8, 12.5, 1.28], [-33.5, 19.5, 0.12]],
+        [[8.0, 48.0, 0.12], [-33.5, 19.5, 0.12]],
+        [[8.0, 48.0, 0.12], [82.0, 47.0, 0.12], [69.0, 80.0, 0.12]]
       ];
       const svPathLineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.72 });
       svPathSegments.forEach((seg) => {
@@ -2566,8 +2560,11 @@
 
         // 中央廚房與風雨走廊
         if (state.showKitchen) {
-          drawRawRect(-42.5, -17.5, -7.0, 15.8, '#cac44e', '#fef08a');
-          drawRawRect(-17.5, 0.2, 8.2, 12.4, '#38bdf8');
+          drawRawRect(KIT.x, KIT.x + 24.5, KIT.z, KIT.z + 19, '#e5e7eb', '#fef08a');
+          drawRawRect(KIT.x - 0.1, KIT.x + 5, KIT.z + 11.5, KIT.z + 19, '#eeb07e');
+          drawRawRect(KIT.x + 9, KIT.x + 14, KIT.z + 19, KIT.z + 23, '#e8837f');
+          drawRawRect(KIT.x + 21, KIT.x + 29.6, KIT.z + 13, KIT.z + 24.4, '#f2d238');
+          drawRawRect(KIT.x + 29.6, 0.4, 7.9, 11.0, '#38bdf8');
         }
 
         // 附屬建物、停車場、車棚
