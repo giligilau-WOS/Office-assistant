@@ -1,0 +1,2964 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>溪埔國中 3D 校園</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background-color: #0b1220;
+      color: #f8fafc;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+    }
+    #labels-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 15;
+    }
+    .room-badge {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      color: #f8fafc;
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      backdrop-filter: blur(6px);
+      pointer-events: auto;
+      cursor: pointer;
+      transition: transform 0.14s ease, background-color 0.14s ease, border-color 0.14s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+    .room-badge:hover {
+      background: rgba(2, 132, 199, 0.92);
+      border-color: #7dd3fc;
+      transform: translate(-50%, -50%) scale(1.08);
+      z-index: 25;
+    }
+    .room-badge.kitchen-badge {
+      background: rgba(120, 53, 15, 0.82);
+      border-color: rgba(251, 191, 36, 0.55);
+      color: #fef3c7;
+    }
+    .room-badge.restroom-badge {
+      background: rgba(88, 28, 135, 0.82);
+      border-color: rgba(216, 180, 254, 0.55);
+      color: #f3e8ff;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
+    }
+    .custom-scroll::-webkit-scrollbar { width: 5px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 999px; }
+
+    .earth-btn {
+      background: rgba(15, 23, 42, 0.86);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.38);
+      transition: all 0.16s ease;
+    }
+    .earth-btn:hover {
+      background: rgba(30, 41, 59, 0.96);
+      border-color: rgba(56, 189, 248, 0.6);
+      transform: translateY(-1px);
+    }
+    .earth-btn:active { transform: scale(0.95); }
+    .pegman-active {
+      background: rgba(245, 158, 11, 0.94) !important;
+      border-color: #fef08a !important;
+      color: #0f172a !important;
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.65) !important;
+    }
+    #minimap-canvas {
+      cursor: crosshair;
+      touch-action: none;
+    }
+    .dpad-btn {
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center gap-3 transition-opacity duration-500">
+    <div class="w-11 h-11 rounded-full border-4 border-sky-400/30 border-t-sky-400 animate-spin"></div>
+    <div class="text-sm font-semibold text-sky-200 tracking-wide">正在建置高雄市大樹區溪埔國中 3D 校區模型…</div>
+    <div id="loading-error-box" class="hidden max-w-md mx-4 p-3 rounded-xl bg-rose-950/90 border border-rose-500/50 text-rose-200 text-xs"></div>
+  </div>
+
+  <!-- 3D WebGL Viewport Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Projected 3D Room Name Labels Layer -->
+  <div id="labels-layer"></div>
+
+  <!-- Mobile Sidebar Toggle Button -->
+  <button id="panel-toggle-btn" class="fixed top-3 left-3 z-40 glass-panel rounded-xl px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-800/90 transition flex items-center gap-2">
+    <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+    <span class="hidden sm:inline">控制面板</span>
+  </button>
+
+  <!-- Top-Center Google Earth / 2D / Street View Mode Switcher Pill -->
+  <div id="mode-switcher-bar" class="fixed top-3 left-1/2 -translate-x-1/2 z-40 glass-panel rounded-full p-1 flex items-center gap-1">
+    <button id="mode-btn-earth" class="mode-pill px-3 py-1.5 rounded-full text-xs font-semibold bg-sky-500 text-white shadow transition flex items-center gap-1.5">
+      <span>🌍</span><span class="hidden sm:inline">地球 3D</span>
+    </button>
+    <button id="mode-btn-2d" class="mode-pill px-3 py-1.5 rounded-full text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-700/60 transition flex items-center gap-1.5">
+      <span>🗺️</span><span class="hidden sm:inline">2D 俯視</span>
+    </button>
+    <button id="mode-btn-street" class="mode-pill px-3 py-1.5 rounded-full text-xs font-semibold text-amber-200 hover:text-white hover:bg-amber-500/30 transition flex items-center gap-1.5">
+      <span>🚶</span><span>街景漫遊</span>
+    </button>
+  </div>
+
+  <!-- Top-Right Summary & Dynamic Compass -->
+  <div class="fixed top-3 right-3 z-30 flex items-center gap-2">
+    <div class="hidden md:flex glass-panel rounded-xl px-3 py-1.5 items-center gap-3 text-[11px] text-slate-300">
+      <div>
+        <div class="font-bold text-white leading-tight">溪埔國中全校區 3D</div>
+        <div class="text-[10px] text-slate-400">主校舍・中央廚房・戶外設施</div>
+      </div>
+    </div>
+    <button id="compass-btn" class="earth-btn w-10 h-10 rounded-xl flex items-center justify-center relative" title="點擊對齊正北（南向正立面）">
+      <div id="compass-needle" class="w-6 h-6 flex items-center justify-center transition-transform duration-75">
+        <svg viewBox="0 0 24 24" class="w-6 h-6">
+          <polygon points="12,2 15.5,12 12,10.5 8.5,12" fill="#ef4444" />
+          <polygon points="12,22 15.5,12 12,13.5 8.5,12" fill="#94a3b8" />
+        </svg>
+      </div>
+      <span class="absolute -top-1 text-[8px] font-bold text-rose-400">N</span>
+    </button>
+  </div>
+
+  <!-- Pegman Placement Banner -->
+  <div id="pegman-hint-banner" class="fixed top-16 left-1/2 -translate-x-1/2 z-40 glass-panel rounded-2xl px-4 py-2 text-xs text-amber-200 border border-amber-400/50 flex items-center gap-3 opacity-0 pointer-events-none transition-all duration-200 -translate-y-2">
+    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+    <span>點擊場景中的<strong>藍色街景圓點</strong>、地面或右下角<strong>小地圖</strong>即可空降街景</span>
+    <button id="pegman-cancel-btn" class="px-2 py-0.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-[11px]">取消</button>
+  </div>
+
+  <!-- Street View Floating HUD -->
+  <div id="streetview-hud" class="fixed inset-x-0 bottom-3 z-30 pointer-events-none flex flex-col items-center gap-2 opacity-0 transition-all duration-300 translate-y-4">
+    <div class="glass-panel rounded-2xl px-3 py-2 pointer-events-auto flex flex-wrap items-center justify-center gap-2 max-w-[94vw]">
+      <div class="flex items-center gap-1.5 pr-2 border-r border-slate-700/70">
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <span id="sv-location-label" class="text-xs font-bold text-white">街景模式・穿堂主入口</span>
+      </div>
+      <div class="flex items-center gap-1" id="sv-floor-group">
+        <button data-sv-floor="0" class="sv-floor-btn px-2 py-1 rounded-lg text-[11px] font-semibold bg-amber-500 text-slate-950 transition">地面/戶外</button>
+        <button data-sv-floor="1" class="sv-floor-btn px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition">1F 走廊</button>
+        <button data-sv-floor="2" class="sv-floor-btn px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition">2F 走廊</button>
+        <button data-sv-floor="3" class="sv-floor-btn px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition">3F 走廊</button>
+      </div>
+      <button id="sv-exit-btn" class="px-2.5 py-1 rounded-lg bg-rose-500/85 hover:bg-rose-500 text-white text-[11px] font-semibold transition">退出街景</button>
+    </div>
+
+    <div class="glass-panel rounded-2xl px-3 py-2 pointer-events-auto flex items-center gap-3">
+      <div class="grid grid-cols-3 gap-1 w-24">
+        <div></div>
+        <button data-move="forward" class="dpad-btn h-7 rounded-lg bg-slate-800/90 hover:bg-sky-600 active:bg-sky-500 text-white text-xs font-bold flex items-center justify-center" title="前進 (W / ↑)">▲</button>
+        <div></div>
+        <button data-move="left" class="dpad-btn h-7 rounded-lg bg-slate-800/90 hover:bg-sky-600 active:bg-sky-500 text-white text-xs font-bold flex items-center justify-center" title="左移 (A / ←)">◀</button>
+        <button data-move="backward" class="dpad-btn h-7 rounded-lg bg-slate-800/90 hover:bg-sky-600 active:bg-sky-500 text-white text-xs font-bold flex items-center justify-center" title="後退 (S / ↓)">▼</button>
+        <button data-move="right" class="dpad-btn h-7 rounded-lg bg-slate-800/90 hover:bg-sky-600 active:bg-sky-500 text-white text-xs font-bold flex items-center justify-center" title="右移 (D / →)">▶</button>
+      </div>
+      <div class="text-[11px] text-slate-300 leading-snug hidden sm:block">
+        <div><strong class="text-amber-300">拖曳畫面</strong> 360° 環顧四周</div>
+        <div><strong class="text-sky-300">點擊地面 / 藍點 / 小地圖</strong> 立即移動</div>
+        <div class="text-[10px] text-slate-400">鍵盤 WASD / 方向鍵步行・Shift 加速</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Left Collapsible Control Panel -->
+  <aside id="control-panel" class="fixed top-14 left-3 bottom-3 z-30 w-[86vw] max-w-[300px] glass-panel rounded-2xl flex flex-col overflow-hidden transition-transform duration-300 -translate-x-[120%] lg:translate-x-0">
+    <!-- Panel Header -->
+    <div class="px-4 py-3 border-b border-slate-700/60 bg-slate-900/60 flex items-center justify-between">
+      <div>
+        <h1 class="text-sm font-bold text-white leading-tight">高雄市大樹區溪埔國中</h1>
+        <p class="text-[10px] text-sky-300 mt-0.5">依 115 年校區配置圖</p>
+      </div>
+      <button id="panel-close-btn" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition" title="收合面板">✕</button>
+    </div>
+
+    <!-- Scrollable Controls Body -->
+    <div class="flex-1 overflow-y-auto custom-scroll p-3.5 space-y-4">
+      <!-- 1. Floor Cutaway & Exploded View -->
+      <section>
+        <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">1. 樓層剖切與爆炸展開</h2>
+        <div class="grid grid-cols-4 gap-1.5 mb-3">
+          <button data-floor="all" class="floor-btn py-1.5 rounded-xl text-xs font-semibold bg-sky-500 text-white shadow transition">全棟</button>
+          <button data-floor="1F" class="floor-btn py-1.5 rounded-xl text-xs font-semibold bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition">壹層</button>
+          <button data-floor="2F" class="floor-btn py-1.5 rounded-xl text-xs font-semibold bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition">貳層</button>
+          <button data-floor="3F" class="floor-btn py-1.5 rounded-xl text-xs font-semibold bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition">參層</button>
+        </div>
+        <div class="bg-slate-900/55 rounded-xl p-2.5 border border-slate-700/40">
+          <div class="flex justify-between text-[11px] mb-1">
+            <span class="text-slate-300">樓層垂直爆炸間距</span>
+            <span id="explode-val" class="text-sky-300 font-mono font-semibold">0%</span>
+          </div>
+          <input id="explode-slider" type="range" min="0" max="100" value="0" class="w-full accent-sky-400 cursor-pointer" />
+        </div>
+      </section>
+
+      <!-- 2. Quick Camera Presets -->
+      <section class="pt-3 border-t border-slate-700/50">
+        <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">2. 快速建築視角</h2>
+        <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+          <button data-view="campus" class="view-btn py-1.5 px-2 rounded-xl bg-slate-800/80 hover:bg-sky-600/80 text-slate-100 font-medium transition">🏫 全區鳥瞰</button>
+          <button data-view="south" class="view-btn py-1.5 px-2 rounded-xl bg-slate-800/80 hover:bg-sky-600/80 text-slate-100 font-medium transition">📐 南向正立面</button>
+          <button data-view="kitchen" class="view-btn py-1.5 px-2 rounded-xl bg-amber-900/50 hover:bg-amber-600/80 text-amber-100 border border-amber-500/30 font-medium transition">🍳 中央廚房鳥瞰</button>
+          <button data-view="walkway" class="view-btn py-1.5 px-2 rounded-xl bg-amber-900/50 hover:bg-amber-600/80 text-amber-100 border border-amber-500/30 font-medium transition">🚶 風雨走廊銜接</button>
+          <button data-view="breezewayNorth" class="view-btn py-1.5 px-2 rounded-xl bg-emerald-900/45 hover:bg-emerald-600/80 text-emerald-100 border border-emerald-500/30 font-medium transition">🪜 穿堂後方樓梯</button>
+          <button data-view="restroom2f" class="view-btn py-1.5 px-2 rounded-xl bg-purple-900/50 hover:bg-purple-600/80 text-purple-100 border border-purple-500/30 font-medium transition">⚧️ 2F性別友善廁所</button>
+          <button data-view="restroomEnt" class="view-btn py-1.5 px-2 rounded-xl bg-purple-900/50 hover:bg-purple-600/80 text-purple-100 border border-purple-500/30 font-medium transition">🍍 東側1~3F廁所</button>
+          <button data-view="north" class="view-btn py-1.5 px-2 rounded-xl bg-slate-800/80 hover:bg-sky-600/80 text-slate-100 font-medium transition">🧭 北向立面</button>
+        </div>
+      </section>
+
+      <!-- 3. Display Layer Toggles -->
+      <section class="pt-3 border-t border-slate-700/50">
+        <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">3. 顯示圖層與操作設定</h2>
+        <div class="space-y-1.5 text-xs">
+          <label class="flex items-center justify-between p-2 rounded-xl bg-sky-500/15 border border-sky-400/35 hover:bg-sky-500/25 cursor-pointer transition">
+            <div>
+              <div class="text-sky-200 font-medium">Google Earth 操作模式</div>
+              <div class="text-[10px] text-slate-400">左鍵平移地圖・右鍵旋轉傾斜</div>
+            </div>
+            <input id="toggle-earth-nav" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+          </label>
+          <label class="flex items-center justify-between p-2 rounded-xl bg-amber-500/15 border border-amber-400/30 hover:bg-amber-500/25 cursor-pointer transition">
+            <span class="text-amber-200 font-medium">新建中央廚房與風雨走廊</span>
+            <input id="toggle-kitchen" type="checkbox" checked class="w-4 h-4 accent-amber-400 rounded cursor-pointer" />
+          </label>
+          <label class="flex items-center justify-between p-2 rounded-xl bg-slate-800/55 hover:bg-slate-800 cursor-pointer transition">
+            <span class="text-slate-200">屋頂鋼構棚架與太陽能板</span>
+            <input id="toggle-roof" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+          </label>
+          <label class="flex items-center justify-between p-2 rounded-xl bg-slate-800/55 hover:bg-slate-800 cursor-pointer transition">
+            <span class="text-slate-200">外牆 X-Ray 半透明透視</span>
+            <input id="toggle-xray" type="checkbox" class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+          </label>
+          <label class="flex items-center justify-between p-2 rounded-xl bg-slate-800/55 hover:bg-slate-800 cursor-pointer transition">
+            <span class="text-slate-200">校園基地（操場／球場／車棚）</span>
+            <input id="toggle-site" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+          </label>
+          <label class="flex items-center justify-between p-2 rounded-xl bg-slate-800/55 hover:bg-slate-800 cursor-pointer transition">
+            <span class="text-slate-200">結構軸線標尺（①–⑪／A–D）</span>
+            <input id="toggle-grid" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+          </label>
+          <label class="flex items-center justify-between p-2 rounded-xl bg-slate-800/55 hover:bg-slate-800 cursor-pointer transition">
+            <span class="text-slate-200">3D 空間名稱標籤（115年配置）</span>
+            <input id="toggle-labels" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+          </label>
+        </div>
+      </section>
+
+      <!-- 4. Solar Illumination Simulator -->
+      <section class="pt-3 border-t border-slate-700/50">
+        <div class="flex justify-between items-center mb-1.5">
+          <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider">4. 高雄大樹日照模擬</h2>
+          <span id="sun-time-label" class="text-xs font-mono font-semibold text-amber-300">10:30</span>
+        </div>
+        <input id="sun-slider" type="range" min="6" max="18" step="0.25" value="10.5" class="w-full accent-amber-400 cursor-pointer" />
+        <div class="flex justify-between text-[10px] text-slate-400 mt-0.5">
+          <span>06:00 日出</span>
+          <span>12:00 正午</span>
+          <span>18:00 日落</span>
+        </div>
+      </section>
+
+      <!-- 5. 3D Model Export -->
+      <section class="pt-3 border-t border-slate-700/50">
+        <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">5. 匯出 3D 建築模型</h2>
+        <div class="grid grid-cols-3 gap-1.5">
+          <button id="export-glb" class="py-1.5 rounded-xl bg-sky-600/85 hover:bg-sky-500 text-white text-xs font-semibold transition">.GLB</button>
+          <button id="export-obj" class="py-1.5 rounded-xl bg-indigo-600/85 hover:bg-indigo-500 text-white text-xs font-semibold transition">.OBJ</button>
+          <button id="export-stl" class="py-1.5 rounded-xl bg-emerald-600/85 hover:bg-emerald-500 text-white text-xs font-semibold transition">.STL</button>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-1.5 leading-relaxed">一併匯出主校舍（含東側整修廁所）與中央廚房，可供 Blender、SketchUp 或 3D 列印使用。</p>
+      </section>
+    </div>
+
+    <!-- Footer Hint -->
+    <div class="px-4 py-2 border-t border-slate-700/50 bg-slate-900/60 text-[10px] text-slate-400 flex items-center justify-between">
+      <span id="nav-footer-hint">左鍵平移・右鍵旋轉傾斜・雙擊飛近</span>
+      <span>點擊空間查資訊</span>
+    </div>
+  </aside>
+
+  <!-- Room Info Card -->
+  <div id="room-info-card" class="fixed top-20 right-3 z-30 w-[90vw] max-w-[310px] glass-panel rounded-2xl p-4 transform -translate-y-4 opacity-0 pointer-events-none transition-all duration-200">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <div id="room-floor-badge" class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-400/30 mb-1">1F 壹層</div>
+        <h3 id="room-title" class="text-sm font-bold text-white">穿堂</h3>
+      </div>
+      <button id="room-close-btn" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition text-xs">✕</button>
+    </div>
+    <p id="room-desc" class="text-xs text-slate-300 mt-2 leading-relaxed"></p>
+    <div class="mt-2.5 grid grid-cols-2 gap-1.5 text-[11px] bg-slate-900/60 rounded-xl p-2 border border-slate-700/40">
+      <div><span class="text-slate-400">樓層高程：</span><span id="room-elev" class="text-sky-300 font-mono">+1.20m</span></div>
+      <div><span class="text-slate-400">概估面積：</span><span id="room-area" class="text-amber-300 font-mono">70.6 m²</span></div>
+      <div class="col-span-2"><span class="text-slate-400">建置／保固：</span><span id="room-meta" class="text-emerald-300">—</span></div>
+    </div>
+    <div class="mt-3 flex gap-2">
+      <button id="room-focus-btn" class="flex-1 py-1.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition">拉近檢視</button>
+      <button id="room-street-btn" class="flex-1 py-1.5 px-3 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 text-xs font-semibold transition">空降街景</button>
+    </div>
+  </div>
+
+  <!-- Bottom-Right Google Earth Control Cluster & Interactive 2D Campus Mini-Map -->
+  <div class="fixed bottom-3 right-3 z-30 flex items-end gap-2.5 pointer-events-none">
+    <!-- Interactive 2D Campus Mini-Map -->
+    <div id="minimap-wrapper" class="glass-panel rounded-2xl overflow-hidden pointer-events-auto flex flex-col transition-all duration-200 w-[196px] sm:w-[228px]">
+      <div class="px-2.5 py-1.5 bg-slate-900/75 border-b border-slate-700/60 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+          <span class="text-[11px] font-semibold text-slate-100">校園地圖導覽</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <button id="minimap-size-btn" class="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/70 transition text-[10px]" title="放大／縮小地圖">⤢</button>
+          <button id="minimap-collapse-btn" class="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/70 transition text-[10px]" title="收合／展開地圖">▾</button>
+        </div>
+      </div>
+      <div id="minimap-body" class="relative bg-slate-950/80">
+        <canvas id="minimap-canvas" width="320" height="220" class="block w-full h-[135px] sm:h-[156px]"></canvas>
+        <div class="absolute bottom-1 left-1.5 px-1.5 py-0.5 rounded bg-slate-950/75 text-[9px] text-slate-300 pointer-events-none">點擊／拖曳地圖移動</div>
+      </div>
+      <div class="px-2.5 py-1 bg-slate-950/85 border-t border-slate-800/80 text-[9.5px] font-mono text-slate-400 flex items-center justify-between gap-1">
+        <span id="earth-coords-text">22.71315°N 120.42580°E</span>
+        <span id="earth-alt-text" class="text-sky-300">高度 42m</span>
+      </div>
+    </div>
+
+    <!-- Google Earth Vertical Floating Action Buttons -->
+    <div class="flex flex-col items-center gap-1.5 pointer-events-auto">
+      <button id="earth-pegman-btn" class="earth-btn w-10 h-10 rounded-xl flex items-center justify-center text-amber-400 hover:text-amber-300" title="街景小人：點擊開啟街景落點或進入街景">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="4.5" r="2.5" />
+          <path d="M9.5 8.5h5a1.5 1.5 0 0 1 1.5 1.5v4.2a1 1 0 0 1-1 1h-.6V21a1 1 0 0 1-2 0v-4.5h-.8V21a1 1 0 0 1-2 0v-5.8H9a1 1 0 0 1-1-1V10a1.5 1.5 0 0 1 1.5-1.5z" />
+        </svg>
+      </button>
+      <button id="earth-tilt-btn" class="earth-btn w-10 h-10 rounded-xl text-[11px] font-bold text-sky-300 flex items-center justify-center" title="切換 2D 俯視 / 3D 傾斜">2D</button>
+      <div class="earth-btn rounded-xl overflow-hidden flex flex-col w-10">
+        <button id="earth-rot-left" class="h-8 text-slate-200 hover:bg-slate-700/70 text-xs flex items-center justify-center border-b border-slate-700/60" title="向左旋轉">↺</button>
+        <button id="earth-rot-right" class="h-8 text-slate-200 hover:bg-slate-700/70 text-xs flex items-center justify-center" title="向右旋轉">↻</button>
+      </div>
+      <div class="earth-btn rounded-xl overflow-hidden flex flex-col w-10">
+        <button id="earth-zoom-in" class="h-9 text-slate-100 hover:bg-slate-700/70 text-base font-bold flex items-center justify-center border-b border-slate-700/60" title="放大">+</button>
+        <button id="earth-zoom-out" class="h-9 text-slate-100 hover:bg-slate-700/70 text-base font-bold flex items-center justify-center" title="縮小">−</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Status Message Box -->
+  <div id="toast-box" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 glass-panel rounded-xl px-4 py-2 text-xs font-medium text-sky-100 opacity-0 pointer-events-none transition-all duration-250 -translate-y-2"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+    import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
+    import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+
+    // Global error handler to gracefully surface errors in UI instead of failing silently
+    function showFatalError(msg) {
+      const box = document.getElementById('loading-error-box');
+      if (box) {
+        box.textContent = `載入發生錯誤：${msg}`;
+        box.classList.remove('hidden');
+      }
+      console.error(msg);
+    }
+
+    try {
+      // =========================================================================
+      // 1. ARCHITECTURAL CONSTANTS & COORDINATE SYSTEM
+      //    Raw X: West(0) -> East(82.7m) along Main Building Grid ①–⑪
+      //    Raw Z: North(0) -> South(15.75m) along Main Building Grid D–C–B–A
+      //    World coordinates centered around campus midpoint
+      // =========================================================================
+      const OFFSET_X = -32.0;
+      const OFFSET_Z = -18.0;
+      const gx = (rx) => rx + OFFSET_X;
+      const gz = (rz) => rz + OFFSET_Z;
+
+      const GRID_X = [0, 9, 18, 27, 36, 45, 54, 63, 72, 79.05, 82.7]; // ①..⑪ (meters)
+      const GRID_Z = { D: 0, C: 7.85, B: 10.85, A: 15.75 };
+      const ELEV = { GL: 0.0, F1: 1.20, F2: 5.00, F3: 8.80, RF: 12.60 };
+      const FLOOR_H = 3.80;
+
+      // 校園配置（依中央廚房統包工程「現況全區配置圖」1/600 量測，原點＝主校舍軸線①×D，+X 東、+Z 南）
+      const SITE = {
+        boundary: [[-51, -10.5], [120, -7], [120, 97], [5, 96.5], [-70, 72]],
+        track: { cx: 8.0, cz: 41.5, straightHalf: 28.8, outerR: 19.5, innerR: 12.2 },
+        sprint: { cx: 8.0, cz: 66.0, len: 118.0, w: 8.0 },
+        stage: { cx: -6.6, cz: 77.0, w: 9.0, d: 4.4 },
+        storage172: { cx: 0.5, cz: 86.5, w: 10.0, d: 12.5 },
+        courtOpen: { cx: 59.0, cz: 82.0, w: 24.5, d: 17.0 },
+        courtCovered: { cx: 86.5, cz: 82.0, w: 24.5, d: 17.0 },
+        pond: { cx: 76.0, cz: 46.0, plazaR: 11.0, waterR: 4.0 },
+        entryPlaza: { x0: 76.0, x1: 119.0, z0: 37.5, z1: 53.5 },
+        annex: { x0: 110.0, x1: 115.0, z0: 16.0, z1: 37.0 },
+        parkingNE: { x0: 97.0, x1: 109.0, z0: 2.0, z1: 30.0 },
+        parkingSE: { cx: 106.0, cz: 73.0, w: 13.0, d: 42.0, rot: 0.17 },
+        bikeShed: [[10.0, 51.5], [64.0, 76.0]],
+        bikeShedZ: -5.2,
+        kitchenRoad: { from: [-66.0, 72.0], to: [-47.0, -2.0], w: 5.5 },
+        gates: {
+          main: [119.0, 45.5],
+          east: [119.0, 6.0],
+          south: [11.0, 96.5],
+          southwest: [-67.0, 70.0]
+        }
+      };
+
+      // =========================================================================
+      // 2. THREE.JS SCENE, RENDERER, CAMERA & LIGHTING SETUP
+      // =========================================================================
+      const container = document.getElementById('canvas-container');
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xbad6ef);
+      scene.fog = new THREE.Fog(0xbad6ef, 180, 460);
+
+      const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.2, 800);
+      camera.position.set(22, 46, 86);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.06;
+      container.appendChild(renderer.domElement);
+
+      // OrbitControls configured for Google Earth style navigation by default
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.screenSpacePanning = false;
+      controls.panSpeed = 1.15;
+      controls.rotateSpeed = 0.72;
+      controls.zoomSpeed = 1.15;
+      controls.maxPolarAngle = Math.PI * 0.492;
+      controls.minDistance = 4;
+      controls.maxDistance = 260;
+      controls.target.set(-4, 5.0, 6);
+
+      function applyNavigationStyle(isGoogleEarth) {
+        if (isGoogleEarth) {
+          controls.mouseButtons = {
+            LEFT: THREE.MOUSE.PAN,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.ROTATE
+          };
+          controls.touches = {
+            ONE: THREE.TOUCH.PAN,
+            TWO: THREE.TOUCH.DOLLY_ROTATE
+          };
+          document.getElementById('nav-footer-hint').textContent = '左鍵平移・右鍵旋轉傾斜・雙擊飛近';
+        } else {
+          controls.mouseButtons = {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.PAN
+          };
+          controls.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+          };
+          document.getElementById('nav-footer-hint').textContent = '左鍵旋轉・滾輪縮放・右鍵平移';
+        }
+      }
+      applyNavigationStyle(true);
+
+      // Lighting (Kaohsiung Dashu Sun + Hemisphere Sky)
+      const hemiLight = new THREE.HemisphereLight(0xeef6ff, 0x5c6b57, 0.78);
+      scene.add(hemiLight);
+
+      const sunLight = new THREE.DirectionalLight(0xfff7e6, 1.55);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.width = 2048;
+      sunLight.shadow.mapSize.height = 2048;
+      sunLight.shadow.camera.near = 10;
+      sunLight.shadow.camera.far = 300;
+      const dShadow = 115;
+      sunLight.shadow.camera.left = -dShadow;
+      sunLight.shadow.camera.right = dShadow;
+      sunLight.shadow.camera.top = dShadow;
+      sunLight.shadow.camera.bottom = -dShadow;
+      sunLight.shadow.bias = -0.0004;
+      scene.add(sunLight);
+
+      const fillLight = new THREE.DirectionalLight(0xc7e0ff, 0.35);
+      fillLight.position.set(-55, 32, -45);
+      scene.add(fillLight);
+
+      function updateSunPosition(hour) {
+        const hh = Math.floor(hour);
+        const mm = Math.round((hour - hh) * 60);
+        document.getElementById('sun-time-label').textContent =
+          `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+        const t = (hour - 6) / 12; // 0 sunrise -> 0.5 noon -> 1 sunset
+        const angle = t * Math.PI;
+        const elev = Math.sin(angle) * 76 + 10;
+        const eastWest = Math.cos(angle) * 110;
+        const southOffset = 48; // Kaohsiung latitude ~22.7°N
+        sunLight.position.set(eastWest, elev, southOffset);
+        const warmth = Math.sin(angle);
+        sunLight.intensity = 0.65 + warmth * 0.98;
+        const skyColor = new THREE.Color().lerpColors(
+          new THREE.Color(0xf4b084),
+          new THREE.Color(0xbad6ef),
+          Math.min(1, warmth * 1.45)
+        );
+        scene.background.copy(skyColor);
+        scene.fog.color.copy(skyColor);
+      }
+      updateSunPosition(10.5);
+
+      // =========================================================================
+      // 3. PROCEDURAL CANVAS TEXTURES (NO EXTERNAL IMAGE URLS)
+      // =========================================================================
+      function makeWetlandMosaicTexture() {
+        const c = document.createElement('canvas');
+        c.width = 512;
+        c.height = 384;
+        const ctx = c.getContext('2d');
+        // Pale blue sky
+        ctx.fillStyle = '#d7eef8';
+        ctx.fillRect(0, 0, 512, 384);
+        // Layered Dashu hills
+        const drawPoly = (pts, fill) => {
+          ctx.beginPath();
+          pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+          ctx.closePath();
+          ctx.fillStyle = fill;
+          ctx.fill();
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        };
+        drawPoly([[0, 145], [95, 118], [215, 76], [335, 112], [512, 88], [512, 180], [0, 180]], '#b4cde2');
+        drawPoly([[0, 170], [120, 125], [275, 112], [410, 152], [512, 124], [512, 215], [0, 215]], '#8aa692');
+        drawPoly([[0, 215], [150, 178], [305, 164], [512, 198], [512, 245], [0, 245]], '#5c7c6f');
+        // River reflection band
+        drawPoly([[0, 240], [220, 218], [512, 208], [512, 260], [0, 260]], '#98d2ea');
+        // Perspective colorful farm strips
+        const colors = ['#748c55', '#e4d57c', '#7c5c94', '#8ea874', '#5b7245', '#745a52', '#c8c54c', '#5bc0be', '#d97757', '#f0cf65', '#92c97e', '#e26d5c'];
+        const strips = 18;
+        for (let i = 0; i < strips; i++) {
+          const xTop0 = (i / strips) * 512;
+          const xTop1 = ((i + 1) / strips) * 512;
+          const xBot0 = -120 + (i / strips) * 752;
+          const xBot1 = -120 + ((i + 1) / strips) * 752;
+          drawPoly([[xTop0, 255], [xTop1, 255], [xBot1, 384], [xBot0, 384]], colors[i % colors.length]);
+        }
+        // Subtle 18x18mm mosaic grid lines
+        ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < 512; x += 8) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 384); ctx.stroke(); }
+        for (let y = 0; y < 384; y += 8) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke(); }
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+      }
+
+      function makeMosaicGradientTexture(baseHex) {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 256;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, 256, 256);
+        const base = new THREE.Color(baseHex);
+        const light = new THREE.Color(0xf1f5f9);
+        const tile = 16;
+        for (let y = 0; y < 256; y += tile) {
+          const ratio = y / 256; // darker near bottom
+          for (let x = 0; x < 256; x += tile) {
+            const jitter = (Math.sin(x * 12.7 + y * 31.3) * 0.5 + 0.5) * 0.35;
+            const mix = Math.min(1, Math.max(0, ratio * 1.15 - 0.15 + jitter * ratio));
+            const col = light.clone().lerp(base, mix);
+            ctx.fillStyle = `#${col.getHexString()}`;
+            ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
+          }
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+      }
+
+      function makeEntranceFeatureTexture(type) {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 384;
+        const ctx = c.getContext('2d');
+        // Light wood-grain vertical planks base
+        ctx.fillStyle = '#d6c8b6';
+        ctx.fillRect(0, 0, 256, 384);
+        for (let i = 0; i < 16; i++) {
+          ctx.fillStyle = i % 2 === 0 ? 'rgba(130,105,80,0.08)' : 'rgba(255,255,255,0.06)';
+          ctx.fillRect(i * 16, 0, 15, 384);
+        }
+        if (type === '1F') {
+          // 玉荷包荔枝意象 (D-04)
+          ctx.fillStyle = '#db166e';
+          ctx.beginPath();
+          ctx.moveTo(215, 0);
+          ctx.bezierCurveTo(180, 90, 232, 180, 195, 270);
+          ctx.bezierCurveTo(175, 330, 215, 360, 205, 384);
+          ctx.lineTo(256, 384);
+          ctx.lineTo(256, 0);
+          ctx.closePath();
+          ctx.fill();
+          const circles = [[90, 72, 34, '#991b1b'], [46, 148, 30, '#e16a68'], [140, 130, 20, '#fef08a'], [95, 290, 22, '#f6ad55'], [172, 265, 13, '#67c8d6']];
+          circles.forEach(([x, y, r, col]) => {
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+          });
+          // Hexagons
+          const hexes = [[48, 206, '#e2e89d'], [90, 206, '#e2e8f0'], [152, 206, '#94a3b8'], [68, 234, '#d4cc6a'], [110, 234, '#88d0ec'], [152, 234, '#e2e89d'], [48, 262, '#eab308'], [130, 262, '#cbd5e1'], [178, 234, '#f59e0b']];
+          hexes.forEach(([cx, cy, col]) => {
+            ctx.beginPath();
+            for (let k = 0; k < 6; k++) {
+              const a = (Math.PI / 3) * k - Math.PI / 6;
+              const px = cx + Math.cos(a) * 18;
+              const py = cy + Math.sin(a) * 18;
+              if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath(); ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5; ctx.stroke();
+          });
+          // Farm fence
+          ctx.fillStyle = '#4a3022';
+          [32, 118].forEach((fx) => ctx.fillRect(fx, 318, 9, 64));
+          [326, 340, 354, 368].forEach((fy) => ctx.fillRect(26, fy, 170, 6));
+        } else if (type === '2F') {
+          // 2F 高屏溪舊鐵橋與鐵軌展示板意象 (D-03)
+          const drawTruss = (yBase) => {
+            ctx.strokeStyle = '#475569'; ctx.lineWidth = 4;
+            ctx.strokeRect(16, yBase - 36, 224, 36);
+            for (let x = 16; x < 240; x += 28) {
+              ctx.beginPath(); ctx.moveTo(x, yBase); ctx.lineTo(x + 14, yBase - 36); ctx.lineTo(x + 28, yBase); ctx.stroke();
+            }
+          };
+          drawTruss(118);
+          drawTruss(328);
+          // Brick piers & greenery planter
+          ctx.fillStyle = '#9a5837'; ctx.fillRect(20, 328, 22, 52); ctx.fillRect(214, 328, 22, 52);
+          ctx.fillStyle = '#3f6e33'; ctx.fillRect(46, 342, 164, 30);
+          ctx.fillStyle = '#1e293b'; ctx.fillRect(46, 366, 164, 14);
+          // Railway display boards
+          ctx.fillStyle = '#5c4033';
+          [165, 250].forEach((ry) => {
+            ctx.fillRect(16, ry, 224, 6);
+            ctx.fillRect(16, ry + 24, 224, 6);
+          });
+          const boards = [[28, 152, 42, 58, '#f8fafc'], [76, 132, 36, 50, '#fef08a'], [120, 134, 48, 56, '#f8fafc'], [176, 162, 42, 60, '#bae6fd'], [78, 190, 38, 48, '#bae6fd'], [22, 232, 44, 54, '#f8fafc'], [74, 248, 60, 38, '#f8fafc'], [142, 234, 52, 34, '#bae6fd'], [178, 266, 48, 30, '#fef08a']];
+          boards.forEach(([x, y, w, h, col]) => {
+            ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+          });
+        } else {
+          // 3F 金鑽鳳梨意象 (D-05)
+          ctx.fillStyle = '#facc15';
+          ctx.beginPath();
+          ctx.moveTo(212, 0);
+          ctx.bezierCurveTo(182, 95, 230, 185, 195, 275);
+          ctx.bezierCurveTo(178, 330, 212, 360, 204, 384);
+          ctx.lineTo(256, 384); ctx.lineTo(256, 0); ctx.closePath(); ctx.fill();
+          const drawPineapple = (cx, cy, s) => {
+            ctx.strokeStyle = '#3f5a44'; ctx.lineWidth = 10 * s;
+            ctx.beginPath(); ctx.ellipse(cx, cy + 16 * s, 26 * s, 38 * s, 0, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = '#3f5a44';
+            for (let k = -2; k <= 2; k++) {
+              ctx.beginPath();
+              ctx.moveTo(cx, cy - 16 * s);
+              ctx.lineTo(cx + k * 14 * s, cy - 52 * s + Math.abs(k) * 8 * s);
+              ctx.lineTo(cx + k * 5 * s, cy - 18 * s);
+              ctx.fill();
+            }
+          };
+          drawPineapple(102, 118, 0.72);
+          drawPineapple(136, 224, 1.0);
+          drawPineapple(72, 294, 0.68);
+          const sq = [[152, 42, '#e16a68'], [172, 112, '#fb923c'], [34, 152, '#fde047'], [52, 206, '#e16a68'], [148, 314, '#a7e0a0']];
+          sq.forEach(([x, y, col]) => {
+            ctx.fillStyle = col; ctx.fillRect(x, y, 32, 32);
+            ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, 32, 32);
+          });
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+      }
+
+      // =========================================================================
+      // 4. SHARED ARCHITECTURAL MATERIALS & X-RAY SUPPORT
+      // =========================================================================
+      const xrayMaterials = [];
+      function makeMat(hex, opts = {}) {
+        const m = new THREE.MeshStandardMaterial({
+          color: hex,
+          roughness: opts.roughness ?? 0.78,
+          metalness: opts.metalness ?? 0.05,
+          transparent: opts.transparent ?? false,
+          opacity: opts.opacity ?? 1.0,
+          side: opts.side ?? THREE.FrontSide,
+          map: opts.map ?? null
+        });
+        if (opts.xrayable) xrayMaterials.push(m);
+        return m;
+      }
+
+      const MAT = {
+        concreteBase: makeMat(0x8e959c, { roughness: 0.9 }),
+        slabFloor: makeMat(0xdcdad4, { roughness: 0.8 }),
+        corridorFloor: makeMat(0xcbc7be, { roughness: 0.75 }),
+        wallExt: makeMat(0xe7e3da, { roughness: 0.82, xrayable: true }),
+        wallFrameGray: makeMat(0x9a9ea4, { roughness: 0.78, xrayable: true }),
+        wallFrameBeige: makeMat(0xcbb383, { roughness: 0.80, xrayable: true }), // West 2F signature frame
+        wallFrameDark: makeMat(0x474c54, { roughness: 0.72, xrayable: true }),  // Breezeway dark portal
+        wallInt: makeMat(0xf5f4f0, { roughness: 0.85, xrayable: true }),
+        glass: makeMat(0x8bc9eb, { roughness: 0.12, metalness: 0.25, transparent: true, opacity: 0.48, side: THREE.DoubleSide }),
+        alFrame: makeMat(0x475569, { roughness: 0.45, metalness: 0.55 }),
+        steelDark: makeMat(0x3a4350, { roughness: 0.42, metalness: 0.65 }),
+        steelSilver: makeMat(0xcbd5e1, { roughness: 0.35, metalness: 0.75 }),
+        roofSheet: makeMat(0x6c7782, { roughness: 0.52, metalness: 0.45 }),
+        solarPanel: makeMat(0x162544, { roughness: 0.28, metalness: 0.62 }),
+        mosaicStrip: makeMat(0x38bdf8, { roughness: 0.5 }),
+        breezewayCenter: makeMat(0xd97706, { roughness: 0.65 }),
+        woodDoor: makeMat(0x9a6d45, { roughness: 0.68 }),
+        woodLight: makeMat(0xcfb594, { roughness: 0.72 }),
+        // Restroom materials (2026 renovation)
+        restFloorWood: makeMat(0xd6cfc3, { roughness: 0.75 }),
+        restFloorDark: makeMat(0x334155, { roughness: 0.45 }),
+        restBlueUpper: makeMat(0xcfe8f7, { roughness: 0.82, xrayable: true }),
+        restLavUpper: makeMat(0xddd2ec, { roughness: 0.82, xrayable: true }),
+        restYelUpper: makeMat(0xf6ebc6, { roughness: 0.82, xrayable: true }),
+        restCubicleWood: makeMat(0xcab496, { roughness: 0.62 }),
+        restPurpleIcon: makeMat(0x886cc6, { roughness: 0.5 }),
+        restBlueMosaic: makeMat(0xffffff, { map: makeMosaicGradientTexture(0x2563eb), roughness: 0.45 }),
+        restLavMosaic: makeMat(0xffffff, { map: makeMosaicGradientTexture(0x886cc6), roughness: 0.45 }),
+        wetlandWall: makeMat(0xffffff, { map: makeWetlandMosaicTexture(), roughness: 0.55, side: THREE.DoubleSide }),
+        ent1F: makeMat(0xffffff, { map: makeEntranceFeatureTexture('1F'), roughness: 0.6 }),
+        ent2F: makeMat(0xffffff, { map: makeEntranceFeatureTexture('2F'), roughness: 0.6 }),
+        ent3F: makeMat(0xffffff, { map: makeEntranceFeatureTexture('3F'), roughness: 0.6 }),
+        porcelain: makeMat(0xf8fafc, { roughness: 0.22, metalness: 0.08 }),
+        // Central Kitchen Exterior Palette (matching 2021-10-07 基本設計簡報 3D renders!)
+        ckWhite: makeMat(0xf4f4f2, { roughness: 0.82, xrayable: true }),
+        ckGray: makeMat(0xbec4cb, { roughness: 0.82, xrayable: true }),
+        ckYellowGreen: makeMat(0xcac44e, { roughness: 0.82, xrayable: true }), // 2-7 食育教室 (bright olive-yellow box)
+        ckTerracotta: makeMat(0xcf8e6d, { roughness: 0.82, xrayable: true }),  // 南向進貨框體 (warm terracotta)
+        ckSand: makeMat(0xd9c58e, { roughness: 0.82, xrayable: true }),        // 西南取餐量體 (warm sand beige)
+        ckSage: makeMat(0xb6c78c, { roughness: 0.82, xrayable: true }),        // 2F 屋突機房 (soft sage green)
+        // Campus Site
+        grass: makeMat(0x5d8d4a, { roughness: 0.94 }),
+        lawnInfield: makeMat(0x4c823d, { roughness: 0.92 }),
+        trackRed: makeMat(0xb54b3c, { roughness: 0.85 }),
+        asphalt: makeMat(0x4f565f, { roughness: 0.90 }),
+        plazaTile: makeMat(0xb6afa3, { roughness: 0.84 }),
+        courtBlue: makeMat(0x2d6a7a, { roughness: 0.78 }),
+        water: makeMat(0x3895ba, { roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.86 }),
+        bark: makeMat(0x5b4432, { roughness: 0.92 }),
+        foliage1: makeMat(0x3e6b36, { roughness: 0.88 }),
+        foliage2: makeMat(0x528240, { roughness: 0.88 })
+      };
+
+      // =========================================================================
+      // 5. SCENE GRAPH HIERARCHY
+      // =========================================================================
+      const buildingExportRoot = new THREE.Group(); buildingExportRoot.name = 'Xipu_JHS_All_Buildings';
+      const mainBuildingGroup = new THREE.Group(); mainBuildingGroup.name = 'Main_School_Building';
+      const foundationGroup = new THREE.Group(); foundationGroup.name = 'Foundation_Plinth';
+      const floor1Group = new THREE.Group(); floor1Group.name = 'Floor_1F';
+      const floor2Group = new THREE.Group(); floor2Group.name = 'Floor_2F';
+      const floor3Group = new THREE.Group(); floor3Group.name = 'Floor_3F';
+      const roofGroup = new THREE.Group(); roofGroup.name = 'Roof_Steel_Canopy';
+
+      const kitchenRootGroup = new THREE.Group(); kitchenRootGroup.name = 'Central_Kitchen_Complex';
+      const kitchenBaseGroup = new THREE.Group(); kitchenBaseGroup.name = 'Kitchen_Plinth_And_Walkway';
+      const kitchen1FGroup = new THREE.Group(); kitchen1FGroup.name = 'Kitchen_1F';
+      const kitchenRoofGroup = new THREE.Group(); kitchenRoofGroup.name = 'Kitchen_Roof_And_2F_Mech';
+
+      mainBuildingGroup.add(foundationGroup, floor1Group, floor2Group, floor3Group, roofGroup);
+      kitchenRootGroup.add(kitchenBaseGroup, kitchen1FGroup, kitchenRoofGroup);
+      buildingExportRoot.add(mainBuildingGroup, kitchenRootGroup);
+
+      const roomZonesGroup = new THREE.Group(); roomZonesGroup.name = 'Interactive_Room_Zones';
+      const gridSystemGroup = new THREE.Group(); gridSystemGroup.name = 'Structural_Grid_System';
+      const campusSiteGroup = new THREE.Group(); campusSiteGroup.name = 'Campus_Site_Context';
+      const streetViewGroup = new THREE.Group(); streetViewGroup.name = 'StreetView_Waypoints';
+
+      scene.add(buildingExportRoot, roomZonesGroup, gridSystemGroup, campusSiteGroup, streetViewGroup);
+
+      // Geometry helper
+      function addBox(parent, w, h, d, x, y, z, mat, cast = true, receive = true) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        mesh.position.set(x, y, z);
+        mesh.castShadow = cast;
+        mesh.receiveShadow = receive;
+        parent.add(mesh);
+        return mesh;
+      }
+
+      // Helper for exterior wall with a centered window opening
+      function addWindowWallX(parent, x0, x1, yBase, wallH, z, mat, winW, winH, sillH, thick = 0.18) {
+        const span = x1 - x0;
+        const cx = (x0 + x1) * 0.5;
+        const wClamped = Math.min(winW, span - 0.5);
+        const sideW = (span - wClamped) * 0.5;
+        // Bottom sill
+        if (sillH > 0.02) addBox(parent, span, sillH, thick, gx(cx), yBase + sillH * 0.5, gz(z), mat);
+        // Top lintel
+        const topH = wallH - sillH - winH;
+        if (topH > 0.02) addBox(parent, span, topH, thick, gx(cx), yBase + sillH + winH + topH * 0.5, gz(z), mat);
+        // Side piers
+        if (sideW > 0.02) {
+          addBox(parent, sideW, winH, thick, gx(x0 + sideW * 0.5), yBase + sillH + winH * 0.5, gz(z), mat);
+          addBox(parent, sideW, winH, thick, gx(x1 - sideW * 0.5), yBase + sillH + winH * 0.5, gz(z), mat);
+        }
+        // Glass & mullion
+        addBox(parent, wClamped, winH, 0.04, gx(cx), yBase + sillH + winH * 0.5, gz(z), MAT.glass, false, false);
+        addBox(parent, 0.05, winH, 0.07, gx(cx), yBase + sillH + winH * 0.5, gz(z), MAT.alFrame, false, false);
+        addBox(parent, wClamped, 0.05, 0.07, gx(cx), yBase + sillH + winH * 0.72, gz(z), MAT.alFrame, false, false);
+      }
+
+      // Helper for steel pipe handrail
+      function addRailingX(parent, x0, x1, yBase, z, height = 1.1) {
+        const len = x1 - x0;
+        const cx = (x0 + x1) * 0.5;
+        addBox(parent, len, 0.05, 0.05, gx(cx), yBase + height, gz(z), MAT.steelSilver, false);
+        addBox(parent, len, 0.04, 0.04, gx(cx), yBase + 0.15, gz(z), MAT.steelSilver, false);
+        const count = Math.max(2, Math.round(len / 0.85));
+        for (let i = 0; i <= count; i++) {
+          const rx = x0 + (i / count) * len;
+          addBox(parent, 0.035, height, 0.035, gx(rx), yBase + height * 0.5, gz(z), MAT.steelSilver, false);
+        }
+      }
+
+      function addRailingZ(parent, z0, z1, yBase, x, height = 1.1) {
+        const len = z1 - z0;
+        const cz = (z0 + z1) * 0.5;
+        addBox(parent, 0.05, 0.05, len, gx(x), yBase + height, gz(cz), MAT.steelSilver, false);
+        addBox(parent, 0.04, 0.04, len, gx(x), yBase + 0.15, gz(cz), MAT.steelSilver, false);
+        const count = Math.max(2, Math.round(len / 0.85));
+        for (let i = 0; i <= count; i++) {
+          const rz = z0 + (i / count) * len;
+          addBox(parent, 0.035, height, 0.035, gx(x), yBase + height * 0.5, gz(rz), MAT.steelSilver, false);
+        }
+      }
+
+      // Helper for concrete stair flights
+      function addStepsX(parent, x0, x1, yLow, yHigh, zStart, zEnd, stepCount, mat = MAT.concreteBase) {
+        const w = Math.abs(x1 - x0);
+        const cx = (x0 + x1) * 0.5;
+        const totalD = zEnd - zStart;
+        const stepD = totalD / stepCount;
+        const totalH = yHigh - yLow;
+        for (let i = 0; i < stepCount; i++) {
+          const h = ((i + 1) / stepCount) * totalH;
+          const zStep = zStart + (i + 0.5) * stepD;
+          addBox(parent, w, h, Math.abs(stepD) + 0.02, gx(cx), yLow + h * 0.5, gz(zStep), mat);
+        }
+      }
+
+      // =========================================================================
+      // 6. INTERACTIVE ROOM ZONES REGISTRY (115年最新空間配置)
+      // =========================================================================
+      const interactiveRoomMeshes = [];
+      const roomLabelsData = [];
+
+      function registerRoom(cfg) {
+        const groupTarget = cfg.group || roomZonesGroup;
+        const mat = new THREE.MeshBasicMaterial({
+          color: cfg.color || 0x38bdf8,
+          transparent: true,
+          opacity: 0.0,
+          depthWrite: false
+        });
+        const zone = new THREE.Mesh(new THREE.BoxGeometry(cfg.w, 0.18, cfg.d), mat);
+        zone.position.set(gx(cfg.x), cfg.y + 0.12, gz(cfg.z));
+        zone.userData = { room: cfg };
+        groupTarget.add(zone);
+        interactiveRoomMeshes.push(zone);
+
+        const badge = document.createElement('div');
+        badge.className = 'room-badge' +
+          (cfg.building === 'kitchen' ? ' kitchen-badge' : '') +
+          (cfg.isRestroom ? ' restroom-badge' : '');
+        badge.textContent = cfg.shortName || cfg.name;
+        badge.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectRoom(zone);
+        });
+        document.getElementById('labels-layer').appendChild(badge);
+        roomLabelsData.push({ mesh: zone, room: cfg, el: badge, baseY: cfg.y + (cfg.labelH ?? 2.3) });
+      }
+
+      // =========================================================================
+      // 7. BUILD MAIN SCHOOL BUILDING (主校舍 1F–3F + 屋頂鋼構 + 東側2026整修廁所)
+      // =========================================================================
+      function buildFoundation() {
+        // Main building elevated plinth (+0.00 to +1.20m)
+        addBox(foundationGroup, 82.9, ELEV.F1, 11.1, gx(41.35), ELEV.F1 * 0.5, gz(5.45), MAT.concreteBase);
+        // East stair A & generator room plinth (Grid ⑨–⑩, B to A')
+        addBox(foundationGroup, 7.2, ELEV.F1, 6.2, gx(75.55), ELEV.F1 * 0.5, gz(14.0), MAT.concreteBase);
+
+        // South entry grand steps along corridor (Grid ②–⑤ & Breezeway ⑦–⑧)
+        addStepsX(foundationGroup, 10.5, 45.0, 0, ELEV.F1, 13.0, 10.85, 6, MAT.plazaTile);
+        addStepsX(foundationGroup, 53.5, 64.5, 0, ELEV.F1, 15.2, 10.85, 7, MAT.plazaTile);
+
+        // ★ 穿堂後方（北側）戶外樓梯（依 A1-1 平面圖 Grid ⑦ 旁，從 +1.20m 下至北側地面 +0.0m）
+        // North exit landing extending north of Grid D at Breezeway (X = 53.5 ~ 62.5m)
+        addBox(foundationGroup, 9.0, ELEV.F1, 2.2, gx(58.0), ELEV.F1 * 0.5, gz(-1.1), MAT.corridorFloor);
+        // Wide north rear staircase descending from +1.20m to ground 0.0m (Z = -2.2m to -4.6m)
+        addStepsX(foundationGroup, 54.0, 58.6, 0, ELEV.F1, -4.6, -2.2, 8, MAT.plazaTile);
+        // Side 12cm RC cheek walls (H=90cm) & stainless steel handrails per A1-1
+        addBox(foundationGroup, 0.16, 0.9, 2.5, gx(53.9), ELEV.F1 + 0.15, gz(-3.4), MAT.wallExt);
+        addBox(foundationGroup, 0.16, 0.9, 2.5, gx(58.7), ELEV.F1 + 0.15, gz(-3.4), MAT.wallExt);
+        addRailingX(foundationGroup, 58.7, 62.5, ELEV.F1, -2.15, 1.05);
+        // East north utility / water tank enclosure (水箱室) next to Breezeway rear
+        addBox(foundationGroup, 3.2, 2.2, 2.6, gx(64.8), 1.1, gz(-1.4), MAT.wallFrameGray);
+
+        // East barrier-free ramp (無障礙坡道) west of Stair A
+        const rampGeo = new THREE.BoxGeometry(1.5, 0.25, 9.2);
+        const ramp = new THREE.Mesh(rampGeo, MAT.plazaTile);
+        ramp.position.set(gx(71.1), 0.62, gz(15.2));
+        ramp.rotation.x = 0.125;
+        ramp.castShadow = true;
+        ramp.receiveShadow = true;
+        foundationGroup.add(ramp);
+      }
+
+      /**
+       * Builds the 2026 Renovated East Restrooms (A梯 Grid ⑨–⑩, X=72.0~79.05m, Z=0~7.85m)
+       * 1F: 玉荷包荔枝意象 + 男女分廁 + 無障礙廁所
+       * 2F: 性別友善廁所 (高屏溪舊鐵橋入口 + 330x240濕地馬賽克牆 + 8間高240木紋隔間含防窺頂板)
+       * 3F: 金鑽鳳梨意象 + 男女分廁 + 無障礙廁所
+       */
+      function buildEastRenovatedRestroom(parent, floorNum, yBase) {
+        const x0 = 72.05; // inner west wall
+        const x1 = 79.00; // inner east wall
+        const z0 = 0.15;  // north window wall
+        const z1 = 7.80;  // south corridor wall
+        const is2F = floorNum === 2;
+
+        // 1. Floor finish (15x50 light wood-grain tile)
+        addBox(parent, 6.95, 0.06, 7.65, gx(75.52), yBase + 0.03, gz(3.97), MAT.restFloorWood, false, true);
+
+        // 2. Elevator shaft (Southwest corner: X=72.05~74.2, Z=5.4~7.7) + Mech closet
+        addBox(parent, 2.15, FLOOR_H - 0.15, 2.25, gx(73.12), yBase + (FLOOR_H - 0.15) * 0.5, gz(6.52), MAT.wallFrameGray);
+        addBox(parent, 1.0, 2.15, 0.08, gx(73.12), yBase + 1.08, gz(7.68), MAT.steelSilver); // Elevator door
+
+        // 3. Accessible Restroom (Southeast corner: X=76.55~78.95, Z=5.55~7.75)
+        addBox(parent, 2.40, 2.40, 0.14, gx(77.75), yBase + 1.20, gz(5.55), MAT.wallInt); // North partition
+        addBox(parent, 2.40, 1.15, 0.14, gx(77.75), yBase + 2.98, gz(5.55), MAT.restYelUpper);
+        addBox(parent, 0.14, 3.55, 1.10, gx(76.55), yBase + 1.78, gz(6.10), MAT.wallInt); // West side wall (leaves 1.03m sliding door opening)
+        addBox(parent, 0.08, 2.10, 1.02, gx(76.53), yBase + 1.05, gz(7.16), MAT.restCubicleWood); // Sliding door
+        // Accessible toilet & basin inside
+        addBox(parent, 0.45, 0.45, 0.65, gx(78.45), yBase + 0.25, gz(6.05), MAT.porcelain);
+        addBox(parent, 0.55, 0.18, 0.45, gx(77.15), yBase + 0.78, gz(5.90), MAT.porcelain);
+
+        // 4. South Corridor Entrance Feature Wall (facing corridor Z=7.85m, X=76.55~79.0m)
+        const entTexMat = floorNum === 1 ? MAT.ent1F : (floorNum === 2 ? MAT.ent2F : MAT.ent3F);
+        addBox(parent, 2.42, 3.55, 0.16, gx(77.76), yBase + 1.78, gz(7.82), entTexMat);
+
+        // 5. East Mech Room (X=77.8~79.0, Z=3.1~5.5)
+        addBox(parent, 1.18, 3.55, 2.40, gx(78.38), yBase + 1.78, gz(4.30), MAT.wallInt);
+
+        // 6. Upper Wall Paint Band (淡藍 for 1F/3F, 淡紫 for 2F)
+        const upperMat = is2F ? MAT.restLavUpper : MAT.restBlueUpper;
+        addBox(parent, 0.12, 1.15, 5.2, gx(x0 + 0.06), yBase + 2.98, gz(2.75), upperMat);
+        addBox(parent, 0.12, 1.15, 3.1, gx(x1 - 0.06), yBase + 2.98, gz(1.65), upperMat);
+
+        if (is2F) {
+          // =================================================================
+          // 2F 性別友善廁所 (圖號 B-13 ~ B-20, D-01 ~ D-09)
+          // =================================================================
+          // Entry Wetland Mosaic Feature Wall (330cm wide x 240cm tall, facing south entrance!)
+          addBox(parent, 3.30, 2.40, 0.16, gx(76.10), yBase + 1.20, gz(4.05), MAT.wetlandWall);
+
+          // West row: 1 Sit Toilet (north) + 3 Enclosed Urinal Cubicles (H=240cm + anti-peep top lip)
+          addBox(parent, 1.15, 0.08, 3.20, gx(72.65), yBase + 0.04, gz(3.60), MAT.restFloorDark, false); // 50x50 dark tile urinal zone
+          addBox(parent, 0.18, 1.20, 3.20, gx(72.18), yBase + 0.60, gz(3.60), MAT.restLavMosaic); // Lavender mosaic pipe wall
+          const westDivZ = [1.75, 2.75, 3.75, 4.90];
+          westDivZ.forEach((dz) => {
+            addBox(parent, 1.15, 2.40, 0.05, gx(72.65), yBase + 1.20, gz(dz), MAT.restCubicleWood);
+            // Anti-peep horizontal top flange (20cm wide)
+            addBox(parent, 1.15, 0.04, 0.22, gx(72.65), yBase + 2.40, gz(dz), MAT.restCubicleWood);
+          });
+          // Front cubicle doors + Pantone 2088U purple icons
+          [0.95, 2.25, 3.25, 4.32].forEach((cz, idx) => {
+            addBox(parent, 0.04, 2.32, 0.86, gx(73.22), yBase + 1.18, gz(cz), MAT.restCubicleWood);
+            addBox(parent, 0.06, 0.16, 0.16, gx(73.25), yBase + 1.65, gz(cz), MAT.restPurpleIcon, false);
+            if (idx === 0) {
+              addBox(parent, 0.45, 0.42, 0.62, gx(72.55), yBase + 0.24, gz(cz), MAT.porcelain);
+            } else {
+              addBox(parent, 0.28, 0.60, 0.34, gx(72.42), yBase + 0.85, gz(cz), MAT.porcelain);
+            }
+          });
+
+          // Center Island (north of Wetland wall, Z=3.0~4.0): Single vanity + 2 raised Squat Cubicles
+          addBox(parent, 0.85, 0.90, 0.65, gx(74.88), yBase + 0.45, gz(3.55), MAT.restLavMosaic);
+          addBox(parent, 0.55, 0.15, 0.45, gx(74.88), yBase + 0.85, gz(3.55), MAT.porcelain);
+          // 2 raised squat platforms (+18cm) & H=225cm cubicles
+          addBox(parent, 2.40, 0.18, 1.00, gx(76.55), yBase + 0.09, gz(3.50), MAT.restFloorWood);
+          [75.35, 76.55, 77.75].forEach((dx) => {
+            addBox(parent, 0.05, 2.25, 1.00, gx(dx), yBase + 1.22, gz(3.50), MAT.restCubicleWood);
+            addBox(parent, 0.22, 0.04, 1.00, gx(dx), yBase + 2.34, gz(3.50), MAT.restCubicleWood);
+          });
+          [75.95, 77.15].forEach((cx) => {
+            addBox(parent, 1.12, 2.18, 0.04, gx(cx), yBase + 1.20, gz(3.00), MAT.restCubicleWood);
+            addBox(parent, 0.16, 0.16, 0.06, gx(cx), yBase + 1.68, gz(2.97), MAT.restPurpleIcon, false);
+          });
+
+          // North Pipe Shaft + 132cm Trough Sink & Mirror (X=74.6~75.9, Z=0.15~1.7)
+          addBox(parent, 1.32, 3.55, 1.05, gx(75.26), yBase + 1.78, gz(0.68), MAT.wallInt);
+          addBox(parent, 1.32, 1.00, 0.16, gx(75.26), yBase + 0.50, gz(1.28), MAT.restLavMosaic);
+          addBox(parent, 1.32, 0.22, 0.48, gx(75.26), yBase + 0.78, gz(1.56), MAT.porcelain);
+          addBox(parent, 1.24, 0.70, 0.04, gx(75.26), yBase + 1.48, gz(1.23), MAT.glass, false);
+
+          // East row: 1 Squat (north) + 1 Sit (south) H=240cm cubicles
+          addBox(parent, 1.20, 2.40, 0.05, gx(78.35), yBase + 1.20, gz(1.65), MAT.restCubicleWood);
+          addBox(parent, 1.20, 0.04, 0.22, gx(78.35), yBase + 2.40, gz(1.65), MAT.restCubicleWood);
+          addBox(parent, 0.04, 2.32, 1.30, gx(77.75), yBase + 1.18, gz(0.90), MAT.restCubicleWood);
+          addBox(parent, 0.04, 2.32, 1.35, gx(77.75), yBase + 1.18, gz(2.38), MAT.restCubicleWood);
+          addBox(parent, 0.45, 0.42, 0.62, gx(78.42), yBase + 0.24, gz(2.45), MAT.porcelain);
+
+          // Black Ceiling LED Track Light Bars (E-04)
+          addBox(parent, 0.05, 0.05, 4.0, gx(73.7), yBase + 3.35, gz(2.6), MAT.steelDark, false);
+          addBox(parent, 3.0, 0.05, 0.05, gx(75.5), yBase + 3.35, gz(2.2), MAT.steelDark, false);
+          addBox(parent, 2.0, 0.05, 0.05, gx(76.0), yBase + 3.35, gz(4.6), MAT.steelDark, false);
+        } else {
+          // =================================================================
+          // 1F & 3F 男女分廁整修 (圖號 B-02 ~ B-09, D-04, D-05)
+          // =================================================================
+          // Center dividing wall between Female (west) & Male (east) with upper stainless mesh
+          addBox(parent, 0.16, 2.40, 3.10, gx(75.82), yBase + 1.20, gz(1.70), MAT.wallInt);
+          addBox(parent, 0.05, 0.30, 2.06, gx(75.82), yBase + 2.55, gz(2.15), MAT.steelSilver, false); // Expanded metal mesh
+
+          // Female side (west): 4 Squat Cubicles along west wall + 1 Sit Cubicle + Coffee Louver Screen
+          for (let i = 0; i < 4; i++) {
+            const cz = 0.85 + i * 1.18;
+            addBox(parent, 1.05, 2.10, 0.05, gx(72.58), yBase + 1.05, gz(cz + 0.59), MAT.restCubicleWood);
+            addBox(parent, 0.04, 2.05, 0.96, gx(73.10), yBase + 1.05, gz(cz), MAT.restCubicleWood);
+          }
+          // Female sit stall (X=74.6~75.7, Z=1.2~3.2)
+          addBox(parent, 1.10, 2.10, 0.05, gx(75.15), yBase + 1.05, gz(1.25), MAT.restCubicleWood);
+          addBox(parent, 0.04, 2.05, 1.85, gx(74.62), yBase + 1.05, gz(2.22), MAT.restCubicleWood);
+          addBox(parent, 0.45, 0.42, 0.62, gx(75.20), yBase + 0.24, gz(2.75), MAT.porcelain);
+          // 7x7cm Coffee aluminum louver privacy screen
+          for (let k = 0; k < 6; k++) {
+            addBox(parent, 0.07, 2.40, 0.07, gx(74.42), yBase + 1.20, gz(3.35 + k * 0.22), MAT.woodDoor);
+          }
+
+          // Shared Center Blue Gradient Mosaic Wall + 140cm White Solid-Surface Trough Sink + Mop Basin
+          addBox(parent, 2.20, 2.40, 0.16, gx(75.60), yBase + 1.20, gz(3.22), MAT.restBlueMosaic);
+          addBox(parent, 2.20, 0.30, 0.05, gx(75.60), yBase + 2.55, gz(3.22), MAT.steelSilver, false); // Expanded mesh
+          addBox(parent, 1.40, 0.20, 0.50, gx(75.95), yBase + 0.72, gz(3.55), MAT.porcelain); // Trough sink
+          addBox(parent, 1.40, 0.70, 0.04, gx(75.95), yBase + 1.38, gz(3.32), MAT.glass, false); // Rounded mirror
+          addBox(parent, 0.55, 0.36, 0.50, gx(74.85), yBase + 0.18, gz(3.55), MAT.porcelain); // Mop basin
+
+          // Male side (east): 3 Urinals on west wall (dark tile floor) + 1 Sit & 1 Raised Squat on east wall
+          addBox(parent, 0.75, 0.08, 3.00, gx(76.30), yBase + 0.04, gz(1.70), MAT.restFloorDark, false);
+          addBox(parent, 0.18, 1.20, 3.00, gx(75.98), yBase + 0.60, gz(1.70), MAT.restBlueMosaic);
+          [0.65, 1.55, 2.55].forEach((uz) => {
+            addBox(parent, 0.28, 0.60, 0.34, gx(76.22), yBase + 0.85, gz(uz), MAT.porcelain);
+          });
+          // Male east stalls
+          addBox(parent, 1.20, 0.18, 1.20, gx(78.35), yBase + 0.09, gz(2.60), MAT.restFloorWood); // Raised squat +18cm
+          addBox(parent, 1.20, 2.10, 0.05, gx(78.35), yBase + 1.05, gz(1.95), MAT.restCubicleWood);
+          addBox(parent, 0.04, 2.05, 1.65, gx(77.75), yBase + 1.05, gz(1.05), MAT.restCubicleWood);
+          addBox(parent, 0.04, 2.05, 1.15, gx(77.75), yBase + 1.12, gz(2.58), MAT.restCubicleWood);
+          addBox(parent, 0.45, 0.42, 0.62, gx(78.42), yBase + 0.24, gz(1.40), MAT.porcelain);
+
+          // Black Track Lights (E-03)
+          addBox(parent, 0.05, 0.05, 4.0, gx(73.7), yBase + 3.35, gz(2.6), MAT.steelDark, false);
+          addBox(parent, 0.05, 0.05, 3.5, gx(77.0), yBase + 3.35, gz(1.9), MAT.steelDark, false);
+        }
+      }
+
+      /**
+       * Builds one complete floor (1F, 2F, or 3F) of the Main School Building
+       * strictly following A1-1 ~ A1-3, A2-1 ~ A2-2, and 115-year room schedule.
+       */
+      function buildMainFloor(floorNum, targetGroup, yBase) {
+        // 1. Structural Floor Slab (Main classroom block + South 3.0m corridor + North 1.5m rear balcony)
+        addBox(targetGroup, 82.7, 0.18, 10.85, gx(41.35), yBase - 0.09, gz(5.425), MAT.slabFloor);
+        // South corridor distinct surface
+        addBox(targetGroup, 82.7, 0.04, 3.0, gx(41.35), yBase + 0.02, gz(9.35), MAT.corridorFloor, false, true);
+        // North rear balcony slab (Grid ②–⑨, Z = -1.55 ~ 0)
+        addBox(targetGroup, 63.0, 0.16, 1.55, gx(40.5), yBase - 0.08, gz(-0.775), MAT.corridorFloor);
+        // Rear balcony railings (skip north breezeway exit on 1F so rear stairs connect openly!)
+        if (floorNum === 1) {
+          addRailingX(targetGroup, 9.0, 53.5, yBase, -1.50, 1.10);
+          addRailingX(targetGroup, 63.0, 72.0, yBase, -1.50, 1.10);
+        } else {
+          addRailingX(targetGroup, 9.0, 72.0, yBase, -1.50, 1.10);
+        }
+
+        // Colored mosaic horizontal accent strip along floor line (per A2-1 / A2-2)
+        addBox(targetGroup, 82.75, 0.14, 0.06, gx(41.35), yBase + 0.07, gz(10.87), MAT.mosaicStrip, false);
+
+        // 2. Structural RC Columns along Grids ①–⑪ on Lines D, C, B
+        GRID_X.forEach((rx, idx) => {
+          if (idx <= 9) {
+            addBox(targetGroup, 0.60, FLOOR_H, 0.70, gx(rx), yBase + FLOOR_H * 0.5, gz(GRID_Z.D), MAT.wallFrameGray);
+          }
+          addBox(targetGroup, 0.90, FLOOR_H, 0.60, gx(rx), yBase + FLOOR_H * 0.5, gz(GRID_Z.C), MAT.wallFrameGray);
+          addBox(targetGroup, 0.60, FLOOR_H, 0.60, gx(rx), yBase + FLOOR_H * 0.5, gz(GRID_Z.B), MAT.wallFrameGray);
+        });
+
+        // 3. Corridor Railing along South Edge (Grid B, Z = 10.85m)
+        //    Note: On 1F, keep Grid ②–⑤ & Breezeway ⑦–⑧ open for grand steps, AND keep West Grid ① (X=0) completely open for Central Kitchen Covered Walkway!
+        if (floorNum === 1) {
+          addRailingX(targetGroup, 1.5, 9.5, yBase, 10.82, 1.05);
+          addRailingX(targetGroup, 45.5, 53.5, yBase, 10.82, 1.05);
+          addRailingX(targetGroup, 64.5, 71.5, yBase, 10.82, 1.05);
+        } else {
+          addRailingX(targetGroup, 0.5, 71.8, yBase, 10.82, 1.10);
+          addRailingX(targetGroup, 76.6, 82.5, yBase, 10.82, 1.10);
+        }
+
+        // 4. West Side Feature Balcony & Overhanging Beige Frame Box (A2-1 signature element!)
+        if (floorNum === 2) {
+          // Iconic cantilevered warm-beige frame box wrapping 2F West corridor (Grid ①–②, X=-1.2~9.2, Z=10.85~12.6)
+          addBox(targetGroup, 10.2, 0.25, 2.2, gx(4.0), yBase - 0.12, gz(11.75), MAT.wallFrameBeige);
+          // South facade of the cantilevered frame box with rectangular window cutout
+          addBox(targetGroup, 10.2, 1.05, 0.35, gx(4.0), yBase + 0.52, gz(12.75), MAT.wallFrameBeige);
+          addBox(targetGroup, 10.2, 0.95, 0.35, gx(4.0), yBase + 3.35, gz(12.75), MAT.wallFrameBeige);
+          addBox(targetGroup, 3.0, 1.85, 0.35, gx(0.4), yBase + 1.95, gz(12.75), MAT.wallFrameBeige);
+          addBox(targetGroup, 3.0, 1.85, 0.35, gx(7.6), yBase + 1.95, gz(12.75), MAT.wallFrameBeige);
+          addBox(targetGroup, 0.35, 3.85, 2.2, gx(-0.95), yBase + 1.90, gz(11.75), MAT.wallFrameBeige);
+          addRailingX(targetGroup, 1.9, 6.1, yBase + 0.1, 12.62, 1.05);
+        }
+        if (floorNum === 3) {
+          // 3F South cantilevered viewing terrace (露台, Grid ⑤–⑧, Z=10.85~14.2m)
+          const terraceShape = new THREE.Shape();
+          terraceShape.moveTo(gx(45.0), -gz(10.85));
+          terraceShape.lineTo(gx(68.0), -gz(10.85));
+          terraceShape.lineTo(gx(68.0), -gz(12.2));
+          terraceShape.lineTo(gx(46.0), -gz(14.8));
+          terraceShape.closePath();
+          const tGeo = new THREE.ExtrudeGeometry(terraceShape, { depth: 0.22, bevelEnabled: false });
+          tGeo.rotateX(-Math.PI / 2);
+          const terrace = new THREE.Mesh(tGeo, MAT.corridorFloor);
+          terrace.position.y = yBase - 0.18;
+          terrace.castShadow = true;
+          terrace.receiveShadow = true;
+          targetGroup.add(terrace);
+          addRailingX(targetGroup, 46.2, 67.8, yBase, 13.4, 1.1);
+        }
+
+        // 5. Breezeway Dark Portal Frame (Grid ⑥–⑧, spanning 1F & 2F south facade per A2-1!)
+        if (floorNum === 1 || floorNum === 2) {
+          addBox(targetGroup, 0.70, FLOOR_H, 0.90, gx(45.0), yBase + FLOOR_H * 0.5, gz(13.2), MAT.wallFrameDark);
+          addBox(targetGroup, 0.70, FLOOR_H, 0.90, gx(54.0), yBase + FLOOR_H * 0.5, gz(13.2), MAT.wallFrameDark);
+          addBox(targetGroup, 0.70, FLOOR_H, 0.90, gx(63.0), yBase + FLOOR_H * 0.5, gz(13.2), MAT.wallFrameDark);
+          addBox(targetGroup, 0.70, FLOOR_H, 0.90, gx(68.0), yBase + FLOOR_H * 0.5, gz(13.2), MAT.wallFrameDark);
+          if (floorNum === 2) {
+            // Thick dark horizontal portal fascia beam across top of 2F
+            addBox(targetGroup, 24.4, 0.85, 1.10, gx(56.5), yBase + FLOOR_H - 0.25, gz(13.2), MAT.wallFrameDark);
+          }
+        }
+
+        // 6. West Toilet & Stair B Block (Grid ①–②, X=0~9m, Z=0~7.85m)
+        addBox(targetGroup, 0.20, FLOOR_H, 7.85, gx(0.10), yBase + FLOOR_H * 0.5, gz(3.925), MAT.wallExt); // West exterior wall
+        addWindowWallX(targetGroup, 0.2, 5.2, yBase, FLOOR_H, 0.10, MAT.wallExt, 3.2, 1.4, 1.3);
+        addWindowWallX(targetGroup, 0.2, 5.2, yBase, FLOOR_H, 7.75, MAT.wallExt, 2.2, 1.4, 1.3);
+        // Stair B flights (X=5.4~8.8)
+        for (let s = 0; s < 10; s++) {
+          addBox(targetGroup, 1.4, 0.18, 0.34, gx(6.3), yBase + 0.18 * (s + 1), gz(6.2 - s * 0.34), MAT.concreteBase);
+          addBox(targetGroup, 1.4, 0.18, 0.34, gx(7.9), yBase + 1.90 + 0.18 * (s + 1), gz(2.8 + s * 0.34), MAT.concreteBase);
+        }
+        addBox(targetGroup, 3.2, 0.18, 1.5, gx(7.1), yBase + 1.90, gz(1.8), MAT.concreteBase);
+
+        // 7. Classroom Bays (Grid ②–⑨, 7 Bays of 9.0m each: X=9..72m, Z=0..7.85m)
+        for (let bay = 0; bay < 7; bay++) {
+          const bx0 = GRID_X[bay + 1];
+          const bx1 = GRID_X[bay + 2];
+
+          // Skip enclosing Breezeway (穿堂) on 1F (bay === 5: Grid ⑦–⑧, X=54~63m)
+          if (floorNum === 1 && bay === 5) {
+            // Circular mosaic medallion floor in Breezeway
+            const med = new THREE.Mesh(new THREE.CylinderGeometry(3.1, 3.1, 0.05, 32), MAT.breezewayCenter);
+            med.position.set(gx(58.5), yBase + 0.04, gz(4.1));
+            targetGroup.add(med);
+            continue;
+          }
+
+          // North exterior wall with classroom windows & rear door
+          addWindowWallX(targetGroup, bx0 + 0.3, bx1 - 0.3, yBase, FLOOR_H, 0.10, MAT.wallExt, 5.6, 1.85, 0.95);
+          // South corridor wall with classroom windows & dual entry doors
+          addWindowWallX(targetGroup, bx0 + 1.2, bx1 - 1.2, yBase, FLOOR_H, 7.75, MAT.wallExt, 4.8, 1.90, 0.90);
+          addBox(targetGroup, 0.92, 2.20, 0.12, gx(bx0 + 0.65), yBase + 1.10, gz(7.75), MAT.woodDoor);
+          addBox(targetGroup, 0.92, 2.20, 0.12, gx(bx1 - 0.65), yBase + 1.10, gz(7.75), MAT.woodDoor);
+
+          // Interior partition wall on west boundary of each bay (omit between merged bays on 1F Library)
+          const omitWestWall = (floorNum === 1 && bay === 2); // 8-1 圖書室 spans Grid ③–⑤ (bays 1 & 2)
+          if (!omitWestWall) {
+            addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(bx0), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
+          }
+
+          // Classroom chalkboard & desks inside (visible on cutaway / X-ray / Street View!)
+          addBox(targetGroup, 0.08, 1.20, 3.80, gx(bx0 + 0.14), yBase + 1.55, gz(3.9), makeMat(0x1f4d36, { roughness: 0.7 }), false);
+        }
+        // East boundary wall of classroom bay 6 (Grid ⑨, X=72m)
+        addBox(targetGroup, 0.18, FLOOR_H - 0.15, 7.65, gx(72.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
+
+        // 8. East Renovated Restroom Block (Grid ⑨–⑩, X=72.0~79.05m, Z=0~7.85m)
+        addWindowWallX(targetGroup, 72.3, 78.8, yBase, FLOOR_H, 0.10, MAT.wallExt, 4.4, 1.65, 1.15); // North window wall
+        addBox(targetGroup, 0.20, FLOOR_H, 7.85, gx(79.05), yBase + FLOOR_H * 0.5, gz(3.925), MAT.wallExt); // East wall
+        buildEastRenovatedRestroom(targetGroup, floorNum, yBase);
+
+        // 9. East Stair A & 1F Generator / Fire Pump Room (Grid ⑨–⑩, south of corridor Z=10.85~16.65m)
+        if (floorNum === 1) {
+          // 1F Fire Pump / Generator Room (east half of south wing)
+          addBox(targetGroup, 3.2, FLOOR_H, 5.6, gx(77.4), yBase + FLOOR_H * 0.5, gz(13.7), MAT.wallFrameGray);
+        }
+        // Stair A enclosure & flights (X=72.0~76.0, Z=11.0~16.6)
+        addBox(targetGroup, 0.22, FLOOR_H, 5.6, gx(72.1), yBase + FLOOR_H * 0.5, gz(13.7), MAT.wallFrameGray);
+        addBox(targetGroup, 4.2, FLOOR_H, 0.22, gx(74.1), yBase + FLOOR_H * 0.5, gz(16.5), MAT.wallFrameGray);
+        for (let s = 0; s < 10; s++) {
+          addBox(targetGroup, 1.6, 0.18, 0.34, gx(73.1), yBase + 0.18 * (s + 1), gz(12.2 + s * 0.34), MAT.concreteBase);
+          addBox(targetGroup, 1.6, 0.18, 0.34, gx(74.9), yBase + 1.90 + 0.18 * (s + 1), gz(15.6 - s * 0.34), MAT.concreteBase);
+        }
+        addBox(targetGroup, 3.6, 0.18, 1.2, gx(74.0), yBase + 1.90, gz(16.0), MAT.concreteBase);
+
+        // 10. Corridor Vertical Decorative Fins on South Facade (per A2-1)
+        [15, 24, 33, 42, 51, 60, 69].forEach((fx) => {
+          addBox(targetGroup, 0.95, FLOOR_H - 0.1, 0.45, gx(fx), yBase + FLOOR_H * 0.5, gz(10.95), MAT.wallFrameGray);
+        });
+      }
+
+      function buildMainRoof() {
+        // Main RC flat roof slab + parapet (RFL = +12.60m)
+        addBox(roofGroup, 82.9, 0.24, 11.0, gx(41.35), ELEV.RF + 0.12, gz(5.45), MAT.slabFloor);
+        addBox(roofGroup, 82.9, 0.70, 0.22, gx(41.35), ELEV.RF + 0.55, gz(0.0), MAT.wallExt);
+        addBox(roofGroup, 82.9, 0.70, 0.22, gx(41.35), ELEV.RF + 0.55, gz(10.85), MAT.wallExt);
+        addRailingX(roofGroup, 0.2, 82.5, ELEV.RF + 0.75, 0.0, 0.7);
+        addRailingX(roofGroup, 0.2, 82.5, ELEV.RF + 0.75, 10.85, 0.7);
+
+        // East Stair A roof penthouse + 15T combined water tank
+        addBox(roofGroup, 4.4, 2.8, 5.6, gx(74.2), ELEV.RF + 1.4, gz(13.7), MAT.wallFrameGray);
+        addBox(roofGroup, 2.2, 1.4, 3.6, gx(74.2), ELEV.RF + 3.5, gz(13.7), MAT.steelSilver);
+
+        // Tall South Pipe Columns (SC1 PIPE 400x15 @ Grid ②, ③, ④, ⑤ on Line A, GL to Canopy)
+        [9, 18, 27, 36].forEach((cx) => {
+          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 14.3, 18), MAT.steelDark);
+          col.position.set(gx(cx), 7.15, gz(GRID_Z.A));
+          col.castShadow = true;
+          roofGroup.add(col);
+          // Lower concrete plinth collar on column base
+          const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.34, 4.2, 16), MAT.wallFrameGray);
+          collar.position.set(gx(cx), 2.1, gz(GRID_Z.A));
+          roofGroup.add(collar);
+          // Rear support stub on Line C
+          const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, 2.2, 14), MAT.steelDark);
+          stub.position.set(gx(cx), ELEV.RF + 1.1, gz(GRID_Z.C));
+          roofGroup.add(stub);
+        });
+
+        // West Long Steel Canopy Roof (Grid ②–⑤ with 1.8m overhangs: X=7.2~37.8m, Z=6.35~17.25m)
+        const westRoof = addBox(roofGroup, 30.8, 0.32, 11.2, gx(22.5), ELEV.RF + 1.85, gz(11.75), MAT.roofSheet);
+        westRoof.rotation.x = 0.085; // Slopes gently down toward south gutter
+        // Rooftop Solar PV Array on West Canopy
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < 10; col++) {
+            const pv = addBox(roofGroup, 2.6, 0.08, 2.8, gx(9.6 + col * 2.85), ELEV.RF + 2.38 - row * 0.26, gz(8.4 + row * 3.1), MAT.solarPanel, false);
+            pv.rotation.x = 0.085;
+          }
+        }
+
+        // East Breezeway High Canopy Roof (Grid ⑦–⑧ with 1.8m overhangs: X=52.2~64.8m, Z=-4.0~11.85m)
+        [54, 63].forEach((cx) => {
+          [GRID_Z.D, GRID_Z.C].forEach((cz) => {
+            const p = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, 2.5, 14), MAT.steelDark);
+            p.position.set(gx(cx), ELEV.RF + 1.25, gz(cz));
+            roofGroup.add(p);
+          });
+        });
+        // Double-pitched / gable-ridge canopy over Breezeway
+        const eastRoofN = addBox(roofGroup, 12.8, 0.30, 8.2, gx(58.5), ELEV.RF + 2.35, gz(0.0), MAT.roofSheet);
+        eastRoofN.rotation.x = -0.075;
+        const eastRoofS = addBox(roofGroup, 12.8, 0.30, 8.2, gx(58.5), ELEV.RF + 2.35, gz(7.9), MAT.roofSheet);
+        eastRoofS.rotation.x = 0.075;
+        // Solar panels on East Canopy
+        for (let col = 0; col < 4; col++) {
+          const pv = addBox(roofGroup, 2.6, 0.08, 5.2, gx(54.2 + col * 2.85), ELEV.RF + 2.68, gz(7.5), MAT.solarPanel, false);
+          pv.rotation.x = 0.075;
+        }
+      }
+
+      // =========================================================================
+      // 8. BUILD CENTRAL KITCHEN & CONNECTED COVERED WALKWAY
+      //    Strictly aligned with 《溪埔國中新建中央廚房細部設計修正圖說》 &
+      //    《2021-10-07_基本設計簡報.pptx》 3D renders and walkway junction!
+      //    Kitchen Grid ①–⑦ (25m wide: raw X = -42.5 ~ -17.5m)
+      //    Kitchen Grid A–E (23m deep: raw Z = -7.0 ~ +16.0m)
+      //    Covered Walkway: seamlessly connects X = -17.5m -> X = 0.0m @ 1FL (+1.20m)
+      // =========================================================================
+      function buildCentralKitchen() {
+        const kx0 = -42.5; // Kitchen Grid ①
+        const kz0 = -7.0;  // Kitchen Grid A
+        const y1 = ELEV.F1; // +1.20m flush with Main Building 1F!
+        const kh = 3.70;    // RFL = +4.90m
+
+        // 1. Kitchen Elevated Base Plinth (+0.0m to +1.20m)
+        addBox(kitchenBaseGroup, 25.4, y1, 19.2, gx(kx0 + 12.6), y1 * 0.5, gz(kz0 + 9.6), MAT.concreteBase);
+        // Protruding South Receiving Platform Plinth (進貨平台, X=-33.5~-25.5, Z=12.0~16.0)
+        addBox(kitchenBaseGroup, 8.2, y1, 4.2, gx(-29.5), y1 * 0.5, gz(14.0), MAT.concreteBase);
+        // West Dispatch Dock (出餐平台, X=-45.2~-42.5, Z=-2.5~11.8)
+        addBox(kitchenBaseGroup, 2.8, y1, 14.5, gx(-43.85), y1 * 0.5, gz(4.65), MAT.plazaTile);
+        addStepsX(kitchenBaseGroup, -45.2, -42.5, 0, y1, 11.8, 13.8, 6, MAT.plazaTile);
+
+        // ★ 2. FULLY CONNECTED COVERED WALKWAY (風雨走廊) — X = -17.5m -> X = 0.2m @ 1FL (+1.20m)
+        // Flush deck directly entering Main Building 1F West Corridor (Grid ①, Z = 7.85 ~ 10.85m)
+        // Slight angle matching site plan, overlapping cleanly at both ends so there is ZERO gap!
+        const walkLen = 17.8;
+        const walkMidX = -8.7;
+        const walkMidZ = 10.3;
+        const walkDeck = addBox(kitchenBaseGroup, walkLen, y1, 4.4, gx(walkMidX), y1 * 0.5, gz(walkMidZ), MAT.plazaTile);
+        walkDeck.rotation.y = 0.11;
+
+        // Wide Amphitheater South Steps descending from Walkway (+1.20m) to Trackside Lawn (+0.0m)
+        const southStepsGrp = new THREE.Group();
+        southStepsGrp.position.set(gx(-7.2), 0, gz(12.6));
+        southStepsGrp.rotation.y = 0.11;
+        for (let i = 0; i < 6; i++) {
+          const h = ((6 - i) / 6) * y1;
+          const st = new THREE.Mesh(new THREE.BoxGeometry(15.2, h, 0.42), MAT.plazaTile);
+          st.position.set(0, h * 0.5, 0.21 + i * 0.42);
+          st.castShadow = true;
+          st.receiveShadow = true;
+          southStepsGrp.add(st);
+        }
+        kitchenBaseGroup.add(southStepsGrp);
+
+        // North Courtyard Steps from Walkway down to +0.0m
+        const northStepsGrp = new THREE.Group();
+        northStepsGrp.position.set(gx(-9.2), 0, gz(8.0));
+        northStepsGrp.rotation.y = 0.11;
+        for (let i = 0; i < 6; i++) {
+          const h = ((6 - i) / 6) * y1;
+          const st = new THREE.Mesh(new THREE.BoxGeometry(7.2, h, 0.36), MAT.plazaTile);
+          st.position.set(0, h * 0.5, -(0.18 + i * 0.36));
+          st.castShadow = true;
+          st.receiveShadow = true;
+          northStepsGrp.add(st);
+        }
+        kitchenBaseGroup.add(northStepsGrp);
+
+        // Covered Walkway Steel Columns & Corrugated Galvanized Roof Canopy (H = 3.1m above 1FL)
+        const walkRoofGrp = new THREE.Group();
+        walkRoofGrp.position.set(gx(walkMidX), y1, gz(walkMidZ));
+        walkRoofGrp.rotation.y = 0.11;
+        // Corrugated silver-white steel canopy
+        const canopy = new THREE.Mesh(new THREE.BoxGeometry(walkLen + 0.6, 0.24, 4.5), MAT.ckWhite);
+        canopy.position.set(0, 3.15, 0);
+        canopy.castShadow = true;
+        walkRoofGrp.add(canopy);
+        // White-painted H-steel columns (4 pairs)
+        [-7.2, -2.5, 2.5, 7.2].forEach((lx) => {
+          [-1.65, 1.65].forEach((lz) => {
+            const col = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.15, 0.18), MAT.ckWhite);
+            col.position.set(lx, 1.575, lz);
+            col.castShadow = true;
+            walkRoofGrp.add(col);
+          });
+        });
+        kitchenBaseGroup.add(walkRoofGrp);
+
+        // Iconic Preserved Big Tree beside Walkway & Yellow-Green Dining Classroom (per 3D render!)
+        const bigTree = new THREE.Group();
+        bigTree.position.set(gx(-14.6), 0, gz(14.8));
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.45, 5.4, 10), MAT.bark);
+        trunk.position.y = 2.7; trunk.castShadow = true; bigTree.add(trunk);
+        [[0, 6.8, 0, 3.2], [-1.6, 5.8, 0.8, 2.3], [1.7, 6.2, -0.7, 2.4], [0.4, 8.2, 0.4, 2.1]].forEach(([tx, ty, tz, r]) => {
+          const leaf = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 1), MAT.foliage1);
+          leaf.position.set(tx, ty, tz); leaf.castShadow = true; bigTree.add(leaf);
+        });
+        kitchenBaseGroup.add(bigTree);
+
+        // ★ 3. CENTRAL KITCHEN COLOR-BLOCKED VOLUMES (matching 2021-10-07 基本設計簡報!)
+        // (A) Core White Kitchen Block (烹飪區 / 蔬果處理區 / 洗滌消毒 / 儲藏室)
+        addBox(kitchen1FGroup, 24.8, 0.06, 18.8, gx(kx0 + 12.4), y1 + 0.03, gz(kz0 + 9.4), MAT.slabFloor, false, true);
+        // North wall (with strip high windows)
+        addWindowWallX(kitchen1FGroup, kx0 + 0.2, kx0 + 24.8, y1, kh, kz0 + 0.15, MAT.ckWhite, 16.0, 0.9, 1.85);
+        // West wall (dispatch side) with twin entrance doors & canopies
+        addBox(kitchen1FGroup, 0.22, kh, 12.0, gx(kx0 + 0.11), y1 + kh * 0.5, gz(kz0 + 6.2), MAT.ckWhite);
+        addBox(kitchen1FGroup, 1.4, 0.16, 2.4, gx(kx0 - 0.65), y1 + 2.45, gz(kz0 + 9.5), MAT.ckWhite); // Canopy 1
+        addBox(kitchen1FGroup, 1.4, 0.16, 2.4, gx(kx0 - 0.65), y1 + 2.45, gz(kz0 + 14.5), MAT.ckWhite); // Canopy 2
+
+        // (B) Warm Sand-Beige Southwest Volume (取餐區 / 餐食放置區, X=-42.6~-35.2, Z=5.0~12.2)
+        addBox(kitchen1FGroup, 7.6, kh + 0.9, 0.24, gx(-38.8), y1 + (kh + 0.9) * 0.5, gz(12.2), MAT.ckSand);
+        addBox(kitchen1FGroup, 0.24, kh + 0.9, 7.2, gx(-42.5), y1 + (kh + 0.9) * 0.5, gz(8.6), MAT.ckSand);
+        // Signature horizontal strip window on sand-beige box
+        addBox(kitchen1FGroup, 4.8, 0.55, 0.28, gx(-38.8), y1 + 2.65, gz(12.22), MAT.glass, false);
+
+        // (C) Terracotta Protruding Frame Box (驗收區 / 進貨平台, X=-33.6~-27.0, Z=12.0~15.8)
+        // Open on west side for truck unloading, warm terracotta box on south & east with square cutout windows
+        addBox(kitchen1FGroup, 6.6, kh + 0.5, 0.26, gx(-30.3), y1 + (kh + 0.5) * 0.5, gz(15.7), MAT.ckTerracotta);
+        addBox(kitchen1FGroup, 0.26, kh + 0.5, 3.8, gx(-27.0), y1 + (kh + 0.5) * 0.5, gz(13.8), MAT.ckTerracotta);
+        addBox(kitchen1FGroup, 6.6, 0.24, 3.8, gx(-30.3), y1 + kh + 0.35, gz(13.8), MAT.ckTerracotta);
+        // Cutout window in terracotta south facade
+        addBox(kitchen1FGroup, 1.9, 1.5, 0.30, gx(-28.8), y1 + 2.0, gz(15.72), MAT.glass, false);
+        addBox(kitchen1FGroup, 0.9, 0.9, 0.30, gx(-32.2), y1 + 0.95, gz(15.72), MAT.glass, false);
+
+        // (D) Light Gray Recessed Office & Restroom Block (10-8 營養師辦公室 & 20-7 廁所, X=-27.0~-20.5, Z=6.0~12.2)
+        addWindowWallX(kitchen1FGroup, -26.8, -20.5, y1, kh, 12.15, MAT.ckGray, 4.2, 1.35, 1.10);
+
+        // (E) ★ Iconic Rotated 8.5° Yellow-Green Box: 2-7 食育教室 (午餐教室) + Open Veranda!
+        const diningGrp = new THREE.Group();
+        diningGrp.position.set(gx(-19.5), y1, gz(10.6));
+        diningGrp.rotation.y = 0.148; // ~8.5° CCW matching A2 plan & 3D render
+        // Plinth under rotated classroom
+        const dPlinth = new THREE.Mesh(new THREE.BoxGeometry(8.4, y1, 10.8), MAT.concreteBase);
+        dPlinth.position.set(0, -y1 * 0.5, 0);
+        diningGrp.add(dPlinth);
+        // Dining classroom floor
+        const dFloor = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.08, 10.6), MAT.woodLight);
+        dFloor.position.set(0, 0.04, 0);
+        diningGrp.add(dFloor);
+        // Yellow-green signature south/west/east walls with playful scattered square windows (per 3D render!)
+        // West wall of dining + veranda (solid yellow-green with small window)
+        const dWallW = new THREE.Mesh(new THREE.BoxGeometry(0.24, kh + 0.85, 10.5), MAT.ckYellowGreen);
+        dWallW.position.set(-4.0, (kh + 0.85) * 0.5, 0); dWallW.castShadow = true; diningGrp.add(dWallW);
+        // South facade of veranda (yellow-green signature wall with 3 playful rectangular cutouts!)
+        const dWallS = new THREE.Mesh(new THREE.BoxGeometry(8.2, kh + 0.85, 0.26), MAT.ckYellowGreen);
+        dWallS.position.set(0, (kh + 0.85) * 0.5, 5.2); dWallS.castShadow = true; diningGrp.add(dWallS);
+        // Visual dark-glass cutouts on yellow-green facade (matching p.1 & p.16 render)
+        [[-2.2, 1.3, 1.0, 1.0], [-0.4, 2.0, 0.85, 0.85], [1.9, 1.75, 1.85, 1.65], [-1.3, 3.25, 0.55, 0.45]].forEach(([wx, wy, ww, wh]) => {
+          const wMesh = new THREE.Mesh(new THREE.BoxGeometry(ww, wh, 0.30), MAT.glass);
+          wMesh.position.set(wx, wy, 5.22);
+          diningGrp.add(wMesh);
+        });
+        // East wall of dining room (leaves veranda opening on south side so Walkway enters directly!)
+        const dWallE = new THREE.Mesh(new THREE.BoxGeometry(0.24, kh + 0.85, 6.2), MAT.ckYellowGreen);
+        dWallE.position.set(4.0, (kh + 0.85) * 0.5, -2.15); dWallE.castShadow = true; diningGrp.add(dWallE);
+        // Folding glass doors between interior Dining Classroom & open veranda (DW2)
+        const dw2 = new THREE.Mesh(new THREE.BoxGeometry(7.5, 2.70, 0.08), MAT.glass);
+        dw2.position.set(0, 1.35, 1.25);
+        diningGrp.add(dw2);
+        // Dining tables inside 2-7 食育教室
+        [-2.0, 0, 2.0].forEach((tx) => {
+          const tbl = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.75, 2.6), MAT.woodLight);
+          tbl.position.set(tx, 0.38, -1.6);
+          diningGrp.add(tbl);
+        });
+        // Roof over rotated dining box (added to kitchenRoofGroup via world transform or own roof group)
+        const dRoof = new THREE.Mesh(new THREE.BoxGeometry(8.3, 0.24, 10.6), MAT.ckWhite);
+        dRoof.position.set(0, kh + 0.05, 0);
+        dRoof.userData = { isKitchenRoofPart: true };
+        diningGrp.add(dRoof);
+        kitchen1FGroup.add(diningGrp);
+
+        // (F) East White Outdoor Staircase rising from Walkway (+1.20m) up to Kitchen Roof (+4.90m)
+        const kStairGrp = new THREE.Group();
+        kStairGrp.position.set(gx(-15.0), y1, gz(6.2));
+        kStairGrp.rotation.y = 0.148;
+        for (let s = 0; s < 16; s++) {
+          const sh = ((s + 1) / 16) * kh;
+          const st = new THREE.Mesh(new THREE.BoxGeometry(1.6, sh, 0.34), MAT.ckWhite);
+          st.position.set(0, sh * 0.5, 2.6 - s * 0.34);
+          st.castShadow = true;
+          kStairGrp.add(st);
+        }
+        kitchen1FGroup.add(kStairGrp);
+
+        // (G) East White Curved Locker Room / Staff Restroom & Storage Box (廚工休息室 / 配電室)
+        addBox(kitchen1FGroup, 4.2, kh, 6.2, gx(-19.5), y1 + kh * 0.5, gz(1.2), MAT.ckWhite);
+        // Interior Kitchen Equipment (Cooking kettles, worktables, dishwashers — visible in 1F cutaway / X-Ray!)
+        for (let i = 0; i < 4; i++) {
+          const kettle = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.45, 0.85, 16), MAT.steelSilver);
+          kettle.position.set(gx(-27.2), y1 + 0.45, gz(-4.5 + i * 2.1));
+          kitchen1FGroup.add(kettle);
+        }
+        addBox(kitchen1FGroup, 1.4, 0.85, 6.2, gx(-23.2), y1 + 0.45, gz(-1.5), MAT.steelSilver); // Veg/meat prep table
+        addBox(kitchen1FGroup, 2.0, 1.9, 1.1, gx(-32.2), y1 + 0.95, gz(-2.0), MAT.steelSilver); // Steam rice cabinets
+        addBox(kitchen1FGroup, 1.6, 1.1, 6.0, gx(-40.2), y1 + 0.55, gz(-0.5), MAT.steelSilver); // Dishwashing line
+
+        // 4. Kitchen Roof Slab, Stainless Railings, 2F Sage-Green Mechanical Penthouse & Water Tanks
+        addBox(kitchenRoofGroup, 25.0, 0.22, 19.0, gx(kx0 + 12.5), y1 + kh + 0.11, gz(kz0 + 9.5), MAT.ckWhite);
+        addRailingX(kitchenRoofGroup, kx0 + 0.3, kx0 + 24.5, y1 + kh + 0.22, kz0 + 18.8, 1.15);
+        addRailingZ(kitchenRoofGroup, kz0 + 0.3, kz0 + 18.8, y1 + kh + 0.22, kx0 + 0.3, 1.15);
+
+        // ★ 2F Sage-Green Rooftop Mechanical Box (消防機房 / RO機房 / 儲藏室, +4.90m to +7.90m)
+        addBox(kitchenRoofGroup, 12.4, 3.05, 5.0, gx(-27.5), y1 + kh + 1.55, gz(-4.4), MAT.ckSage);
+        // Doors on south side of 2F mech room
+        [-30.5, -26.2, -23.5].forEach((dx) => {
+          addBox(kitchenRoofGroup, 1.0, 2.1, 0.08, gx(dx), y1 + kh + 1.1, gz(-1.88), MAT.steelDark);
+        });
+
+        // Rooftop 8T x 2 Stainless Water Tanks (Northwest of 2F Mech Room)
+        [-37.2, -35.0].forEach((tx, idx) => {
+          const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 2.35, 18), MAT.steelSilver);
+          tank.position.set(gx(tx), y1 + kh + 1.35, gz(-4.8 + idx * 1.1));
+          tank.castShadow = true;
+          kitchenRoofGroup.add(tank);
+        });
+
+        // Ground-level 5T x 3 Stainless Water Tanks (Northeast courtyard)
+        [[-19.8, -5.2], [-18.2, -5.2], [-19.0, -3.5]].forEach(([tx, tz]) => {
+          const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.2, 16), MAT.steelSilver);
+          tank.position.set(gx(tx), 1.3, gz(tz));
+          tank.castShadow = true;
+          kitchenBaseGroup.add(tank);
+        });
+      }
+
+      // =========================================================================
+      // 9. REGISTER ALL 115-YEAR CAMPUS SPACES (互動空間資訊與標籤)
+      // =========================================================================
+      function registerAllRooms() {
+        // 依「115年高雄市立溪埔國民中學校區配置圖」；欄 = 樓層，列 = 主校舍由西(軸線①)往東(軸線⑪)
+        // 位置對照 99年度校舍新建工程 A1-1～A1-3 平面圖之開間
+        const W = '主校舍 102.8 完工・保固 10 年';
+        const rooms = [
+          // ── 1F 壹層 ──
+          { floor: '1F', name: '20-1 廁所（西側）', shortName: '20-1 廁所', x: 3.5, z: 3.8, w: 6.5, d: 6.8, y: ELEV.F1, area: 44, isRestroom: true, meta: W, desc: '西側男女廁所，旁為樓梯 B 與儲藏室（軸線①–②）。' },
+          { floor: '1F', name: '1-2 普通教室（102班）', shortName: '1-2 教室(102)', x: 13.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F1, area: 68, meta: W, desc: '七年級 102 班（軸線②–③）。原設計為校長室／休息室／體育器材室，現改為普通教室。' },
+          { floor: '1F', name: '8-1 圖書室', shortName: '8-1 圖書室', x: 27.0, z: 3.9, w: 17.4, d: 7.4, y: ELEV.F1, area: 138, meta: W, desc: '雙開間圖書室（軸線③–⑤），原設計即為圖書教室。' },
+          { floor: '1F', name: '1-1 普通教室（101班）', shortName: '1-1 教室(101)', x: 40.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F1, area: 68, meta: W, desc: '七年級 101 班（軸線⑤–⑥）。原設計為輔導室＋諮商室。' },
+          { floor: '1F', name: '10-1 總務處', shortName: '10-1 總務處', x: 49.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F1, area: 68, meta: W, desc: '總務處辦公室（軸線⑥–⑦），緊鄰穿堂西側。' },
+          { floor: '1F', name: '穿堂', shortName: '穿堂', x: 58.5, z: 3.9, w: 8.8, d: 7.8, y: ELEV.F1, area: 71, meta: W, desc: '南北貫通的開放穿堂（軸線⑦–⑧），北側有戶外樓梯下到後方。' },
+          { floor: '1F', name: '10-2 人事會計室', shortName: '10-2 人事會計', x: 65.2, z: 3.9, w: 4.2, d: 7.4, y: ELEV.F1, area: 34, meta: W, desc: '軸線⑧–⑨西半間（原設計「辦公室」）。' },
+          { floor: '1F', name: '7-1 健康中心', shortName: '7-1 健康中心', x: 69.8, z: 3.9, w: 4.2, d: 7.4, y: ELEV.F1, area: 34, meta: W, desc: '軸線⑧–⑨東半間，原設計即為健康中心。' },
+          { floor: '1F', name: '20-4 廁所（東側）', shortName: '20-4 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F1, area: 52, isRestroom: true, meta: W, desc: '東側男女廁所＋無障礙廁所。（荔枝意象整修內容未附來源，待核對）' },
+          { floor: '1F', name: '樓梯・昇降機（電梯）・消防機房・配電室', shortName: '電梯・機房', x: 75.5, z: 13.8, w: 7.0, d: 5.6, y: ELEV.F1, area: 39, meta: W, desc: '東端走廊南側附屬區：無障礙樓梯 A、昇降機、發電機室／消防泵浦室與配電室（位置為示意）。' },
+          // ── 2F 貳層 ──
+          { floor: '2F', name: '20-2 廁所（西側）', shortName: '20-2 廁所', x: 3.5, z: 3.8, w: 6.5, d: 6.8, y: ELEV.F2, area: 44, isRestroom: true, meta: W, desc: '西側二樓男女廁所。' },
+          { floor: '2F', name: '1-4 普通教室（302班）', shortName: '1-4 教室(302)', x: 13.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '九年級 302 班（軸線②–③）。' },
+          { floor: '2F', name: '1-3 普通教室（301班）', shortName: '1-3 教室(301)', x: 22.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '九年級 301 班（軸線③–④）。' },
+          { floor: '2F', name: '10-7 教務處', shortName: '10-7 教務處', x: 31.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '教務處（軸線④–⑤）。' },
+          { floor: '2F', name: '12-1 導師室', shortName: '12-1 導師室', x: 40.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '導師辦公室（軸線⑤–⑥）。' },
+          { floor: '2F', name: '10-6 校長室', shortName: '10-6 校長室', x: 49.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '校長室（軸線⑥–⑦）。' },
+          { floor: '2F', name: '10-5 輔導室・10-4 諮商室・2-6 團諮室', shortName: '輔導・諮商・團諮', x: 58.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '穿堂正上方（軸線⑦–⑧），原設計教師辦公室＋休息室，現分隔為輔導室、諮商室、團諮室。' },
+          { floor: '2F', name: '10-3 學務處', shortName: '10-3 學務處', x: 67.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '學務處（軸線⑧–⑨），鄰近電梯。' },
+          { floor: '2F', name: '20-5 廁所（東側）', shortName: '20-5 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F2, area: 52, isRestroom: true, meta: W, desc: '東側二樓廁所。（性別友善／舊鐵橋意象整修內容未附來源，待核對）' },
+          // ── 3F 參層 ──
+          { floor: '3F', name: '20-3 廁所（西側）', shortName: '20-3 廁所', x: 3.5, z: 3.8, w: 6.5, d: 6.8, y: ELEV.F3, area: 44, isRestroom: true, meta: W, desc: '西側三樓男女廁所。' },
+          { floor: '3F', name: '2-5 資源班教室', shortName: '2-5 資源班', x: 13.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '資源班教室（軸線②–③，原設計檔案室）。' },
+          { floor: '3F', name: '2-4 理化實驗室', shortName: '2-4 理化實驗室', x: 22.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '理化實驗室（軸線③–④，原設計生物理化實驗教室）。' },
+          { floor: '3F', name: '2-3 生科教室', shortName: '2-3 生科教室', x: 31.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '生活科技教室（軸線④–⑤，原設計音樂教室）。' },
+          { floor: '3F', name: '2-2 資訊教室', shortName: '2-2 資訊教室', x: 40.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '資訊教室（軸線⑤–⑥）。' },
+          { floor: '3F', name: '2-1 藝術教室', shortName: '2-1 藝術教室', x: 49.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '藝術教室（軸線⑥–⑦，原設計美術教室），南側為三樓露台。' },
+          { floor: '3F', name: '1-6 普通教室（202班）', shortName: '1-6 教室(202)', x: 58.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '八年級 202 班（軸線⑦–⑧）。' },
+          { floor: '3F', name: '1-5 普通教室（201班）', shortName: '1-5 教室(201)', x: 67.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '八年級 201 班（軸線⑧–⑨）。' },
+          { floor: '3F', name: '20-6 廁所（東側）', shortName: '20-6 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F3, area: 52, isRestroom: true, meta: W, desc: '東側三樓廁所。（鳳梨意象整修內容未附來源，待核對）' },
+          // ── 中央廚房（111.11 完工・保固 5 年）──
+          { floor: '1F', building: 'kitchen', name: '21-1 中央廚房', shortName: '21-1 中央廚房', x: -31.5, z: 1.5, w: 18.0, d: 13.0, y: ELEV.F1, area: 485, meta: '111.11 完工・保固 5 年', desc: '聯合供餐中央廚房，供應本校及興田、姑山、水寮、大樹國小約 1,500 人午餐。地上一層（局部二層機房），樓板抬高 +1.20 m 與教學大樓一樓走廊同高。' },
+          { floor: '1F', building: 'kitchen', name: '10-8 營養師辦公室', shortName: '10-8 營養師', x: -26.0, z: 9.2, w: 3.4, d: 5.2, y: ELEV.F1, area: 15, meta: '111.11 完工・保固 5 年', desc: '營養師辦公室（規劃面積約 15.45 m²）。' },
+          { floor: '1F', building: 'kitchen', name: '20-7 廁所（中央廚房）', shortName: '20-7 廁所', x: -22.4, z: 9.2, w: 3.4, d: 5.2, y: ELEV.F1, area: 18, isRestroom: true, meta: '111.11 完工・保固 5 年', desc: '廚房衛生區：淋浴間、座式馬桶、無障礙廁所（規劃約 18.30 m²）。' },
+          { floor: '1F', building: 'kitchen', name: '2-7 食育教室', shortName: '2-7 食育教室', x: -19.5, z: 10.6, w: 7.8, d: 9.5, y: ELEV.F1, area: 57, meta: '111.11 完工・保固 5 年', desc: '午餐教育教室（規劃約 57.2 m²），外廊作為餐食教育區，連接風雨走廊。' },
+          { floor: '1F', building: 'kitchen', name: '廚工休息室・配電室', shortName: '休息室・配電', x: -19.5, z: 1.2, w: 4.2, d: 6.2, y: ELEV.F1, area: 26, meta: '111.11 完工・保固 5 年', desc: '中央廚房東側：廚工休息室與配電室。' },
+          { floor: '1F', building: 'kitchen', name: '風雨走廊', shortName: '風雨走廊', x: -8.7, z: 10.3, w: 16.5, d: 4.2, y: ELEV.F1, area: 58, meta: '111.11 完工', desc: '連接中央廚房與主校舍一樓西側走廊（+1.20 m）。' },
+          { floor: '2F', building: 'kitchen', name: '消防機房（中央廚房 2F）', shortName: '廚房2F 消防機房', x: -27.5, z: -4.4, w: 12.0, d: 4.8, y: ELEV.F1 + 3.7, area: 60, meta: '111.11 完工・保固 5 年', desc: '中央廚房局部二層機房（消防機房）。' },
+          // ── 戶外設施 ──
+          { floor: 'GF', building: 'site', name: '操場（200 m 跑道）', shortName: '操場', x: SITE.track.cx, z: SITE.track.cz, w: 30, d: 16, y: 0, area: 3200, meta: '跑道 99 年度工程重新施作', desc: '200 m 跑道＋南側直線跑道。' },
+          { floor: 'GF', building: 'site', name: '司令台', shortName: '司令台', x: SITE.stage.cx, z: SITE.stage.cz, w: SITE.stage.w, d: SITE.stage.d, y: 0.6, area: 40, meta: '78.7 建置（21 年以上）', desc: '操場南側司令台。' },
+          { floor: 'GF', building: 'site', name: '17-2 公用儲藏室', shortName: '17-2 公用儲藏室', x: SITE.storage172.cx, z: SITE.storage172.cz, w: SITE.storage172.w, d: SITE.storage172.d, y: 0.2, area: 120, meta: '83.12 建置（21 年以上）', desc: '司令台旁一層舊建物（配置圖標 1R）。' },
+          { floor: 'GF', building: 'site', name: '籃球場', shortName: '籃球場', x: SITE.courtOpen.cx, z: SITE.courtOpen.cz, w: SITE.courtOpen.w, d: SITE.courtOpen.d, y: 0.1, area: 416, meta: '103.4 建置・保固 10 年', desc: '校地東南側室外籃球場。' },
+          { floor: 'GF', building: 'site', name: '風雨球場', shortName: '風雨球場', x: SITE.courtCovered.cx, z: SITE.courtCovered.cz, w: SITE.courtCovered.w, d: SITE.courtCovered.d, y: 0.1, area: 416, meta: '103.4 建置・保固 10 年', desc: '有頂蓋風雨球場（屋頂是否設太陽能板待核對）。' },
+          { floor: 'GF', building: 'site', name: '噴水池・中央廣場', shortName: '噴水池', x: SITE.pond.cx, z: SITE.pond.cz, w: 8, d: 8, y: 0.3, area: 380, meta: '', desc: '穿堂東南側圓形廣場與水池，連接東側大門。' },
+          { floor: 'GF', building: 'site', name: '14-1 警衛室', shortName: '14-1 警衛室', x: 112.5, z: 34.5, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '東側大門旁警衛室（位置依配置圖示意）。' },
+          { floor: 'GF', building: 'site', name: '22-1 備勤室', shortName: '22-1 備勤室', x: 112.5, z: 29.3, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '警衛室旁備勤室。' },
+          { floor: 'GF', building: 'site', name: '4-1 體育器材室', shortName: '4-1 體育器材室', x: 112.5, z: 24.1, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '體育器材室。' },
+          { floor: 'GF', building: 'site', name: '17-1 檔案室', shortName: '17-1 檔案室', x: 112.5, z: 18.9, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '檔案室。' },
+          { floor: 'GF', building: 'site', name: '學生、教職員車棚', shortName: '車棚', x: 31, z: SITE.bikeShedZ, w: 20, d: 4, y: 0.2, area: 300, meta: '103.10 建置・保固 10 年', desc: '主校舍北側車棚（位置與長度為示意，待現場核對）。' },
+          { floor: 'GF', building: 'site', name: '大門', shortName: '大門', x: SITE.gates.main[0] - 2, z: SITE.gates.main[1], w: 3, d: 8, y: 0.2, area: 0, meta: '', desc: '東側大門（依配置圖推定，待核對）。' }
+        ];
+        rooms.forEach((r) => registerRoom(r.building === 'site' ? Object.assign({ group: campusSiteGroup, labelH: 1.6 }, r) : r));
+      }
+
+      // =========================================================================
+      // 10. STRUCTURAL GRID SYSTEM (①–⑪, D–A)
+      // =========================================================================
+      function buildGridSystem() {
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.42 });
+        GRID_X.forEach((rx) => {
+          const geo = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(gx(rx), 0.08, gz(-4)),
+            new THREE.Vector3(gx(rx), 0.08, gz(19))
+          ]);
+          gridSystemGroup.add(new THREE.Line(geo, lineMat));
+        });
+        Object.values(GRID_Z).forEach((rz) => {
+          const geo = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(gx(-3)),
+            new THREE.Vector3(gx(85))
+          ].map((v) => new THREE.Vector3(v.x, 0.08, gz(rz))));
+          gridSystemGroup.add(new THREE.Line(geo, lineMat));
+        });
+      }
+
+      // =========================================================================
+      // 11. CAMPUS SITE CONTEXT (操場、風雨球場、噴水池、司令台、車棚、警衛室)
+      // =========================================================================
+      function buildCampusSite() {
+        // 大範圍地面
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(520, 400), makeMat(0x4a6b3e, { roughness: 0.96 }));
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.set(gx(25), -0.06, gz(45));
+        ground.receiveShadow = true;
+        campusSiteGroup.add(ground);
+
+        // 校地範圍（地界線多邊形）
+        const bShape = new THREE.Shape();
+        SITE.boundary.forEach(([bx, bz], i) => (i === 0 ? bShape.moveTo(gx(bx), -gz(bz)) : bShape.lineTo(gx(bx), -gz(bz))));
+        const lawn = new THREE.Mesh(new THREE.ShapeGeometry(bShape), MAT.grass);
+        lawn.rotation.x = -Math.PI / 2;
+        lawn.position.y = -0.02;
+        lawn.receiveShadow = true;
+        campusSiteGroup.add(lawn);
+        const fencePts = SITE.boundary.concat([SITE.boundary[0]]).map(([bx, bz]) => new THREE.Vector3(gx(bx), 0.9, gz(bz)));
+        campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fencePts),
+          new THREE.LineBasicMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.55 })));
+
+        // 200 m 跑道（中心約在主校舍軸線①東側 8 m、北牆以南 41.5 m）
+        const T = SITE.track;
+        const buildStadiumShape = (sh, r) => {
+          const sp = new THREE.Shape();
+          sp.moveTo(-sh, -r);
+          sp.lineTo(sh, -r);
+          sp.absarc(sh, 0, r, -Math.PI / 2, Math.PI / 2, false);
+          sp.lineTo(-sh, r);
+          sp.absarc(-sh, 0, r, Math.PI / 2, (3 * Math.PI) / 2, false);
+          return sp;
+        };
+        const outerShape = buildStadiumShape(T.straightHalf, T.outerR);
+        const innerHole = buildStadiumShape(T.straightHalf, T.innerR);
+        outerShape.holes.push(innerHole);
+        const trackMesh = new THREE.Mesh(new THREE.ShapeGeometry(outerShape, 40), MAT.trackRed);
+        trackMesh.rotation.x = -Math.PI / 2;
+        trackMesh.position.set(gx(T.cx), 0.04, gz(T.cz));
+        trackMesh.receiveShadow = true;
+        campusSiteGroup.add(trackMesh);
+        const infield = new THREE.Mesh(new THREE.ShapeGeometry(buildStadiumShape(T.straightHalf, T.innerR), 32), MAT.lawnInfield);
+        infield.rotation.x = -Math.PI / 2;
+        infield.position.set(gx(T.cx), 0.035, gz(T.cz));
+        infield.receiveShadow = true;
+        campusSiteGroup.add(infield);
+        const laneMat = new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.72 });
+        const laneW = (T.outerR - T.innerR) / 6;
+        for (let k = 1; k < 6; k++) {
+          const r = T.innerR + laneW * k;
+          const pts = buildStadiumShape(T.straightHalf, r).getPoints(72).map((pt) => new THREE.Vector3(gx(T.cx + pt.x), 0.06, gz(T.cz - pt.y)));
+          pts.push(pts[0]);
+          campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), laneMat));
+        }
+
+        // 南側直線跑道
+        const SP = SITE.sprint;
+        addBox(campusSiteGroup, SP.len, 0.04, SP.w, gx(SP.cx), 0.03, gz(SP.cz), MAT.trackRed, false, true);
+
+        // 司令台（78.7）
+        const ST = SITE.stage;
+        addBox(campusSiteGroup, ST.w, 1.0, ST.d, gx(ST.cx), 0.5, gz(ST.cz), MAT.plazaTile);
+        addBox(campusSiteGroup, ST.w + 0.4, 0.4, ST.d + 0.6, gx(ST.cx), 4.3, gz(ST.cz + 0.2), MAT.steelDark);
+        [ST.cx - ST.w / 2 + 0.4, ST.cx + ST.w / 2 - 0.4].forEach((sx) => addBox(campusSiteGroup, 0.4, 3.2, 0.4, gx(sx), 2.6, gz(ST.cz - ST.d / 2 + 0.3), MAT.ckWhite));
+        addBox(campusSiteGroup, ST.w, 3.2, 0.3, gx(ST.cx), 2.6, gz(ST.cz + ST.d / 2 - 0.15), MAT.ckWhite);
+        addStepsX(campusSiteGroup, ST.cx - 2, ST.cx + 2, 0, 1.0, ST.cz - ST.d / 2 - 1.6, ST.cz - ST.d / 2, 5, MAT.plazaTile);
+
+        // 17-2 公用儲藏室（83.12，配置圖 1R）
+        const S2 = SITE.storage172;
+        addBox(campusSiteGroup, S2.w, 3.4, S2.d, gx(S2.cx), 1.7, gz(S2.cz), MAT.wallExt);
+        addBox(campusSiteGroup, S2.w + 0.6, 0.3, S2.d + 0.6, gx(S2.cx), 3.55, gz(S2.cz), makeMat(0xb94a3e));
+
+        // 籃球場＋風雨球場（103.4）
+        const CO = SITE.courtOpen, CC = SITE.courtCovered;
+        addBox(campusSiteGroup, CO.w, 0.08, CO.d, gx(CO.cx), 0.04, gz(CO.cz), MAT.courtBlue, false, true);
+        addBox(campusSiteGroup, CC.w, 0.08, CC.d, gx(CC.cx), 0.04, gz(CC.cz), MAT.courtBlue, false, true);
+        [CC.cx - CC.w / 2 + 0.5, CC.cx, CC.cx + CC.w / 2 - 0.5].forEach((cx) => {
+          [CC.cz - CC.d / 2 - 0.5, CC.cz + CC.d / 2 + 0.5].forEach((cz) => addBox(campusSiteGroup, 0.45, 8.5, 0.45, gx(cx), 4.25, gz(cz), MAT.steelDark));
+        });
+        addBox(campusSiteGroup, CC.w + 2.0, 0.45, CC.d + 2.0, gx(CC.cx), 8.6, gz(CC.cz), MAT.roofSheet);
+
+        // 中央廣場＋水池
+        const PD = SITE.pond;
+        const plazaDisk = new THREE.Mesh(new THREE.CylinderGeometry(PD.plazaR, PD.plazaR, 0.08, 48), MAT.plazaTile);
+        plazaDisk.position.set(gx(PD.cx), 0.04, gz(PD.cz));
+        plazaDisk.receiveShadow = true;
+        campusSiteGroup.add(plazaDisk);
+        const pondRim = new THREE.Mesh(new THREE.CylinderGeometry(PD.waterR + 0.6, PD.waterR + 0.7, 0.45, 36), MAT.concreteBase);
+        pondRim.position.set(gx(PD.cx), 0.22, gz(PD.cz));
+        campusSiteGroup.add(pondRim);
+        const pondWater = new THREE.Mesh(new THREE.CylinderGeometry(PD.waterR, PD.waterR, 0.36, 36), MAT.water);
+        pondWater.position.set(gx(PD.cx), 0.28, gz(PD.cz));
+        campusSiteGroup.add(pondWater);
+        const EP = SITE.entryPlaza;
+        addBox(campusSiteGroup, EP.x1 - EP.x0, 0.06, EP.z1 - EP.z0, gx((EP.x0 + EP.x1) / 2), 0.03, gz((EP.z0 + EP.z1) / 2), MAT.plazaTile, false, true);
+        // 穿堂往廣場的斜向鋪面
+        const diagWalk = addBox(campusSiteGroup, 7.0, 0.06, 30.0, gx(69.0), 0.035, gz(27.0), MAT.plazaTile, false, true);
+        diagWalk.rotation.y = 0.42;
+
+        // 東側附屬建物：17-1 檔案室／4-1 體育器材室／22-1 備勤室／14-1 警衛室（103.4，北→南）
+        const AX = SITE.annex;
+        addBox(campusSiteGroup, AX.x1 - AX.x0, 3.3, AX.z1 - AX.z0, gx((AX.x0 + AX.x1) / 2), 1.65, gz((AX.z0 + AX.z1) / 2), MAT.wallExt);
+        addBox(campusSiteGroup, AX.x1 - AX.x0 + 0.6, 0.3, AX.z1 - AX.z0 + 0.6, gx((AX.x0 + AX.x1) / 2), 3.45, gz((AX.z0 + AX.z1) / 2), MAT.wallFrameGray);
+
+        // 停車場（東北側既設汽車停車場、東南側既設停車場）
+        const PN = SITE.parkingNE;
+        addBox(campusSiteGroup, PN.x1 - PN.x0, 0.06, PN.z1 - PN.z0, gx((PN.x0 + PN.x1) / 2), 0.03, gz((PN.z0 + PN.z1) / 2), MAT.asphalt, false, true);
+        const PS = SITE.parkingSE;
+        const pse = addBox(campusSiteGroup, PS.w, 0.06, PS.d, gx(PS.cx), 0.03, gz(PS.cz), MAT.asphalt, false, true);
+        pse.rotation.y = PS.rot;
+
+        // 學生、教職員車棚（103.10，主校舍北側；避開穿堂後方樓梯）
+        SITE.bikeShed.forEach(([x0, x1]) => {
+          const cx = (x0 + x1) / 2, len = x1 - x0;
+          addBox(campusSiteGroup, len, 0.06, 4.2, gx(cx), 0.03, gz(SITE.bikeShedZ), MAT.asphalt, false, true);
+          addBox(campusSiteGroup, len, 0.16, 4.0, gx(cx), 2.75, gz(SITE.bikeShedZ), MAT.roofSheet);
+          for (let px = x0 + 0.5; px <= x1 - 0.4; px += 6.0) {
+            addBox(campusSiteGroup, 0.16, 2.75, 0.16, gx(px), 1.38, gz(SITE.bikeShedZ + 1.6), MAT.steelDark);
+          }
+        });
+
+        // 中央廚房西側進出車道（沿西側地界，接西南側門）
+        const KR = SITE.kitchenRoad;
+        const kdx = KR.to[0] - KR.from[0], kdz = KR.to[1] - KR.from[1];
+        const road = addBox(campusSiteGroup, KR.w, 0.06, Math.hypot(kdx, kdz), gx((KR.from[0] + KR.to[0]) / 2), 0.03, gz((KR.from[1] + KR.to[1]) / 2), MAT.asphalt, false, true);
+        road.rotation.y = Math.atan2(kdx, kdz);
+
+        // 校門（門柱示意）
+        Object.values(SITE.gates).forEach(([gxr, gzr]) => {
+          addBox(campusSiteGroup, 0.8, 2.2, 0.8, gx(gxr), 1.1, gz(gzr - 3.2), MAT.wallFrameDark);
+          addBox(campusSiteGroup, 0.8, 2.2, 0.8, gx(gxr), 1.1, gz(gzr + 3.2), MAT.wallFrameDark);
+        });
+
+        // 樹木（沿地界與廣場周邊，示意）
+        const treeCoords = [
+          [-44, -6], [-55, 20], [-58, 40], [-62, 58], [-40, 30], [-30, 28], [-20, 70], [-35, 85], [20, 90], [35, 75],
+          [40, 62], [70, 68], [95, 60], [100, 40], [88, 30], [82, 8], [92, -3], [40, -9], [-10, -9], [118, 60], [118, 85]
+        ];
+        treeCoords.forEach(([tx, tz], i) => {
+          const g = new THREE.Group();
+          g.position.set(gx(tx), 0, gz(tz));
+          const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 2.8, 7), MAT.bark);
+          tr.position.y = 1.4; tr.castShadow = true; g.add(tr);
+          const cn = new THREE.Mesh(new THREE.DodecahedronGeometry(2.0 + (i % 3) * 0.45, 0), i % 2 === 0 ? MAT.foliage1 : MAT.foliage2);
+          cn.position.y = 3.8 + (i % 2) * 0.5; cn.castShadow = true; g.add(cn);
+          campusSiteGroup.add(g);
+        });
+      }
+
+      // Execute geometry builders
+      buildFoundation();
+      buildMainFloor(1, floor1Group, ELEV.F1);
+      buildMainFloor(2, floor2Group, ELEV.F2);
+      buildMainFloor(3, floor3Group, ELEV.F3);
+      buildMainRoof();
+      buildCentralKitchen();
+      registerAllRooms();
+      buildGridSystem();
+      buildCampusSite();
+
+      // =========================================================================
+      // 12. APPLICATION STATE & CAMERA FLIGHT PRESETS
+      // =========================================================================
+      const state = {
+        activeFloor: 'all',
+        targetExplode: 0.0,
+        currentExplode: 0.0,
+        showKitchen: true,
+        showRoof: true,
+        xrayMode: false,
+        showGrid: true,
+        showSite: true,
+        showLabels: true,
+        selectedRoomMesh: null,
+        navMode: 'earth', // 'earth' | '2d' | 'street'
+        earthNavStyle: true,
+        pegmanDropMode: false,
+        svFloor: 0,
+        svYaw: 0,
+        svPitch: 0,
+        svTargetYaw: 0,
+        svTargetPitch: 0,
+        svPos: new THREE.Vector3(),
+        svTargetPos: new THREE.Vector3()
+      };
+
+      const CAMERA_PRESETS = {
+        campus: { pos: [26, 52, 92], target: [-2, 4, 14] },
+        south: { pos: [8, 16, 62], target: [8, 6.5, -10] },
+        north: { pos: [8, 22, -62], target: [8, 6.5, -10] },
+        kitchen: { pos: [-82, 24, 30], target: [-60, 4.0, -14] },
+        walkway: { pos: [-40, 10, 26], target: [-42, 2.8, -8] },
+        breezewayNorth: { pos: [24, 10, -40], target: [26, 2.5, -18], floor: '1F' },
+        restroom2f: { pos: [44, 19, 1], target: [43.5, 6.2, -14.2], floor: '2F' },
+        restroomEnt: { pos: [46, 11, 12], target: [44.5, 6.5, -10.5], floor: 'all' }
+      };
+
+      const cameraAnim = {
+        active: false,
+        startTime: 0,
+        duration: 750,
+        startPos: new THREE.Vector3(),
+        endPos: new THREE.Vector3(),
+        startTarget: new THREE.Vector3(),
+        endTarget: new THREE.Vector3()
+      };
+
+      function flyToCamera(posArr, targetArr, duration = 750) {
+        cameraAnim.active = true;
+        cameraAnim.startTime = performance.now();
+        cameraAnim.duration = duration;
+        cameraAnim.startPos.copy(camera.position);
+        cameraAnim.endPos.set(posArr[0], posArr[1], posArr[2]);
+        cameraAnim.startTarget.copy(controls.target);
+        cameraAnim.endTarget.set(targetArr[0], targetArr[1], targetArr[2]);
+      }
+
+      // Toast helper
+      let toastTimer = null;
+      function showToast(msg) {
+        const el = document.getElementById('toast-box');
+        el.textContent = msg;
+        el.classList.remove('opacity-0', '-translate-y-2');
+        el.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          el.classList.add('opacity-0', '-translate-y-2');
+          el.classList.remove('opacity-100', 'translate-y-0');
+        }, 2800);
+      }
+
+      // =========================================================================
+      // 13. FLOOR CUTAWAY, EXPLODED VIEW, X-RAY & ROOM SELECTION
+      // =========================================================================
+      function applyFloorVisibility() {
+        const f = state.activeFloor;
+        floor1Group.visible = true;
+        floor2Group.visible = (f === 'all' || f === '2F' || f === '3F');
+        floor3Group.visible = (f === 'all' || f === '3F');
+        roofGroup.visible = (f === 'all' && state.showRoof);
+
+        kitchenRootGroup.visible = state.showKitchen;
+        kitchenRoofGroup.visible = state.showKitchen && (f === 'all' || f === '2F' || f === '3F') && state.showRoof;
+        kitchen1FGroup.traverse((obj) => {
+          if (obj.userData && obj.userData.isKitchenRoofPart) {
+            obj.visible = (f !== '1F');
+          }
+        });
+      }
+
+      function setActiveFloor(floorKey) {
+        state.activeFloor = floorKey;
+        document.querySelectorAll('.floor-btn').forEach((btn) => {
+          const active = btn.dataset.floor === floorKey;
+          btn.classList.toggle('bg-sky-500', active);
+          btn.classList.toggle('text-white', active);
+          btn.classList.toggle('shadow', active);
+          btn.classList.toggle('bg-slate-800/80', !active);
+          btn.classList.toggle('text-slate-300', !active);
+        });
+        applyFloorVisibility();
+      }
+
+      function selectRoom(zoneMesh) {
+        if (state.selectedRoomMesh) {
+          state.selectedRoomMesh.material.opacity = 0.0;
+        }
+        state.selectedRoomMesh = zoneMesh;
+        zoneMesh.material.opacity = 0.34;
+        const rm = zoneMesh.userData.room;
+        document.getElementById('room-floor-badge').textContent =
+          rm.building === 'site' ? '戶外設施' : `${rm.floor}${rm.building === 'kitchen' ? '・中央廚房' : '・主校舍'}`;
+        document.getElementById('room-title').textContent = rm.name;
+        document.getElementById('room-desc').textContent = rm.desc;
+        document.getElementById('room-elev').textContent = `+${rm.y.toFixed(2)}m`;
+        document.getElementById('room-area').textContent = rm.area ? `約 ${rm.area} m²` : '—';
+        document.getElementById('room-meta').textContent = rm.meta || '—';
+        if (rm.building === 'site') document.getElementById('room-elev').textContent = '地面';
+        const card = document.getElementById('room-info-card');
+        card.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
+        card.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
+      }
+
+      function deselectRoom() {
+        if (state.selectedRoomMesh) {
+          state.selectedRoomMesh.material.opacity = 0.0;
+          state.selectedRoomMesh = null;
+        }
+        const card = document.getElementById('room-info-card');
+        card.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
+        card.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
+      }
+
+      function updateRoomLabels() {
+        const layer = document.getElementById('labels-layer');
+        if (state.navMode === 'street' || !state.showLabels) {
+          layer.style.display = 'none';
+          return;
+        }
+        layer.style.display = 'block';
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const proj = new THREE.Vector3();
+
+        roomLabelsData.forEach((item) => {
+          const rm = item.room;
+          let show = true;
+          if (rm.building === 'kitchen' && !state.showKitchen) show = false;
+          if (rm.building === 'site' && !state.showSite) show = false;
+          if (state.activeFloor !== 'all' && rm.floor !== state.activeFloor) show = false;
+          if (state.activeFloor === 'all' && rm.floor === '2F' && !rm.isRestroom && rm.building !== 'kitchen') {
+            // Avoid overcrowding labels in full-building view; show 1F, 3F, Kitchen & 2F All-Gender Restroom
+            show = false;
+          }
+          if (!show) {
+            item.el.style.display = 'none';
+            return;
+          }
+
+          let yOffset = 0;
+          if (rm.floor === '2F') yOffset = state.currentExplode * 4.5;
+          if (rm.floor === '3F') yOffset = state.currentExplode * 9.0;
+
+          proj.set(item.mesh.position.x, item.baseY + yOffset, item.mesh.position.z);
+          proj.project(camera);
+          if (proj.z > 1.0) {
+            item.el.style.display = 'none';
+            return;
+          }
+          const sx = (proj.x * 0.5 + 0.5) * w;
+          const sy = (-proj.y * 0.5 + 0.5) * h;
+          if (sx < 0 || sx > w || sy < 0 || sy > h) {
+            item.el.style.display = 'none';
+            return;
+          }
+          item.el.style.display = 'block';
+          item.el.style.left = `${sx}px`;
+          item.el.style.top = `${sy}px`;
+        });
+      }
+
+      // =========================================================================
+      // 14. GOOGLE EARTH STREET VIEW ENGINE (INDOOR + OUTDOOR + CONNECTED WALKWAY)
+      // =========================================================================
+      const SV_EYE_HEIGHT = 1.65;
+      const STREET_VIEW_SPOTS = [
+        { id: 'sv_gate', name: '東側大門・14-1 警衛室前', x: gx(108.0), z: gz(42.0), floor: 0, yaw: Math.PI * 0.5 },
+        { id: 'sv_pond', name: '噴水池中央廣場', x: gx(84.0), z: gz(46.0), floor: 0, yaw: Math.PI * 0.38 },
+        { id: 'sv_breezeway', name: '1F 主穿堂中央', x: gx(58.5), z: gz(5.0), floor: 1, yaw: 0 },
+        { id: 'sv_breezeway_north', name: '1F 穿堂後方樓梯口 (往北側車棚)', x: gx(56.5), z: gz(-5.5), floor: 0, yaw: Math.PI },
+        { id: 'sv_1f_corridor', name: '1F 主校舍南向走廊', x: gx(32.0), z: gz(9.4), floor: 1, yaw: Math.PI * 0.5 },
+        { id: 'sv_1f_west_junc', name: '1F 西側走廊與風雨走廊銜接口', x: gx(0.5), z: gz(9.5), floor: 1, yaw: Math.PI * 0.5 },
+        { id: 'sv_walkway', name: '中央廚房風雨走廊 (貫通通道)', x: gx(-9.0), z: gz(10.3), floor: 1, yaw: Math.PI * 0.5 },
+        { id: 'sv_dining_veranda', name: '2-7 食育教室戶外外廊', x: gx(-19.0), z: gz(13.2), floor: 1, yaw: 0.2 },
+        { id: 'sv_kitchen_plaza', name: '中央廚房南向景觀草坪', x: gx(-27.0), z: gz(22.5), floor: 0, yaw: 0 },
+        { id: 'sv_1f_restroom', name: '1F 東側 20-4 廁所入口', x: gx(75.6), z: gz(9.4), floor: 1, yaw: 0 },
+        { id: 'sv_2f_corridor', name: '2F 走廊（導師室・校長室前）', x: gx(45.0), z: gz(9.4), floor: 2, yaw: -Math.PI * 0.45 },
+        { id: 'sv_2f_restroom_ent', name: '2F 東側 20-5 廁所入口', x: gx(75.6), z: gz(9.4), floor: 2, yaw: 0 },
+        { id: 'sv_2f_restroom_in', name: '2F 東側 20-5 廁所內部', x: gx(74.0), z: gz(4.8), floor: 2, yaw: 0 },
+        { id: 'sv_3f_corridor', name: '3F 專科教室走廊・景觀露台', x: gx(54.0), z: gz(11.5), floor: 3, yaw: Math.PI * 0.7 },
+        { id: 'sv_3f_restroom', name: '3F 東側 20-6 廁所入口', x: gx(75.6), z: gz(9.4), floor: 3, yaw: 0 },
+        { id: 'sv_track', name: '200m 操場・面向主校舍', x: gx(8.0), z: gz(48.0), floor: 0, yaw: 0 },
+        { id: 'sv_courts', name: '籃球場・風雨球場之間', x: gx(72.5), z: gz(80.0), floor: 0, yaw: Math.PI * 0.5 }
+      ];
+
+      function getWalkableFloorY(worldX, worldZ, svFloor = 0) {
+        const rx = worldX - OFFSET_X;
+        const rz = worldZ - OFFSET_Z;
+        const inMain = rx >= -1.0 && rx <= 82.8 && rz >= -2.2 && rz <= 16.5;
+        const inWalkway = rx >= -18.0 && rx <= 0.5 && rz >= 7.5 && rz <= 13.0;
+        const inKitchen = rx >= -45.5 && rx <= -15.0 && rz >= -7.5 && rz <= 16.5;
+
+        if (inMain) {
+          if (svFloor === 3) return ELEV.F3;
+          if (svFloor === 2) return ELEV.F2;
+          return ELEV.F1;
+        }
+        if (inWalkway || inKitchen) {
+          return ELEV.F1;
+        }
+        return 0.05;
+      }
+
+      // Street View Waypoint Discs & Blue Routes
+      const svNodeMeshes = [];
+      const svRouteLinesGroup = new THREE.Group();
+      streetViewGroup.add(svRouteLinesGroup);
+
+      STREET_VIEW_SPOTS.forEach((spot) => {
+        const ySurf = getWalkableFloorY(spot.x, spot.z, spot.floor) + 0.08;
+        const grp = new THREE.Group();
+        grp.position.set(spot.x, ySurf, spot.z);
+
+        const disc = new THREE.Mesh(
+          new THREE.CircleGeometry(0.68, 24),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+        );
+        disc.rotation.x = -Math.PI / 2;
+        disc.userData = { svSpot: spot };
+
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(0.68, 0.90, 24),
+          new THREE.MeshBasicMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.95, side: THREE.DoubleSide })
+        );
+        ring.rotation.x = -Math.PI / 2;
+        ring.userData = { svSpot: spot };
+
+        const pillar = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.10, 0.10, 1.8, 10),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.42 })
+        );
+        pillar.position.y = 0.9;
+        pillar.userData = { svSpot: spot };
+
+        grp.add(disc, ring, pillar);
+        grp.userData = { svSpot: spot };
+        streetViewGroup.add(grp);
+        svNodeMeshes.push(disc, ring, pillar);
+      });
+
+      const svPathSegments = [
+        [[108.0, 42.0, 0.12], [84.0, 46.0, 0.12], [64.0, 20.0, 0.12], [58.5, 9.4, 1.28], [58.5, -1.2, 1.28], [56.5, -5.5, 0.12]],
+        [[75.6, 9.4, 1.28], [58.5, 9.4, 1.28], [0.5, 9.5, 1.28], [-9.0, 10.3, 1.28], [-19.0, 13.2, 1.28], [-27.0, 22.5, 0.12]],
+        [[8.0, 48.0, 0.12], [-27.0, 22.5, 0.12]],
+        [[8.0, 48.0, 0.12], [84.0, 46.0, 0.12], [72.5, 80.0, 0.12]]
+      ];
+      const svPathLineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.72 });
+      svPathSegments.forEach((seg) => {
+        const pts = seg.map(([rx, rz, ry]) => new THREE.Vector3(gx(rx), ry, gz(rz)));
+        svRouteLinesGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), svPathLineMat));
+      });
+
+      // Street View Ground Hover Reticle
+      const svReticle = new THREE.Group();
+      const retRing = new THREE.Mesh(
+        new THREE.RingGeometry(0.45, 0.62, 32),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+      );
+      retRing.rotation.x = -Math.PI / 2;
+      const retFill = new THREE.Mesh(
+        new THREE.CircleGeometry(0.45, 32),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.25, side: THREE.DoubleSide })
+      );
+      retFill.rotation.x = -Math.PI / 2;
+      svReticle.add(retRing, retFill);
+      svReticle.visible = false;
+      scene.add(svReticle);
+      streetViewGroup.visible = false;
+
+      function updateStreetViewVisibility() {
+        const showNodes = state.pegmanDropMode || state.navMode === 'street';
+        streetViewGroup.visible = showNodes;
+        svRouteLinesGroup.visible = state.pegmanDropMode;
+        streetViewGroup.children.forEach((child) => {
+          if (!child.userData || !child.userData.svSpot) return;
+          if (state.pegmanDropMode) {
+            child.visible = true;
+          } else if (state.navMode === 'street') {
+            const spFloor = child.userData.svSpot.floor;
+            child.visible = (spFloor === state.svFloor) || (state.svFloor <= 1 && spFloor <= 1);
+          }
+        });
+      }
+
+      function updateModeButtonsUI() {
+        const mEarth = document.getElementById('mode-btn-earth');
+        const m2D = document.getElementById('mode-btn-2d');
+        const mStreet = document.getElementById('mode-btn-street');
+        const tiltBtn = document.getElementById('earth-tilt-btn');
+        const pegBtn = document.getElementById('earth-pegman-btn');
+        const svHud = document.getElementById('streetview-hud');
+        const pegBanner = document.getElementById('pegman-hint-banner');
+
+        const setPill = (el, active, cls) => {
+          el.classList.remove('bg-sky-500', 'bg-amber-500', 'text-white', 'text-slate-950', 'shadow');
+          el.classList.add('text-slate-300');
+          if (active) {
+            el.classList.remove('text-slate-300');
+            cls.forEach((c) => el.classList.add(c));
+          }
+        };
+        setPill(mEarth, state.navMode === 'earth', ['bg-sky-500', 'text-white', 'shadow']);
+        setPill(m2D, state.navMode === '2d', ['bg-sky-500', 'text-white', 'shadow']);
+        setPill(mStreet, state.navMode === 'street', ['bg-amber-500', 'text-slate-950', 'shadow']);
+
+        tiltBtn.textContent = state.navMode === '2d' ? '3D' : '2D';
+        pegBtn.classList.toggle('pegman-active', state.pegmanDropMode || state.navMode === 'street');
+
+        if (state.navMode === 'street') {
+          svHud.classList.remove('opacity-0', 'translate-y-4');
+          svHud.classList.add('opacity-100', 'translate-y-0');
+        } else {
+          svHud.classList.add('opacity-0', 'translate-y-4');
+          svHud.classList.remove('opacity-100', 'translate-y-0');
+          svReticle.visible = false;
+        }
+
+        if (state.pegmanDropMode && state.navMode !== 'street') {
+          pegBanner.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
+          pegBanner.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
+        } else {
+          pegBanner.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
+          pegBanner.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
+        }
+
+        document.querySelectorAll('.sv-floor-btn').forEach((btn) => {
+          const active = Number(btn.dataset.svFloor) === state.svFloor;
+          btn.classList.toggle('bg-amber-500', active);
+          btn.classList.toggle('text-slate-950', active);
+          btn.classList.toggle('bg-slate-800/80', !active);
+          btn.classList.toggle('text-slate-300', !active);
+        });
+        updateStreetViewVisibility();
+      }
+
+      function updateStreetViewLocationText(customName = null) {
+        const labelEl = document.getElementById('sv-location-label');
+        if (customName) {
+          labelEl.textContent = `街景模式・${customName}`;
+          return;
+        }
+        let bestName = state.svFloor > 0 ? `${state.svFloor}F 校舍空間` : '校園戶外區域';
+        let bestDist = 14;
+        STREET_VIEW_SPOTS.forEach((sp) => {
+          const d = Math.hypot(sp.x - state.svTargetPos.x, sp.z - state.svTargetPos.z);
+          if (d < bestDist && (sp.floor === state.svFloor || (sp.floor <= 1 && state.svFloor <= 1))) {
+            bestDist = d;
+            bestName = sp.name;
+          }
+        });
+        labelEl.textContent = `街景模式・${bestName}`;
+      }
+
+      function enterStreetViewAt(worldX, worldZ, floorNum = null, yawRad = null, customLabel = null) {
+        if (state.activeFloor !== 'all') setActiveFloor('all');
+        if (state.targetExplode > 0.01) {
+          state.targetExplode = 0;
+          document.getElementById('explode-slider').value = 0;
+          document.getElementById('explode-val').textContent = '0%';
+        }
+        deselectRoom();
+
+        state.pegmanDropMode = false;
+        state.navMode = 'street';
+        controls.enabled = false;
+        cameraAnim.active = false;
+
+        if (floorNum !== null) {
+          state.svFloor = floorNum;
+        } else {
+          const rx = worldX - OFFSET_X;
+          const rz = worldZ - OFFSET_Z;
+          const inBldg = (rx >= -45.5 && rx <= 82.8 && rz >= -7.5 && rz <= 16.5);
+          state.svFloor = inBldg ? Math.max(1, state.svFloor) : 0;
+        }
+
+        const fy = getWalkableFloorY(worldX, worldZ, state.svFloor);
+        state.svTargetPos.set(worldX, fy + SV_EYE_HEIGHT, worldZ);
+        if (yawRad !== null) state.svTargetYaw = yawRad;
+        state.svTargetPitch = 0;
+
+        state.svPos.copy(camera.position);
+        const lookDir = new THREE.Vector3();
+        camera.getWorldDirection(lookDir);
+        state.svYaw = Math.atan2(-lookDir.x, -lookDir.z);
+        state.svPitch = Math.asin(THREE.MathUtils.clamp(lookDir.y, -0.95, 0.95));
+
+        updateModeButtonsUI();
+        updateStreetViewLocationText(customLabel);
+        showToast(`已進入街景漫遊：${customLabel || '拖曳環顧・點擊地面或小地圖移動'}`);
+      }
+
+      function exitStreetView(targetMode = 'earth') {
+        if (state.navMode === 'street') {
+          const backX = state.svPos.x + Math.sin(state.svYaw) * 24;
+          const backZ = state.svPos.z + Math.cos(state.svYaw) * 24;
+          state.navMode = targetMode;
+          controls.enabled = true;
+          controls.enableRotate = (targetMode !== '2d');
+          if (targetMode === '2d') {
+            flyToCamera([state.svPos.x, 128, state.svPos.z + 0.5], [state.svPos.x, 0, state.svPos.z], 720);
+          } else {
+            flyToCamera([backX, Math.max(22, state.svPos.y + 18), backZ], [state.svPos.x, 4.0, state.svPos.z], 720);
+          }
+        } else {
+          state.navMode = targetMode;
+          controls.enabled = true;
+          controls.enableRotate = (targetMode !== '2d');
+          if (targetMode === '2d') {
+            flyToCamera([controls.target.x, 134, controls.target.z + 0.5], [controls.target.x, 0, controls.target.z], 680);
+          } else {
+            flyToCamera([controls.target.x + 34, 38, controls.target.z + 54], [controls.target.x, 5.0, controls.target.z], 680);
+          }
+        }
+        state.pegmanDropMode = false;
+        updateModeButtonsUI();
+      }
+
+      // =========================================================================
+      // 15. POINTER / RAYCASTING / KEYBOARD INTERACTION
+      // =========================================================================
+      const raycaster = new THREE.Raycaster();
+      const pointerNDC = new THREE.Vector2();
+      const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      let pointerDownPos = { x: 0, y: 0 };
+      let svDragging = false;
+      let svLastPtr = { x: 0, y: 0 };
+
+      const svKeys = { forward: false, backward: false, left: false, right: false, shift: false };
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Shift') {
+          svKeys.shift = true;
+          if (state.navMode !== 'street' && state.earthNavStyle) controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+        }
+        if (e.key === 'Escape') {
+          if (state.pegmanDropMode) { state.pegmanDropMode = false; updateModeButtonsUI(); }
+          else if (state.navMode === 'street') exitStreetView('earth');
+        }
+        if (state.navMode !== 'street') return;
+        const k = e.key.toLowerCase();
+        if (k === 'w' || e.key === 'ArrowUp') svKeys.forward = true;
+        if (k === 's' || e.key === 'ArrowDown') svKeys.backward = true;
+        if (k === 'a' || e.key === 'ArrowLeft') svKeys.left = true;
+        if (k === 'd' || e.key === 'ArrowRight') svKeys.right = true;
+      });
+      window.addEventListener('keyup', (e) => {
+        if (e.key === 'Shift') {
+          svKeys.shift = false;
+          if (state.earthNavStyle) controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+        }
+        const k = e.key.toLowerCase();
+        if (k === 'w' || e.key === 'ArrowUp') svKeys.forward = false;
+        if (k === 's' || e.key === 'ArrowDown') svKeys.backward = false;
+        if (k === 'a' || e.key === 'ArrowLeft') svKeys.left = false;
+        if (k === 'd' || e.key === 'ArrowRight') svKeys.right = false;
+      });
+
+      document.querySelectorAll('.dpad-btn').forEach((btn) => {
+        const dir = btn.dataset.move;
+        const startM = (e) => { e.preventDefault(); svKeys[dir] = true; };
+        const stopM = () => { svKeys[dir] = false; };
+        btn.addEventListener('pointerdown', startM);
+        btn.addEventListener('pointerup', stopM);
+        btn.addEventListener('pointerleave', stopM);
+        btn.addEventListener('pointercancel', stopM);
+      });
+
+      function raycastWalkablePoint(clientX, clientY) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointerNDC, camera);
+
+        if (streetViewGroup.visible) {
+          const visNodes = svNodeMeshes.filter((m) => m.parent && m.parent.visible);
+          const nodeHits = raycaster.intersectObjects(visNodes, false);
+          if (nodeHits.length > 0) return { spot: nodeHits[0].object.userData.svSpot, point: nodeHits[0].point };
+        }
+
+        const hits = raycaster.intersectObjects([campusSiteGroup, buildingExportRoot], true);
+        for (let i = 0; i < hits.length; i++) {
+          const h = hits[i];
+          if (!h.face) continue;
+          const normal = h.face.normal.clone().transformDirection(h.object.matrixWorld);
+          if (normal.y > 0.65 && h.distance > 1.0 && h.distance < 120) {
+            return { point: h.point, spot: null };
+          }
+        }
+        const pt = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(groundPlane, pt)) return { point: pt, spot: null };
+        return null;
+      }
+
+      renderer.domElement.addEventListener('pointerdown', (e) => {
+        pointerDownPos = { x: e.clientX, y: e.clientY };
+        cameraAnim.active = false;
+        if (state.navMode === 'street') {
+          svDragging = true;
+          svLastPtr = { x: e.clientX, y: e.clientY };
+          renderer.domElement.style.cursor = 'grabbing';
+        }
+      });
+
+      renderer.domElement.addEventListener('pointermove', (e) => {
+        if (state.navMode === 'street') {
+          if (svDragging) {
+            const dx = e.clientX - svLastPtr.x;
+            const dy = e.clientY - svLastPtr.y;
+            svLastPtr = { x: e.clientX, y: e.clientY };
+            state.svTargetYaw += dx * 0.0042;
+            state.svTargetPitch = THREE.MathUtils.clamp(state.svTargetPitch + dy * 0.0036, -1.05, 1.05);
+            svReticle.visible = false;
+          } else if (e.pointerType !== 'touch') {
+            const res = raycastWalkablePoint(e.clientX, e.clientY);
+            if (res && res.point) {
+              const py = res.spot
+                ? getWalkableFloorY(res.spot.x, res.spot.z, res.spot.floor) + 0.09
+                : getWalkableFloorY(res.point.x, res.point.z, state.svFloor) + 0.07;
+              svReticle.position.set(res.spot ? res.spot.x : res.point.x, py, res.spot ? res.spot.z : res.point.z);
+              svReticle.visible = true;
+              renderer.domElement.style.cursor = 'pointer';
+            } else {
+              svReticle.visible = false;
+              renderer.domElement.style.cursor = 'grab';
+            }
+          }
+        } else if (state.pegmanDropMode && e.pointerType !== 'touch') {
+          const res = raycastWalkablePoint(e.clientX, e.clientY);
+          if (res && res.point) {
+            svReticle.position.set(res.point.x, res.point.y + 0.12, res.point.z);
+            svReticle.visible = true;
+            renderer.domElement.style.cursor = 'crosshair';
+          } else {
+            svReticle.visible = false;
+          }
+        }
+      });
+
+      renderer.domElement.addEventListener('pointerup', (e) => {
+        const moved = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+        if (state.navMode === 'street') {
+          svDragging = false;
+          renderer.domElement.style.cursor = 'grab';
+          if (moved <= 6) {
+            const res = raycastWalkablePoint(e.clientX, e.clientY);
+            if (res && res.spot) {
+              state.svFloor = res.spot.floor;
+              const fy = getWalkableFloorY(res.spot.x, res.spot.z, state.svFloor);
+              state.svTargetPos.set(res.spot.x, fy + SV_EYE_HEIGHT, res.spot.z);
+              updateModeButtonsUI();
+              updateStreetViewLocationText(res.spot.name);
+            } else if (res && res.point) {
+              const cx = THREE.MathUtils.clamp(res.point.x, -105, 86);
+              const cz = THREE.MathUtils.clamp(res.point.z, -35, 92);
+              const fy = getWalkableFloorY(cx, cz, state.svFloor);
+              state.svTargetPos.set(cx, fy + SV_EYE_HEIGHT, cz);
+              updateStreetViewLocationText();
+            }
+          }
+          return;
+        }
+
+        if (state.pegmanDropMode && moved <= 6) {
+          const res = raycastWalkablePoint(e.clientX, e.clientY);
+          if (res && res.spot) enterStreetViewAt(res.spot.x, res.spot.z, res.spot.floor, res.spot.yaw, res.spot.name);
+          else if (res && res.point) enterStreetViewAt(res.point.x, res.point.z, null, null, null);
+          return;
+        }
+
+        // Standard click to inspect a room zone
+        if (moved <= 6) {
+          const rect = renderer.domElement.getBoundingClientRect();
+          pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(pointerNDC, camera);
+          const visZones = interactiveRoomMeshes.filter((z) => {
+            const rm = z.userData.room;
+            if (rm.building === 'kitchen' && !state.showKitchen) return false;
+            return state.activeFloor === 'all' || rm.floor === state.activeFloor;
+          });
+          const hits = raycaster.intersectObjects(visZones, false);
+          if (hits.length > 0) selectRoom(hits[0].object);
+        }
+      });
+
+      renderer.domElement.addEventListener('dblclick', (e) => {
+        if (state.navMode === 'street' || state.pegmanDropMode) return;
+        const res = raycastWalkablePoint(e.clientX, e.clientY);
+        if (!res || !res.point) return;
+        const pt = res.point;
+        const toCam = camera.position.clone().sub(pt);
+        const nextDist = Math.max(10, toCam.length() * 0.52);
+        toCam.normalize().multiplyScalar(nextDist);
+        const np = pt.clone().add(toCam);
+        flyToCamera([np.x, Math.max(6, np.y), np.z], [pt.x, Math.max(1.0, pt.y), pt.z], 620);
+      });
+
+      // =========================================================================
+      // 16. INTERACTIVE 2D CAMPUS MINI-MAP & TELEMETRY
+      // =========================================================================
+      const minimapCanvas = document.getElementById('minimap-canvas');
+      const mmCtx = minimapCanvas.getContext('2d');
+      const MM_BOUNDS = { minX: gx(-76), maxX: gx(124), minZ: gz(-14), maxZ: gz(101) };
+
+      function worldToMinimap(wx, wz) {
+        const u = (wx - MM_BOUNDS.minX) / (MM_BOUNDS.maxX - MM_BOUNDS.minX);
+        const v = (wz - MM_BOUNDS.minZ) / (MM_BOUNDS.maxZ - MM_BOUNDS.minZ);
+        return [u * minimapCanvas.width, v * minimapCanvas.height];
+      }
+      function minimapToWorld(cx, cy) {
+        const u = THREE.MathUtils.clamp(cx / minimapCanvas.width, 0.02, 0.98);
+        const v = THREE.MathUtils.clamp(cy / minimapCanvas.height, 0.02, 0.98);
+        return [
+          MM_BOUNDS.minX + u * (MM_BOUNDS.maxX - MM_BOUNDS.minX),
+          MM_BOUNDS.minZ + v * (MM_BOUNDS.maxZ - MM_BOUNDS.minZ)
+        ];
+      }
+
+      function drawMiniMap() {
+        const w = minimapCanvas.width;
+        const h = minimapCanvas.height;
+        mmCtx.clearRect(0, 0, w, h);
+        mmCtx.fillStyle = '#1b2a24';
+        mmCtx.fillRect(0, 0, w, h);
+
+        const drawRawRect = (rx0, rx1, rz0, rz1, fill, stroke = null) => {
+          const [x0, y0] = worldToMinimap(gx(rx0), gz(rz0));
+          const [x1, y1] = worldToMinimap(gx(rx1), gz(rz1));
+          mmCtx.fillStyle = fill;
+          mmCtx.fillRect(x0, y0, x1 - x0, y1 - y0);
+          if (stroke) {
+            mmCtx.strokeStyle = stroke;
+            mmCtx.lineWidth = 1.1;
+            mmCtx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+          }
+        };
+
+        // 校地範圍
+        mmCtx.beginPath();
+        SITE.boundary.forEach(([bx, bz], i) => {
+          const [mx, my] = worldToMinimap(gx(bx), gz(bz));
+          if (i === 0) mmCtx.moveTo(mx, my); else mmCtx.lineTo(mx, my);
+        });
+        mmCtx.closePath();
+        mmCtx.fillStyle = '#23382e'; mmCtx.fill();
+        mmCtx.strokeStyle = '#3a5948'; mmCtx.lineWidth = 1.1; mmCtx.stroke();
+
+        // 200 m 跑道
+        const T = SITE.track;
+        const [tcx, tcy] = worldToMinimap(gx(T.cx), gz(T.cz));
+        const sxm = minimapCanvas.width / (MM_BOUNDS.maxX - MM_BOUNDS.minX);
+        const sym = minimapCanvas.height / (MM_BOUNDS.maxZ - MM_BOUNDS.minZ);
+        const stadium = (r) => {
+          mmCtx.beginPath();
+          mmCtx.ellipse(tcx - T.straightHalf * sxm, tcy, r * sxm, r * sym, 0, Math.PI / 2, Math.PI * 1.5);
+          mmCtx.ellipse(tcx + T.straightHalf * sxm, tcy, r * sxm, r * sym, 0, -Math.PI / 2, Math.PI / 2);
+          mmCtx.closePath();
+        };
+        stadium(T.outerR); mmCtx.fillStyle = '#8f3f33'; mmCtx.fill();
+        stadium(T.innerR); mmCtx.fillStyle = '#36613e'; mmCtx.fill();
+        const SP = SITE.sprint;
+        drawRawRect(SP.cx - SP.len / 2, SP.cx + SP.len / 2, SP.cz - SP.w / 2, SP.cz + SP.w / 2, '#8f3f33');
+
+        // 球場
+        const CO = SITE.courtOpen, CC = SITE.courtCovered;
+        drawRawRect(CO.cx - CO.w / 2, CO.cx + CO.w / 2, CO.cz - CO.d / 2, CO.cz + CO.d / 2, '#275966', '#94a3b8');
+        drawRawRect(CC.cx - CC.w / 2, CC.cx + CC.w / 2, CC.cz - CC.d / 2, CC.cz + CC.d / 2, '#336c7d', '#e2e8f0');
+
+        // 廣場與水池
+        const EP = SITE.entryPlaza;
+        drawRawRect(EP.x0, EP.x1, EP.z0, EP.z1, '#5b5a55');
+        const [px, py] = worldToMinimap(gx(SITE.pond.cx), gz(SITE.pond.cz));
+        mmCtx.beginPath(); mmCtx.arc(px, py, SITE.pond.plazaR * sxm, 0, Math.PI * 2); mmCtx.fillStyle = '#6b6a64'; mmCtx.fill();
+        mmCtx.beginPath(); mmCtx.arc(px, py, Math.max(2.5, SITE.pond.waterR * sxm), 0, Math.PI * 2); mmCtx.fillStyle = '#2e7ba1'; mmCtx.fill();
+
+        // 主校舍、穿堂、東端附屬區
+        drawRawRect(0, 82.7, 0, 10.85, '#cbd5e1', '#38bdf8');
+        drawRawRect(54, 63, -4.6, 10.85, '#f59e0b');
+        drawRawRect(72, 79, 10.85, 16.6, '#94a3b8');
+
+        // 中央廚房與風雨走廊
+        if (state.showKitchen) {
+          drawRawRect(-42.5, -17.5, -7.0, 15.8, '#cac44e', '#fef08a');
+          drawRawRect(-17.5, 0.2, 8.2, 12.4, '#38bdf8');
+        }
+
+        // 附屬建物、停車場、車棚
+        const S2 = SITE.storage172, ST = SITE.stage, AX = SITE.annex, PN = SITE.parkingNE;
+        drawRawRect(S2.cx - S2.w / 2, S2.cx + S2.w / 2, S2.cz - S2.d / 2, S2.cz + S2.d / 2, '#64748b');
+        drawRawRect(ST.cx - ST.w / 2, ST.cx + ST.w / 2, ST.cz - ST.d / 2, ST.cz + ST.d / 2, '#94a3b8');
+        drawRawRect(AX.x0, AX.x1, AX.z0, AX.z1, '#94a3b8');
+        drawRawRect(PN.x0, PN.x1, PN.z0, PN.z1, '#475569');
+        SITE.bikeShed.forEach(([x0, x1]) => drawRawRect(x0, x1, SITE.bikeShedZ - 2, SITE.bikeShedZ + 2, '#475569'));
+        // Blue Street View Routes & Nodes
+        mmCtx.strokeStyle = 'rgba(56, 189, 248, 0.72)';
+        mmCtx.lineWidth = 1.8;
+        svPathSegments.forEach((seg) => {
+          mmCtx.beginPath();
+          seg.forEach(([rx, rz], idx) => {
+            const [mx, my] = worldToMinimap(gx(rx), gz(rz));
+            if (idx === 0) mmCtx.moveTo(mx, my); else mmCtx.lineTo(mx, my);
+          });
+          mmCtx.stroke();
+        });
+        STREET_VIEW_SPOTS.forEach((sp) => {
+          const [mx, my] = worldToMinimap(sp.x, sp.z);
+          mmCtx.beginPath(); mmCtx.arc(mx, my, 2.8, 0, Math.PI * 2);
+          mmCtx.fillStyle = sp.floor >= 2 ? '#c084fc' : '#38bdf8'; mmCtx.fill();
+        });
+
+        // Live Camera / Walker View Cone
+        const posRef = state.navMode === 'street' ? state.svPos : controls.target;
+        const [vx, vy] = worldToMinimap(posRef.x, posRef.z);
+        const lookDir = new THREE.Vector3();
+        camera.getWorldDirection(lookDir);
+        const heading = Math.atan2(lookDir.z, lookDir.x);
+        mmCtx.beginPath();
+        mmCtx.moveTo(vx, vy);
+        mmCtx.arc(vx, vy, 22, heading - 0.5, heading + 0.5);
+        mmCtx.closePath();
+        mmCtx.fillStyle = state.navMode === 'street' ? 'rgba(251, 191, 36, 0.38)' : 'rgba(56, 189, 248, 0.30)';
+        mmCtx.fill();
+
+        mmCtx.beginPath(); mmCtx.arc(vx, vy, 4.8, 0, Math.PI * 2);
+        mmCtx.fillStyle = state.navMode === 'street' ? '#f59e0b' : '#38bdf8'; mmCtx.fill();
+        mmCtx.lineWidth = 1.8; mmCtx.strokeStyle = '#ffffff'; mmCtx.stroke();
+
+        mmCtx.fillStyle = 'rgba(248, 250, 252, 0.88)';
+        mmCtx.font = 'bold 10px Noto Sans TC, sans-serif';
+        const [mbX, mbY] = worldToMinimap(gx(36), gz(-2.5));
+        mmCtx.fillText('主校舍', mbX - 14, mbY);
+        const [ckX, ckY] = worldToMinimap(gx(-30), gz(-9.5));
+        mmCtx.fillText('中央廚房', ckX - 18, ckY);
+        mmCtx.fillText('操場', tcx - 10, tcy + 4);
+      }
+
+      let minimapDragging = false;
+      function handleMinimapInteract(clientX, clientY, isClick = false) {
+        const rect = minimapCanvas.getBoundingClientRect();
+        const cx = ((clientX - rect.left) / rect.width) * minimapCanvas.width;
+        const cy = ((clientY - rect.top) / rect.height) * minimapCanvas.height;
+        const [wx, wz] = minimapToWorld(cx, cy);
+
+        if (state.navMode === 'street' || state.pegmanDropMode) {
+          let nearest = null;
+          let minD = 5.5;
+          STREET_VIEW_SPOTS.forEach((sp) => {
+            const d = Math.hypot(sp.x - wx, sp.z - wz);
+            if (d < minD) { minD = d; nearest = sp; }
+          });
+          if (state.pegmanDropMode && isClick) {
+            if (nearest) enterStreetViewAt(nearest.x, nearest.z, nearest.floor, nearest.yaw, nearest.name);
+            else enterStreetViewAt(wx, wz, null, null, null);
+          } else if (state.navMode === 'street') {
+            if (nearest && isClick) {
+              state.svFloor = nearest.floor;
+              state.svTargetPos.set(nearest.x, getWalkableFloorY(nearest.x, nearest.z, state.svFloor) + SV_EYE_HEIGHT, nearest.z);
+              updateModeButtonsUI();
+              updateStreetViewLocationText(nearest.name);
+            } else {
+              state.svTargetPos.set(wx, getWalkableFloorY(wx, wz, state.svFloor) + SV_EYE_HEIGHT, wz);
+              updateStreetViewLocationText();
+            }
+          }
+        } else {
+          const offset = camera.position.clone().sub(controls.target);
+          const targetY = state.navMode === '2d' ? 0 : 4.5;
+          if (isClick) {
+            flyToCamera([wx + offset.x, Math.max(8, targetY + offset.y), wz + offset.z], [wx, targetY, wz], 520);
+          } else {
+            cameraAnim.active = false;
+            controls.target.set(wx, targetY, wz);
+            camera.position.set(wx + offset.x, Math.max(8, targetY + offset.y), wz + offset.z);
+          }
+        }
+      }
+
+      minimapCanvas.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        minimapDragging = true;
+        handleMinimapInteract(e.clientX, e.clientY, true);
+      });
+      window.addEventListener('pointermove', (e) => {
+        if (minimapDragging) handleMinimapInteract(e.clientX, e.clientY, false);
+      });
+      window.addEventListener('pointerup', () => { minimapDragging = false; });
+
+      // =========================================================================
+      // 17. UI EVENT LISTENERS & EXPORTERS
+      // =========================================================================
+      const controlPanel = document.getElementById('control-panel');
+      let panelOpen = window.innerWidth >= 1024;
+      function syncPanel() {
+        controlPanel.classList.toggle('-translate-x-[120%]', !panelOpen);
+        controlPanel.classList.toggle('translate-x-0', panelOpen);
+      }
+      document.getElementById('panel-toggle-btn').addEventListener('click', () => { panelOpen = !panelOpen; syncPanel(); });
+      document.getElementById('panel-close-btn').addEventListener('click', () => { panelOpen = false; syncPanel(); });
+
+      document.querySelectorAll('.floor-btn').forEach((btn) => {
+        btn.addEventListener('click', () => setActiveFloor(btn.dataset.floor));
+      });
+
+      const explodeSlider = document.getElementById('explode-slider');
+      const explodeVal = document.getElementById('explode-val');
+      explodeSlider.addEventListener('input', (e) => {
+        const v = Number(e.target.value);
+        state.targetExplode = v / 100;
+        explodeVal.textContent = `${v}%`;
+      });
+
+      document.querySelectorAll('.view-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const p = CAMERA_PRESETS[btn.dataset.view];
+          if (!p) return;
+          if (state.navMode === 'street') {
+            state.navMode = 'earth';
+            controls.enabled = true;
+            updateModeButtonsUI();
+          }
+          if (p.floor) setActiveFloor(p.floor);
+          flyToCamera(p.pos, p.target);
+        });
+      });
+
+      // Layer Toggles
+      document.getElementById('toggle-earth-nav').addEventListener('change', (e) => {
+        state.earthNavStyle = e.target.checked;
+        applyNavigationStyle(state.earthNavStyle);
+        showToast(state.earthNavStyle ? '已切換為 Google Earth 模式' : '已切換為經典 3D 軌道模式');
+      });
+      document.getElementById('toggle-kitchen').addEventListener('change', (e) => {
+        state.showKitchen = e.target.checked;
+        applyFloorVisibility();
+      });
+      document.getElementById('toggle-roof').addEventListener('change', (e) => {
+        state.showRoof = e.target.checked;
+        applyFloorVisibility();
+      });
+      document.getElementById('toggle-xray').addEventListener('change', (e) => {
+        state.xrayMode = e.target.checked;
+        xrayMaterials.forEach((m) => {
+          m.transparent = state.xrayMode;
+          m.opacity = state.xrayMode ? 0.30 : 1.0;
+          m.depthWrite = !state.xrayMode;
+          m.needsUpdate = true;
+        });
+      });
+      document.getElementById('toggle-site').addEventListener('change', (e) => {
+        state.showSite = e.target.checked;
+        campusSiteGroup.visible = state.showSite;
+      });
+      document.getElementById('toggle-grid').addEventListener('change', (e) => {
+        state.showGrid = e.target.checked;
+        gridSystemGroup.visible = state.showGrid;
+      });
+      document.getElementById('toggle-labels').addEventListener('change', (e) => {
+        state.showLabels = e.target.checked;
+      });
+
+      document.getElementById('sun-slider').addEventListener('input', (e) => updateSunPosition(parseFloat(e.target.value)));
+
+      // Mode & Google Earth Cluster Buttons
+      document.getElementById('mode-btn-earth').addEventListener('click', () => exitStreetView('earth'));
+      document.getElementById('mode-btn-2d').addEventListener('click', () => exitStreetView('2d'));
+      document.getElementById('mode-btn-street').addEventListener('click', () => {
+        if (state.navMode === 'street') return;
+        let nearest = STREET_VIEW_SPOTS[2];
+        let bestD = Infinity;
+        STREET_VIEW_SPOTS.forEach((sp) => {
+          const d = Math.hypot(sp.x - controls.target.x, sp.z - controls.target.z);
+          if (d < bestD) { bestD = d; nearest = sp; }
+        });
+        enterStreetViewAt(nearest.x, nearest.z, nearest.floor, nearest.yaw, nearest.name);
+      });
+      document.getElementById('earth-pegman-btn').addEventListener('click', () => {
+        if (state.navMode === 'street') { exitStreetView('earth'); return; }
+        state.pegmanDropMode = !state.pegmanDropMode;
+        updateModeButtonsUI();
+        if (state.pegmanDropMode) showToast('請點擊藍色街景點位、地面或小地圖空降街景');
+      });
+      document.getElementById('pegman-cancel-btn').addEventListener('click', () => { state.pegmanDropMode = false; updateModeButtonsUI(); });
+      document.getElementById('earth-tilt-btn').addEventListener('click', () => exitStreetView(state.navMode === '2d' ? 'earth' : '2d'));
+
+      document.getElementById('earth-zoom-in').addEventListener('click', () => {
+        if (state.navMode === 'street') {
+          const nx = state.svTargetPos.x - Math.sin(state.svYaw) * 4.0;
+          const nz = state.svTargetPos.z - Math.cos(state.svYaw) * 4.0;
+          state.svTargetPos.set(nx, getWalkableFloorY(nx, nz, state.svFloor) + SV_EYE_HEIGHT, nz);
+          updateStreetViewLocationText();
+        } else {
+          const d = camera.position.clone().sub(controls.target);
+          d.normalize().multiplyScalar(Math.max(8, d.length() * 0.72));
+          const np = controls.target.clone().add(d);
+          flyToCamera([np.x, Math.max(5, np.y), np.z], [controls.target.x, controls.target.y, controls.target.z], 340);
+        }
+      });
+      document.getElementById('earth-zoom-out').addEventListener('click', () => {
+        if (state.navMode === 'street') {
+          const nx = state.svTargetPos.x + Math.sin(state.svYaw) * 4.0;
+          const nz = state.svTargetPos.z + Math.cos(state.svYaw) * 4.0;
+          state.svTargetPos.set(nx, getWalkableFloorY(nx, nz, state.svFloor) + SV_EYE_HEIGHT, nz);
+          updateStreetViewLocationText();
+        } else {
+          const d = camera.position.clone().sub(controls.target);
+          d.normalize().multiplyScalar(Math.min(240, d.length() * 1.38));
+          const np = controls.target.clone().add(d);
+          flyToCamera([np.x, Math.max(6, np.y), np.z], [controls.target.x, controls.target.y, controls.target.z], 340);
+        }
+      });
+
+      const nudgeYaw = (delta) => {
+        if (state.navMode === 'street') {
+          state.svTargetYaw += delta;
+        } else {
+          const off = camera.position.clone().sub(controls.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), delta);
+          const np = controls.target.clone().add(off);
+          flyToCamera([np.x, np.y, np.z], [controls.target.x, controls.target.y, controls.target.z], 300);
+        }
+      };
+      document.getElementById('earth-rot-left').addEventListener('click', () => nudgeYaw(Math.PI / 6));
+      document.getElementById('earth-rot-right').addEventListener('click', () => nudgeYaw(-Math.PI / 6));
+
+      document.getElementById('compass-btn').addEventListener('click', () => {
+        if (state.navMode === 'street') {
+          state.svTargetYaw = 0; state.svTargetPitch = 0; showToast('街景視角已對齊正北');
+        } else {
+          flyToCamera(CAMERA_PRESETS.south.pos, CAMERA_PRESETS.south.target);
+          showToast('視角已對齊正北（南向正立面）');
+        }
+      });
+
+      document.querySelectorAll('.sv-floor-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const fl = Number(btn.dataset.svFloor);
+          state.svFloor = fl;
+          const rx = state.svTargetPos.x - OFFSET_X;
+          const rz = state.svTargetPos.z - OFFSET_Z;
+          if (fl >= 1 && !(rx >= -45 && rx <= 82.8 && rz >= -7.5 && rz <= 16.5)) {
+            state.svTargetPos.x = gx(45.0);
+            state.svTargetPos.z = gz(9.4);
+          } else if (fl === 0 && (rx >= -1 && rx <= 82.8 && rz >= -2 && rz <= 16.5)) {
+            state.svTargetPos.x = gx(58.5);
+            state.svTargetPos.z = gz(22.0);
+          }
+          state.svTargetPos.y = getWalkableFloorY(state.svTargetPos.x, state.svTargetPos.z, state.svFloor) + SV_EYE_HEIGHT;
+          updateModeButtonsUI();
+          updateStreetViewLocationText();
+        });
+      });
+      document.getElementById('sv-exit-btn').addEventListener('click', () => exitStreetView('earth'));
+
+      // Room Info Card buttons
+      document.getElementById('room-close-btn').addEventListener('click', deselectRoom);
+      document.getElementById('room-focus-btn').addEventListener('click', () => {
+        if (!state.selectedRoomMesh) return;
+        if (state.navMode === 'street') { state.navMode = 'earth'; controls.enabled = true; updateModeButtonsUI(); }
+        const p = state.selectedRoomMesh.position;
+        const fl = state.selectedRoomMesh.userData.room.floor;
+        if (state.activeFloor === 'all' && fl !== '3F') setActiveFloor(fl);
+        flyToCamera([p.x + 12, p.y + 11, p.z + 18], [p.x, p.y, p.z], 700);
+      });
+      document.getElementById('room-street-btn').addEventListener('click', () => {
+        if (!state.selectedRoomMesh) return;
+        const rm = state.selectedRoomMesh.userData.room;
+        const p = state.selectedRoomMesh.position;
+        const flMap = { '1F': 1, '2F': 2, '3F': 3 };
+        enterStreetViewAt(p.x, p.z, flMap[rm.floor] ?? 1, 0, rm.name);
+      });
+
+      // Mini-map resize & collapse
+      let mmExp = false;
+      let mmCol = false;
+      document.getElementById('minimap-size-btn').addEventListener('click', () => {
+        mmExp = !mmExp;
+        const wrap = document.getElementById('minimap-wrapper');
+        wrap.classList.toggle('w-[196px]', !mmExp);
+        wrap.classList.toggle('sm:w-[228px]', !mmExp);
+        wrap.classList.toggle('w-[285px]', mmExp);
+        wrap.classList.toggle('sm:w-[340px]', mmExp);
+        minimapCanvas.classList.toggle('h-[135px]', !mmExp);
+        minimapCanvas.classList.toggle('sm:h-[156px]', !mmExp);
+        minimapCanvas.classList.toggle('h-[195px]', mmExp);
+        minimapCanvas.classList.toggle('sm:h-[230px]', mmExp);
+      });
+      document.getElementById('minimap-collapse-btn').addEventListener('click', (e) => {
+        mmCol = !mmCol;
+        document.getElementById('minimap-body').style.display = mmCol ? 'none' : 'block';
+        e.currentTarget.textContent = mmCol ? '▴' : '▾';
+      });
+
+      // 3D Model Export Handlers (.GLB / .OBJ / .STL)
+      function triggerDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      document.getElementById('export-glb').addEventListener('click', () => {
+        showToast('正在產生 .GLB 3D 模型…');
+        new GLTFExporter().parse(
+          buildingExportRoot,
+          (res) => {
+            const blob = new Blob([res], { type: 'model/gltf-binary' });
+            triggerDownload(blob, 'xipu_jhs_campus_3d.glb');
+            showToast('已匯出 xipu_jhs_campus_3d.glb');
+          },
+          (err) => showToast(`GLB 匯出失敗：${err}`),
+          { binary: true }
+        );
+      });
+      document.getElementById('export-obj').addEventListener('click', () => {
+        showToast('正在產生 .OBJ 模型…');
+        const txt = new OBJExporter().parse(buildingExportRoot);
+        triggerDownload(new Blob([txt], { type: 'text/plain' }), 'xipu_jhs_campus_3d.obj');
+        showToast('已匯出 xipu_jhs_campus_3d.obj');
+      });
+      document.getElementById('export-stl').addEventListener('click', () => {
+        showToast('正在產生 .STL 3D 列印模型…');
+        const bin = new STLExporter().parse(buildingExportRoot, { binary: true });
+        triggerDownload(new Blob([bin], { type: 'application/octet-stream' }), 'xipu_jhs_campus_3d.stl');
+        showToast('已匯出 xipu_jhs_campus_3d.stl');
+      });
+
+      // Window Resize
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // =========================================================================
+      // 18. ANIMATION & RENDER LOOP
+      // =========================================================================
+      const compassNeedle = document.getElementById('compass-needle');
+      const coordsEl = document.getElementById('earth-coords-text');
+      const altEl = document.getElementById('earth-alt-text');
+      const svEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+      let lastTime = performance.now();
+
+      function animate(now) {
+        requestAnimationFrame(animate);
+        const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+        lastTime = now;
+
+        // Smooth Exploded Floor View
+        state.currentExplode += (state.targetExplode - state.currentExplode) * Math.min(1, dt * 8);
+        floor2Group.position.y = state.currentExplode * 4.5;
+        floor3Group.position.y = state.currentExplode * 9.0;
+        roofGroup.position.y = state.currentExplode * 13.5;
+        kitchenRoofGroup.position.y = state.currentExplode * 4.5;
+
+        if (state.navMode === 'street') {
+          const speed = (svKeys.shift ? 11.0 : 5.2) * dt;
+          let mf = 0;
+          let mr = 0;
+          if (svKeys.forward) mf += 1;
+          if (svKeys.backward) mf -= 1;
+          if (svKeys.right) mr += 1;
+          if (svKeys.left) mr -= 1;
+          if (mf !== 0 || mr !== 0) {
+            const len = Math.hypot(mf, mr);
+            mf /= len; mr /= len;
+            const fx = -Math.sin(state.svYaw);
+            const fz = -Math.cos(state.svYaw);
+            const rx = Math.cos(state.svYaw);
+            const rz = -Math.sin(state.svYaw);
+            const nx = THREE.MathUtils.clamp(state.svTargetPos.x + (fx * mf + rx * mr) * speed, -105, 86);
+            const nz = THREE.MathUtils.clamp(state.svTargetPos.z + (fz * mf + rz * mr) * speed, -35, 92);
+            state.svTargetPos.set(nx, getWalkableFloorY(nx, nz, state.svFloor) + SV_EYE_HEIGHT, nz);
+            updateStreetViewLocationText();
+          }
+          state.svPos.lerp(state.svTargetPos, Math.min(1, dt * 8.5));
+          state.svYaw += (state.svTargetYaw - state.svYaw) * Math.min(1, dt * 12.0);
+          state.svPitch += (state.svTargetPitch - state.svPitch) * Math.min(1, dt * 12.0);
+          camera.position.copy(state.svPos);
+          svEuler.set(state.svPitch, state.svYaw, 0, 'YXZ');
+          camera.quaternion.setFromEuler(svEuler);
+          const fwd = new THREE.Vector3(0, 0, -10).applyQuaternion(camera.quaternion);
+          controls.target.copy(camera.position).add(fwd);
+        } else {
+          if (cameraAnim.active) {
+            const t = Math.min(1, (now - cameraAnim.startTime) / cameraAnim.duration);
+            const ease = 1 - Math.pow(1 - t, 3);
+            camera.position.lerpVectors(cameraAnim.startPos, cameraAnim.endPos, ease);
+            controls.target.lerpVectors(cameraAnim.startTarget, cameraAnim.endTarget, ease);
+            if (t >= 1) cameraAnim.active = false;
+          }
+          controls.update();
+        }
+
+        // Waypoint gentle pulse
+        if (streetViewGroup.visible) {
+          const pulse = 1.0 + Math.sin(now * 0.004) * 0.12;
+          streetViewGroup.children.forEach((child) => {
+            if (child.userData && child.userData.svSpot) child.scale.set(pulse, 1, pulse);
+          });
+        }
+
+        // Compass & Earth Telemetry
+        const dir = new THREE.Vector3();
+        camera.getWorldDirection(dir);
+        const azimuthDeg = THREE.MathUtils.radToDeg(Math.atan2(dir.x, -dir.z));
+        compassNeedle.style.transform = `rotate(${-azimuthDeg}deg)`;
+
+        const ref = state.navMode === 'street' ? state.svPos : controls.target;
+        const lat = 22.71315 + (-ref.z / 111111);
+        const lng = 120.42580 + (ref.x / 102490);
+        coordsEl.textContent = `${lat.toFixed(5)}°N ${lng.toFixed(5)}°E`;
+        altEl.textContent = state.navMode === 'street'
+          ? `眼高 ${camera.position.y.toFixed(1)}m`
+          : `高度 ${Math.max(1, Math.round(camera.position.y))}m`;
+
+        updateRoomLabels();
+        drawMiniMap();
+        renderer.render(scene, camera);
+      }
+
+      function startApp() {
+        applyFloorVisibility();
+        updateModeButtonsUI();
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+          overlay.classList.add('opacity-0', 'pointer-events-none');
+          setTimeout(() => overlay.remove(), 550);
+        }
+        requestAnimationFrame(animate);
+      }
+
+      if (document.readyState === 'complete') {
+        startApp();
+      } else {
+        window.addEventListener('load', startApp);
+      }
+    } catch (err) {
+      showFatalError(err && err.message ? err.message : String(err));
+    }
+  </script>
+</body>
+</html>
