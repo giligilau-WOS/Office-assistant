@@ -787,7 +787,7 @@
         glass: makeMat(0x8bc9eb, { roughness: 0.12, metalness: 0.25, transparent: true, opacity: 0.48, side: THREE.DoubleSide }),
         alFrame: makeMat(0x475569, { roughness: 0.45, metalness: 0.55 }),
         steelDark: makeMat(0x3a4350, { roughness: 0.42, metalness: 0.65 }),
-        steelSilver: makeMat(0xcbd5e1, { roughness: 0.35, metalness: 0.75 }),
+        steelSilver: makeMat(0xc9ced3, { roughness: 0.35, metalness: 0.25 }),
         roofSheet: makeMat(0x6c7782, { roughness: 0.52, metalness: 0.45 }),
         solarPanel: makeMat(0x162544, { roughness: 0.28, metalness: 0.62 }),
         mosaicStrip: makeMat(0x38bdf8, { roughness: 0.5 }),
@@ -813,6 +813,7 @@
         ckWhite: makeMat(0xf4f4f2, { roughness: 0.82, xrayable: true }),
         ckPeach: makeMat(0xeeb07e, { roughness: 0.85, xrayable: true }),
         ckPink: makeMat(0xe8837f, { roughness: 0.85, xrayable: true }),
+        ckPinkDeep: makeMat(0xc8504f, { roughness: 0.85, xrayable: true }),
         ckYellow: makeMat(0xf2d238, { roughness: 0.85, xrayable: true }),
         ckCream: makeMat(0xe9e2cd, { roughness: 0.85, xrayable: true }),
         containerPurple: makeMat(0x8d7fb8, { roughness: 0.7 }),
@@ -1384,59 +1385,90 @@
       //    Covered Walkway: seamlessly connects X = -17.5m -> X = 0.0m @ 1FL (+1.20m)
       // =========================================================================
       function buildCentralKitchen() {
-        // 依「中央廚房統包新建工程」A2 一層平面、A3 立面圖與完工照片重建
-        // 1FL +1.20、RFL +4.90、2F 機房頂 +7.90；外觀：白色主體＋蜜桃橘、珊瑚粉紅、黃色、米色量體
+        // 依「中央廚房統包新建工程」A2-1 一層平面、A2-2 二層（屋頂）平面、A3 立面圖逐項建模，配色依完工照片
+        // 軸線：①–⑦ = 0/4/9/14/17/21/25 m、Ⓐ–Ⓔ = 0/4.5/12/19/23 m；1FL +1.20、RFL +4.90、2F 機房頂 +7.90
         const y1 = 1.2, yR = 4.9, yP = 7.9;
         const K = (lx, lz) => [gx(KIT.x + lx), gz(KIT.z + lz)];
         const kbox = (grp, x0, x1, z0, z1, ya, yb, mat, cast = true) => {
           const [cx, cz] = K((x0 + x1) / 2, (z0 + z1) / 2);
           return addBox(grp, x1 - x0, yb - ya, z1 - z0, cx, (ya + yb) / 2, cz, mat, cast, true);
         };
-        // 窗：貼在牆面外側的玻璃片
         const winZ = (grp, x0, x1, z, ya, yb) => kbox(grp, x0, x1, z - 0.04, z + 0.04, ya, yb, MAT.glass, false);
         const winX = (grp, x, z0, z1, ya, yb) => kbox(grp, x - 0.04, x + 0.04, z0, z1, ya, yb, MAT.glass, false);
+        const doorZ = (grp, x0, x1, z, mat = MAT.ckWhite) => kbox(grp, x0, x1, z - 0.05, z + 0.05, y1, y1 + 2.2, mat, false);
+        // 平面多邊形垂直擠出（pts 為 [lx, lz]）
+        const prism = (grp, pts, ya, yb, mat) => {
+          const sh = new THREE.Shape();
+          pts.forEach(([lx, lz], i) => (i === 0 ? sh.moveTo(lx, -lz) : sh.lineTo(lx, -lz)));
+          const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: yb - ya, bevelEnabled: false }), mat);
+          m.rotation.x = -Math.PI / 2;
+          m.position.set(gx(KIT.x), ya, gz(KIT.z));
+          m.castShadow = true; m.receiveShadow = true; grp.add(m); return m;
+        };
+        // 沿 X 方向的斜坡楔形（x0 處高 h0、x1 處高 h1），寬度 z0–z1
+        const rampX = (grp, x0, x1, z0, z1, h0, h1, mat) => {
+          const sh = new THREE.Shape();
+          sh.moveTo(x0, 0); sh.lineTo(x1, 0); sh.lineTo(x1, h1); sh.lineTo(x0, h0); sh.closePath();
+          const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: z1 - z0, bevelEnabled: false }), mat);
+          m.position.set(gx(KIT.x), 0, gz(KIT.z + z0));
+          m.castShadow = true; m.receiveShadow = true; grp.add(m); return m;
+        };
 
-        // 1. 基座（GL → 1FL +1.20）
-        kbox(kitchenBaseGroup, 0, 21, 4.5, 19, 0, y1, MAT.ckWhite);
-        kbox(kitchenBaseGroup, 4, 21, 0, 4.5, 0, y1, MAT.ckWhite);
-        kbox(kitchenBaseGroup, 21, 24.5, 4.5, 12, 0, y1, MAT.ckWhite);
-        kbox(kitchenBaseGroup, 9, 14, 19, 23, 0, y1, MAT.plazaTile);                  // 南側門廊
-        kbox(kitchenBaseGroup, -2.6, 0, 11.5, 19, 0, y1, MAT.plazaTile);              // 西側出餐平台
-        addStepsX(kitchenBaseGroup, gx(KIT.x - 2.6) - OFFSET_X, gx(KIT.x + 4) - OFFSET_X, 0, y1, KIT.z + 21.2, KIT.z + 19, 5, MAT.plazaTile);
+        // ── 1. 一層主體（白色，牆面直接落地）──
+        kbox(kitchen1FGroup, 4, 21, 0, 19, 0, yR, MAT.ckWhite);          // ②–⑥ × Ⓐ–Ⓓ 作業區
+        kbox(kitchen1FGroup, 0, 4, 4.5, 12, 0, yR, MAT.ckWhite);         // ①–② × Ⓑ–Ⓒ 污餐具洗滌區
+        kbox(kitchen1FGroup, 21, 25, 4.2, 12, 0, 5.3, MAT.ckPeach);      // ⑥–⑦ × Ⓑ–Ⓒ 食品儲藏／收納／陽台（東面蜜桃橘）
+        winZ(kitchen1FGroup, 10.5, 20, -0.02, y1 + 1.2, y1 + 2.3);       // 北面高窗 W12/W18
+        winX(kitchen1FGroup, -0.02, 9.6, 11.2, y1 + 0.9, y1 + 2.3);      // 西面 W7
+        doorZ(kitchen1FGroup, 7.6, 8.4, 19.05);                          // 南面 W4 旁門
+        winZ(kitchen1FGroup, 15.0, 16.4, 19.04, y1 + 1.0, y1 + 2.3);     // 南面 W2/W3/W13
+        winZ(kitchen1FGroup, 17.6, 19.0, 19.04, y1 + 1.0, y1 + 2.3);
+        winX(kitchen1FGroup, 25.05, 6.2, 7.8, y1 + 0.4, y1 + 2.6);       // 東面窗
+        doorZ(kitchen1FGroup, 23.2, 24.2, 12.05);
+        addStepsX(kitchen1FGroup, KIT.x + 23.0, KIT.x + 24.6, 0, y1, KIT.z + 13.4, KIT.z + 12.0, 5, MAT.concreteBase); // A07 陽台階梯
 
-        // 2. 白色主體（廚房作業區，Ⓐ–Ⓓ × ②–⑥）
-        kbox(kitchen1FGroup, 4, 21, 0, 19, y1, yR, MAT.ckWhite);
-        kbox(kitchen1FGroup, 0, 4, 4.5, 11.5, y1, yR, MAT.ckWhite);
-        winZ(kitchen1FGroup, 5.5, 8.5, -0.02, y1 + 1.9, y1 + 2.9);       // 北向高窗
-        winZ(kitchen1FGroup, 10, 20, -0.02, y1 + 1.0, y1 + 2.2);
-        winZ(kitchen1FGroup, 15, 16.5, 19.02, y1 + 1.0, y1 + 2.4);       // 南向窗
-        winZ(kitchen1FGroup, 17.5, 19.5, 19.02, y1 + 1.0, y1 + 2.4);
-        winX(kitchen1FGroup, -0.02, 6, 9, y1 + 1.0, y1 + 2.4);           // 西向窗
+        // ── 2. 西南角蜜桃橘量體（①–②×Ⓒ–Ⓓ 餐食放置區，頂 +6.00）＋ 西面蜜桃橘延伸至Ⓑ ──
+        kbox(kitchen1FGroup, -0.05, 4.2, 12, 19.05, 0, 6.0, MAT.ckPeach);
+        kbox(kitchen1FGroup, -0.08, 0.2, 7.0, 12, 0, yR, MAT.ckPeach);
+        winZ(kitchen1FGroup, 0.6, 2.4, 19.1, y1 + 0.9, y1 + 2.6);        // 南面 W1
+        winX(kitchen1FGroup, -0.12, 16.6, 18.2, y1 + 1.4, y1 + 2.0);     // 西面 W6
+        winX(kitchen1FGroup, -0.12, 9.6, 11.2, y1 + 1.4, y1 + 2.0);
+        [13.2, 8.2].forEach((dz) => kbox(kitchen1FGroup, -0.14, -0.08, dz - 0.8, dz + 0.8, y1, y1 + 2.2, MAT.ckWhite, false)); // 西面雙開門 D1
 
-        // 3. 蜜桃橘量體：西南角（①–②×Ⓒ–Ⓓ，頂 +6.0）與東側（⑥–⑦×Ⓑ–Ⓒ）
-        kbox(kitchen1FGroup, -0.05, 5, 11.5, 19.05, 0, 6.0, MAT.ckPeach);
-        winZ(kitchen1FGroup, 1.2, 3.0, 19.1, y1 + 0.9, y1 + 2.6);
-        winX(kitchen1FGroup, -0.1, 13.0, 15.5, y1 + 1.3, y1 + 1.9);
-        kbox(kitchen1FGroup, 21, 24.6, 4.5, 12, 0, 5.4, MAT.ckPeach);
-        winX(kitchen1FGroup, 24.65, 7.0, 8.2, y1 + 0.3, y1 + 2.6);
+        // ── 3. 西側出餐平台（A05，+1.20）與 V 形白色雨遮 ──
+        kbox(kitchen1FGroup, -2.2, 0, 8.4, 16.8, 0, y1, MAT.ckWhite);
+        addStepsX(kitchen1FGroup, KIT.x - 2.2, KIT.x, 0, y1, KIT.z + 18.4, KIT.z + 16.8, 4, MAT.concreteBase);
+        addStepsX(kitchen1FGroup, KIT.x - 2.2, KIT.x, 0, y1, KIT.z + 6.8, KIT.z + 8.4, 4, MAT.concreteBase);
+        prism(kitchen1FGroup, [[0, 2.6], [-1.15, 2.6], [-3.75, 12], [-1.5, 18.9], [0, 18.9]], 4.25, 4.55, MAT.ckWhite);
+        [[-3.3, 12], [-1.6, 18.4]].forEach(([lx, lz]) => {
+          const [cx, cz] = K(lx, lz);
+          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 4.3, 16), MAT.ckWhite);
+          col.position.set(cx, 2.15, cz); col.castShadow = true; kitchen1FGroup.add(col);
+        });
 
-        // 4. 西側出餐平台白色雨遮＋圓柱
-        kbox(kitchen1FGroup, -4.2, 0, 10.8, 19.6, y1 + 3.0, y1 + 3.35, MAT.ckWhite);
-        {
-          const [cx, cz] = K(-3.6, 19.0);
-          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 3.0, 16), MAT.ckWhite);
-          col.position.set(cx, y1 + 1.5, cz); col.castShadow = true; kitchen1FGroup.add(col);
-        }
+        // ── 4. 南側斜坡（瀝青，西低東高接進貨平台）＋ 路緣 ──
+        rampX(kitchenBaseGroup, -4.0, 9.0, 19.1, 23.2, 0.02, y1, MAT.asphalt);
+        rampX(kitchenBaseGroup, 0.0, 9.0, 23.2, 23.45, 0.4, y1 + 0.35, MAT.concreteBase);
 
-        // 5. 珊瑚粉紅門廊（③–④×Ⓓ–Ⓔ）：南牆開兩個方孔、西側開放
-        kbox(kitchen1FGroup, 9, 14, 19, 23.2, yR - 0.3, yR, MAT.ckPink);            // 頂板
-        kbox(kitchen1FGroup, 9, 9.5, 19, 23.2, 0, yR, MAT.ckPink);                   // 西柱
-        kbox(kitchen1FGroup, 13.6, 14, 19, 23.2, 0, yR, MAT.ckPink);                 // 東牆
-        kbox(kitchen1FGroup, 9.5, 13.6, 22.9, 23.2, 0, y1 + 0.9, MAT.ckPink);        // 南牆（下）
-        kbox(kitchen1FGroup, 9.5, 13.6, 22.9, 23.2, y1 + 2.4, yR - 0.3, MAT.ckPink); // 南牆（上）
-        kbox(kitchen1FGroup, 11.0, 12.0, 22.9, 23.2, y1 + 0.9, y1 + 2.4, MAT.ckPink);
+        // ── 5. 珊瑚粉紅進貨平台（A04，③–④×Ⓓ–Ⓔ，頂 +4.45）：西側開放、南牆兩方孔 ──
+        kbox(kitchenBaseGroup, 9, 14, 19, 23, 0, y1, MAT.plazaTile);
+        kbox(kitchen1FGroup, 9, 14, 19, 23.3, 4.15, 4.45, MAT.ckPink);              // 頂板
+        kbox(kitchen1FGroup, 9, 9.45, 22.85, 23.3, 0, 4.45, MAT.ckPink);              // 西南柱
+        kbox(kitchen1FGroup, 13.55, 14, 22.85, 23.3, 0, 4.45, MAT.ckPink);            // 東南柱
+        kbox(kitchen1FGroup, 9.45, 13.55, 22.95, 23.3, 0, y1 + 0.9, MAT.ckPink);      // 南牆下段
+        kbox(kitchen1FGroup, 9.45, 13.55, 22.95, 23.3, y1 + 2.4, 4.15, MAT.ckPink);   // 南牆上段
+        kbox(kitchen1FGroup, 11.1, 11.9, 22.95, 23.3, y1 + 0.9, y1 + 2.4, MAT.ckPink);// 兩孔間牆
+        kbox(kitchen1FGroup, 9, 14, 19.05, 19.2, y1, 4.15, MAT.ckPinkDeep);           // 內側北牆（深粉紅）
+        doorZ(kitchen1FGroup, 11.2, 12.8, 19.22);                                     // 驗收區雙門
+        winZ(kitchen1FGroup, 9.6, 10.8, 19.24, y1 + 1.0, y1 + 2.2);
 
-        // 6. 黃色食育教室量體（⑥'–⑨，旋轉約 6.5°，頂 +6.1）：北半為教室、南半為外廊
+        // ── 6. 粉紅與黃色之間的走廊＋外廊（A01，④–⑥'×Ⓓ–Ⓔ，有頂蓋）──
+        kbox(kitchenBaseGroup, 14, 22.2, 19, 23, 0, y1, MAT.plazaTile);
+        kbox(kitchen1FGroup, 14, 22.0, 19, 23.2, 4.15, 4.45, MAT.ckWhite);           // 頂板
+        [[14.25, 22.95], [21.6, 22.6]].forEach(([lx, lz]) => kbox(kitchen1FGroup, lx - 0.2, lx + 0.2, lz - 0.2, lz + 0.2, 0, 4.15, MAT.ckWhite));
+        addRailingX(kitchen1FGroup, KIT.x + 14.5, KIT.x + 21.2, y1, KIT.z + 22.95, 1.0);
+
+        // ── 7. 黃色食育教室量體（⑥'–⑦'，旋轉約 6.5°，女兒牆頂 +6.10）：北為 106 午餐教室、南為 A09 外廊 ──
         const dining = new THREE.Group();
         const [dcx, dcz] = K(25.0, 18.7);
         dining.position.set(dcx, 0, dcz);
@@ -1445,83 +1477,113 @@
           const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
           m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; dining.add(m); return m;
         };
-        dl(8.0, y1, 10.5, 0, y1 / 2, 0, MAT.ckYellow);
+        const H = 6.1;
+        dl(8.0, y1, 10.5, 0, y1 / 2, 0, MAT.ckYellow);                      // 基座
         dl(7.8, 0.06, 10.3, 0, y1 + 0.03, 0, MAT.woodLight);
-        dl(0.25, 6.1 - y1, 10.5, -3.9, (6.1 + y1) / 2, 0, MAT.ckYellow);          // 西牆
-        dl(0.25, 6.1 - y1, 10.5, 3.9, (6.1 + y1) / 2, 0, MAT.ckYellow);           // 東牆
-        dl(8.0, 6.1 - y1, 0.25, 0, (6.1 + y1) / 2, -5.15, MAT.ckYellow);          // 北牆
-        dl(8.0, 0.35, 10.5, 0, 6.1 - 0.17, 0, MAT.ckYellow).userData = { isKitchenRoofPart: true };
-        dl(8.0, 6.1 - yR, 0.3, 0, (6.1 + yR) / 2, 5.1, MAT.ckYellow);             // 外廊南側上緣
-        dl(7.4, 2.6, 0.06, 0, y1 + 1.3, 0.9, MAT.glass);                          // 教室與外廊間玻璃門
-        dl(0.06, 1.4, 3.0, -4.05, y1 + 1.9, -2.0, MAT.glass);                     // 西側窗
-        dl(0.06, 1.2, 1.2, 4.05, y1 + 2.0, 2.8, MAT.glass);                       // 東側小窗
-        [-2.0, 0.6].forEach((tx) => dl(1.0, 0.75, 2.6, tx, y1 + 0.38, -2.2, MAT.woodLight));
-        dl(2.2, 0.9, 0.9, 1.8, y1 + 0.45, -4.2, MAT.woodLight);                    // 示範中島
+        dl(0.3, H, 10.5, -3.85, H / 2, 0, MAT.ckYellow);                    // 西牆（全長）
+        dl(8.0, H, 0.3, 0, H / 2, -5.1, MAT.ckYellow);                      // 北牆
+        dl(0.3, H, 6.2, 3.85, H / 2, -2.0, MAT.ckYellow);                   // 東牆（教室段）
+        dl(0.3, H - yR + 0.3, 4.3, 3.85, (H + yR - 0.3) / 2, 3.1, MAT.ckYellow); // 東側外廊上緣
+        dl(8.0, H - yR + 0.3, 0.3, 0, (H + yR - 0.3) / 2, 5.1, MAT.ckYellow);    // 南側外廊上緣
+        [[-3.85, 5.05], [3.85, 5.05]].forEach(([x, z]) => dl(0.45, H, 0.45, x, H / 2, z, MAT.ckYellow));
+        dl(8.0, 0.3, 10.5, 0, yR - 0.15, 0, MAT.ckWhite).userData = { isKitchenRoofPart: true };
+        dl(7.4, 2.6, 0.08, 0, y1 + 1.3, 1.0, MAT.glass);                    // 教室與外廊間落地門 DW2
+        dl(0.08, 1.4, 3.2, -4.02, y1 + 1.9, -2.2, MAT.glass);               // 西窗 W13
+        dl(0.08, 0.6, 0.6, -4.02, 5.3, -3.8, MAT.glass);                    // 西面小方窗 W14
+        dl(5.0, 0.9, 0.6, -0.8, y1 + 0.45, 4.6, MAT.ckWhite);               // 造型洗手台
+        [-2.2, 0, 2.2].forEach((tx) => dl(1.0, 0.75, 2.6, tx, y1 + 0.38, -2.4, MAT.woodLight));
+        dl(2.2, 0.9, 0.9, -1.6, y1 + 0.45, -4.3, MAT.woodLight);
         kitchen1FGroup.add(dining);
 
-        // 7. 東側上屋頂樓梯：白色實牆量體（內為儲藏空間），頂面由南往北爬升至屋頂（照片 04107）
+        // ── 8. 107 更衣間：白色弧形牆量體（W9 長條窗），戶外樓梯 A05 由此上屋頂 ──
         {
-          const prof = new THREE.Shape();
-          prof.moveTo(0, 0); prof.lineTo(6.6, 0); prof.lineTo(6.6, yR); prof.lineTo(0, y1 + 0.4); prof.closePath();
-          const g = new THREE.ExtrudeGeometry(prof, { depth: 3.0, bevelEnabled: false });
-          const m = new THREE.Mesh(g, MAT.ckWhite);
-          // 剖面 (u=往北距離, v=高度) → 世界：u 沿 -Z、擠出方向沿 +X
+          const sh = new THREE.Shape();
+          sh.moveTo(25, -10.7); sh.lineTo(28.0, -10.7);
+          sh.absarc(28.0, -13.3, 2.6, Math.PI / 2, 0, true);
+          sh.lineTo(30.6, -13.8); sh.lineTo(25, -13.8); sh.closePath();
+          const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: yR, bevelEnabled: false, curveSegments: 16 }), MAT.ckWhite);
+          m.rotation.x = -Math.PI / 2; m.position.set(gx(KIT.x), 0, gz(KIT.z));
+          m.castShadow = true; m.receiveShadow = true; kitchen1FGroup.add(m);
+          winZ(kitchen1FGroup, 25.8, 27.8, 10.66, 2.0, 2.5);
+          kbox(kitchen1FGroup, 25.2, 26.1, 10.62, 10.66, 0.1, 2.3, MAT.ckWhite, false);
+        }
+        // 戶外樓梯（白色實牆斜量體，由南 +1.20 往北升至 +4.90）
+        {
+          const sh = new THREE.Shape();
+          const L = 18.9 - 13.0;
+          sh.moveTo(0, 0); sh.lineTo(L, 0); sh.lineTo(L, yR); sh.lineTo(0, y1); sh.closePath();
+          const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 2.1, bevelEnabled: false }), MAT.ckWhite);
           m.rotation.y = Math.PI / 2;
-          const [sx, sz] = K(24.6, 13.0);
-          m.position.set(sx, 0, sz);
-          m.castShadow = true; m.receiveShadow = true;
-          kitchen1FGroup.add(m);
-          winX(kitchen1FGroup, 27.65, 8.6, 11.6, 1.6, 2.1);
-          for (let k = 0; k < 12; k++) {
-            const u = 0.3 + k * 0.53, h = y1 + 0.4 + (u / 6.6) * (yR - y1 - 0.4);
-            const [tx, tz] = K(25.2, 13.0 - u - 0.25);
-            addBox(kitchen1FGroup, 1.2, 0.08, 0.5, tx, h + 0.05, tz, MAT.concreteBase, false);
+          const [sx, sz] = K(28.8, 18.9);
+          m.position.set(sx, 0, sz); m.castShadow = true; m.receiveShadow = true; kitchen1FGroup.add(m);
+          for (let k = 0; k <= 6; k++) {
+            const u = (k / 6) * L, h = y1 + (u / L) * (yR - y1);
+            const [px, pz] = K(30.85, 18.9 - u);
+            addBox(kitchen1FGroup, 0.05, 1.0, 0.05, px, h + 0.5, pz, MAT.steelSilver, false);
           }
         }
 
-        // 8. 屋頂層（白色屋頂板＋不鏽鋼欄杆＋太陽能板）
-        kbox(kitchenRoofGroup, 4, 21, 0, 19, yR, yR + 0.25, MAT.ckWhite);
-        kbox(kitchenRoofGroup, 0, 4, 4.5, 11.5, yR, yR + 0.25, MAT.ckWhite);
-        addRailingX(kitchenRoofGroup, KIT.x + 4, KIT.x + 21, yR + 0.25, KIT.z + 19, 1.1);
-        addRailingZ(kitchenRoofGroup, KIT.z + 0, KIT.z + 19, yR + 0.25, KIT.x + 21, 1.1);
-        for (let r = 0; r < 4; r++) {
+        // ── 9. 屋頂層 +4.90：屋頂板、不鏽鋼欄杆、太陽能板 ──
+        kbox(kitchenRoofGroup, 4, 21, 4.5, 19, yR, yR + 0.2, MAT.slabFloor);
+        kbox(kitchenRoofGroup, 0, 4, 4.5, 12, yR, yR + 0.2, MAT.slabFloor);
+        kbox(kitchenRoofGroup, 21, 25, 4.2, 12, 5.3, 5.5, MAT.slabFloor);
+        addRailingX(kitchenRoofGroup, KIT.x + 4.2, KIT.x + 21, yR + 0.2, KIT.z + 19, 1.1);
+        addRailingZ(kitchenRoofGroup, KIT.z + 4.5, KIT.z + 19, yR + 0.2, KIT.x + 21, 1.1);
+        addRailingZ(kitchenRoofGroup, KIT.z + 4.5, KIT.z + 12, yR + 0.2, KIT.x + 0.1, 1.1);
+        for (let r = 0; r < 5; r++) {
           for (let c = 0; c < 6; c++) {
-            const [px, pz] = K(5.6 + c * 2.5, 7.0 + r * 2.9);
-            const pv = addBox(kitchenRoofGroup, 2.3, 0.08, 2.4, px, yR + 0.9, pz, MAT.solarPanel, false);
+            const [px, pz] = K(5.6 + c * 2.55, 6.2 + r * 2.6);
+            const pv = addBox(kitchenRoofGroup, 2.4, 0.08, 2.2, px, yR + 0.75, pz, MAT.solarPanel, false);
             pv.rotation.x = -0.18;
           }
         }
-        // 米色 2F 機房（③–⑥×Ⓐ–Ⓑ，頂 +7.90）
-        kbox(kitchenRoofGroup, 9, 21, 0, 5, yR, yP, MAT.ckCream);
-        winZ(kitchenRoofGroup, 11, 13, 5.03, yR + 0.6, yR + 2.2);
-        winZ(kitchenRoofGroup, 15, 16, 5.03, yR + 0.3, yR + 2.4);
+
+        // ── 10. 北側：鍋爐間／瓦斯間（②–③×Ⓐ–Ⓑ，粉紅外牆，頂為 +3.45 水塔平台，8T×2）──
+        kbox(kitchen1FGroup, 4, 9, -0.05, 4.5, 0, 3.45, MAT.ckPink);
+        kbox(kitchen1FGroup, 6.0, 7.2, -0.12, -0.05, 0.3, 2.5, MAT.wallFrameDark, false);   // 瓦斯間入口
+        [[5.6, 1.6], [7.6, 2.9]].forEach(([lx, lz]) => {
+          const [tx, tz] = K(lx, lz);
+          const t = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 2.2, 20), MAT.steelSilver);
+          t.position.set(tx, 3.45 + 1.1, tz); t.castShadow = true; kitchenRoofGroup.add(t);
+        });
+        addRailingX(kitchenRoofGroup, KIT.x + 4, KIT.x + 9, 3.45, KIT.z + 0, 1.1);
+        addRailingZ(kitchenRoofGroup, KIT.z + 0, KIT.z + 4.5, 3.45, KIT.x + 4, 1.1);
+
+        // ── 11. 2F 機房（③–⑥×Ⓐ–Ⓑ，+4.90 → +7.90，米色）──
+        kbox(kitchenRoofGroup, 9, 21, 0, 4.5, yR, yP, MAT.ckCream);
+        winZ(kitchenRoofGroup, 11.5, 13.0, -0.04, yR + 1.0, yR + 2.2);
+        kbox(kitchenRoofGroup, 12.8, 14.2, 4.52, 4.56, yR, yR + 2.2, MAT.steelDark, false);
+        kbox(kitchenRoofGroup, 16.0, 16.9, 4.52, 4.56, yR, yR + 2.1, MAT.steelDark, false);
+        kbox(kitchenRoofGroup, 18.4, 19.3, 4.52, 4.56, yR, yR + 2.1, MAT.steelDark, false);
         for (let c = 0; c < 4; c++) {
-          const [px, pz] = K(10.4 + c * 2.9, 2.5);
-          const pv = addBox(kitchenRoofGroup, 2.6, 0.08, 4.0, px, yP + 0.5, pz, MAT.solarPanel, false);
+          const [px, pz] = K(10.5 + c * 2.9, 2.25);
+          const pv = addBox(kitchenRoofGroup, 2.6, 0.08, 3.8, px, yP + 0.45, pz, MAT.solarPanel, false);
           pv.rotation.x = -0.15;
         }
-        // 屋頂水塔（衛星圖可見）
-        [[6.0, 1.5], [7.8, 1.5]].forEach(([lx, lz]) => {
-          const [tx, tz] = K(lx, lz);
-          const t = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 1.8, 18), MAT.steelSilver);
-          t.position.set(tx, yR + 1.15, tz); t.castShadow = true; kitchenRoofGroup.add(t);
-        });
 
-        // 9. 地面 5T 不鏽鋼水塔 ×3（⑥–⑦×Ⓐ–Ⓑ）
-        [[22.3, 1.3], [24.0, 1.3], [23.1, 3.2]].forEach(([lx, lz]) => {
+        // ── 12. 地面 5T 不鏽鋼水塔 ×3（A08，⑥–⑦×Ⓐ–Ⓑ）──
+        [[22.2, 1.0], [24.0, 1.0], [23.1, 3.0]].forEach(([lx, lz]) => {
           const [tx, tz] = K(lx, lz);
           const t = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 2.4, 18), MAT.steelSilver);
           t.position.set(tx, 1.2, tz); t.castShadow = true; kitchenBaseGroup.add(t);
         });
 
-        // 10. 風雨走廊：食育教室東側 → 主校舍一樓西側走廊（+1.20）
-        const wx0 = KIT.x + 29.6, wx1 = 0.4, wz0 = 7.9, wz1 = 11.0;
+        // ── 13. 風雨走廊（鍍鋅烤漆鋼板屋頂）：食育教室東側 → 主校舍一樓西側走廊（+1.20）＋南側階梯 ──
+        const wx0 = KIT.x + 29.6, wx1 = 0.4, wz0 = 7.9, wz1 = 11.3;
         addBox(kitchenBaseGroup, wx1 - wx0, y1, wz1 - wz0, gx((wx0 + wx1) / 2), y1 / 2, gz((wz0 + wz1) / 2), MAT.plazaTile);
-        addBox(kitchenBaseGroup, wx1 - wx0 + 0.6, 0.22, wz1 - wz0 + 0.8, gx((wx0 + wx1) / 2), y1 + 3.1, gz((wz0 + wz1) / 2), MAT.ckWhite);
-        for (let x = wx0 + 0.6; x < wx1; x += 3.6) {
-          [wz0 + 0.2, wz1 - 0.2].forEach((z) => addBox(kitchenBaseGroup, 0.16, 3.0, 0.16, gx(x), y1 + 1.5, gz(z), MAT.ckWhite));
+        addBox(kitchenBaseGroup, wx1 - wx0 + 0.6, 0.2, wz1 - wz0 + 0.8, gx((wx0 + wx1) / 2), y1 + 3.2, gz((wz0 + wz1) / 2), MAT.roofSheet);
+        for (let x = wx0 + 0.6; x < wx1; x += 3.5) {
+          [wz0 + 0.2, wz1 - 0.2].forEach((z) => addBox(kitchenBaseGroup, 0.16, 3.1, 0.16, gx(x), y1 + 1.55, gz(z), MAT.ckWhite));
         }
-        addStepsX(kitchenBaseGroup, wx0 + 1, wx1 - 4, 0, y1, wz1 + 2.4, wz1, 6, MAT.plazaTile);
+        addStepsX(kitchenBaseGroup, wx0 + 3, wx1 - 2, 0, y1, wz1 + 2.4, wz1, 6, MAT.plazaTile);
+        // 保留大樹（⑧ 處樹穴）
+        {
+          const [tx, tz] = K(31.5, 21.5);
+          const g = new THREE.Group(); g.position.set(tx, 0, tz);
+          const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.42, 5.0, 10), MAT.bark); tr.position.y = 2.5; g.add(tr);
+          const cn = new THREE.Mesh(new THREE.DodecahedronGeometry(3.2, 0), MAT.foliage1); cn.position.y = 6.2; cn.castShadow = true; g.add(cn);
+          kitchenBaseGroup.add(g);
+        }
       }
 
       // =========================================================================
@@ -2563,6 +2625,8 @@
           drawRawRect(KIT.x, KIT.x + 24.5, KIT.z, KIT.z + 19, '#e5e7eb', '#fef08a');
           drawRawRect(KIT.x - 0.1, KIT.x + 5, KIT.z + 11.5, KIT.z + 19, '#eeb07e');
           drawRawRect(KIT.x + 9, KIT.x + 14, KIT.z + 19, KIT.z + 23, '#e8837f');
+          drawRawRect(KIT.x + 14, KIT.x + 21.5, KIT.z + 19, KIT.z + 23, '#e5e7eb');
+          drawRawRect(KIT.x + 4, KIT.x + 9, KIT.z, KIT.z + 4.5, '#e8837f');
           drawRawRect(KIT.x + 21, KIT.x + 29.6, KIT.z + 13, KIT.z + 24.4, '#f2d238');
           drawRawRect(KIT.x + 29.6, 0.4, 7.9, 11.0, '#38bdf8');
         }
