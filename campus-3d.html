@@ -385,7 +385,7 @@
         <div class="absolute bottom-1 left-1.5 px-1.5 py-0.5 rounded bg-slate-950/75 text-[9px] text-slate-300 pointer-events-none">點擊／拖曳地圖移動</div>
       </div>
       <div class="px-2.5 py-1 bg-slate-950/85 border-t border-slate-800/80 text-[9.5px] font-mono text-slate-400 flex items-center justify-between gap-1">
-        <span id="earth-coords-text">22.71315°N 120.42580°E</span>
+        <a id="earth-coords-text" href="https://www.google.com/maps/@22.71906,120.44350,120m/data=!3m1!1e3" target="_blank" rel="noopener" class="hover:text-sky-300 underline decoration-dotted" title="在 Google 地圖衛星圖開啟此位置">22.71906°N 120.44350°E</a>
         <span id="earth-alt-text" class="text-sky-300">高度 42m</span>
       </div>
     </div>
@@ -2924,6 +2924,7 @@
       // 18. ANIMATION & RENDER LOOP
       // =========================================================================
       const compassNeedle = document.getElementById('compass-needle');
+      const GEO = { lat0: 22.7190601, lng0: 120.4435042, x0: gx(25), z0: gz(45) };
       const coordsEl = document.getElementById('earth-coords-text');
       const altEl = document.getElementById('earth-alt-text');
       const svEuler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -2995,9 +2996,11 @@
         compassNeedle.style.transform = `rotate(${-azimuthDeg}deg)`;
 
         const ref = state.navMode === 'street' ? state.svPos : controls.target;
-        const lat = 22.71315 + (-ref.z / 111111);
-        const lng = 120.42580 + (ref.x / 102490);
+        // 以 Google 地圖「高雄市立溪埔國民中學」地標 (22.7190601, 120.4435042) 對齊校地中心（配置圖座標 x25, z45），假設配置圖北向＝正北，誤差約數十公尺
+        const lat = GEO.lat0 - (ref.z - GEO.z0) / 110770;
+        const lng = GEO.lng0 + (ref.x - GEO.x0) / 102680;
         coordsEl.textContent = `${lat.toFixed(5)}°N ${lng.toFixed(5)}°E`;
+        coordsEl.href = `https://www.google.com/maps/@${lat.toFixed(6)},${lng.toFixed(6)},120m/data=!3m1!1e3`;
         altEl.textContent = state.navMode === 'street'
           ? `眼高 ${camera.position.y.toFixed(1)}m`
           : `高度 ${Math.max(1, Math.round(camera.position.y))}m`;
