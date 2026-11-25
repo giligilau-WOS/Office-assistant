@@ -507,7 +507,7 @@
       const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.2, 800);
       camera.position.set(22, 46, 86);
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.shadowMap.enabled = true;
@@ -996,7 +996,7 @@
       // =========================================================================
       function buildFoundation() {
         // Main building elevated plinth (+0.00 to +1.20m)
-        addBox(foundationGroup, 82.9, ELEV.F1, 11.1, gx(41.35), ELEV.F1 * 0.5, gz(5.45), MAT.concreteBase);
+        addBox(foundationGroup, 82.9, ELEV.F1 - 0.2, 11.1, gx(41.35), (ELEV.F1 - 0.2) * 0.5, gz(5.45), MAT.concreteBase); // 頂面低於樓板，避免與 1F 樓板同高閃爍
         // East stair A & generator room plinth (Grid ⑨–⑩, B to A')
         addBox(foundationGroup, 7.2, ELEV.F1, 6.2, gx(75.55), ELEV.F1 * 0.5, gz(14.0), MAT.concreteBase);
 
@@ -1298,7 +1298,16 @@
           addBox(targetGroup, 0.92, 2.20, 0.12, gx(bx1 - 0.65), yBase + 1.10, gz(7.75), MAT.woodDoor);
 
           // Interior partition wall on west boundary of each bay (omit between merged bays on 1F Library)
-          const omitWestWall = (floorNum === 1 && bay === 2); // 8-1 圖書室 spans Grid ③–⑤ (bays 1 & 2)
+          // 1F 圖書室跨 ③–⑤；3F 資源班／理化實驗室隔牆不在軸線③，在②往東 6.6 m（A1-3）
+          const omitWestWall = (floorNum === 1 && bay === 2) || (floorNum === 3 && bay === 1);
+          if (floorNum === 3 && bay === 1) {
+            addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(15.6), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
+            // 實驗室西側儲藏室（南北兩端）與中段黑板
+            [[0.15, 2.1], [5.75, 7.7]].forEach(([z0, z1]) => {
+              addBox(targetGroup, 1.2, FLOOR_H - 0.15, z1 - z0, gx(16.3), yBase + (FLOOR_H - 0.15) * 0.5, gz((z0 + z1) / 2), MAT.wallInt);
+            });
+            addBox(targetGroup, 0.08, 1.2, 3.4, gx(16.95), yBase + 1.55, gz(3.9), makeMat(0x1f4d36, { roughness: 0.7 }), false);
+          }
           if (!omitWestWall) {
             addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(bx0), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
           }
@@ -1309,7 +1318,7 @@
           }
 
           // Classroom chalkboard & desks inside (visible on cutaway / X-ray / Street View!)
-          addBox(targetGroup, 0.08, 1.20, 3.80, gx(bx0 + 0.14), yBase + 1.55, gz(3.9), makeMat(0x1f4d36, { roughness: 0.7 }), false);
+          if (!(floorNum === 3 && bay === 1)) addBox(targetGroup, 0.08, 1.20, 3.80, gx(bx0 + 0.14), yBase + 1.55, gz(3.9), makeMat(0x1f4d36, { roughness: 0.7 }), false);
         }
         // East boundary wall of classroom bay 6 (Grid ⑨, X=72m)
         addBox(targetGroup, 0.18, FLOOR_H - 0.15, 7.65, gx(72.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
@@ -1718,8 +1727,8 @@
           { floor: '2F', name: '20-5 廁所（東側）', shortName: '20-5 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F2, area: 52, isRestroom: true, meta: W, desc: '溪埔國中廁所整修工程（細部設計圖 2026.01 第四版，超聖工程顧問）。打通原男女廁隔間改為性別友善廁所：入口為高屏溪舊鐵橋造型與濕地意象馬賽克牆（330×240 cm）；小便斗隔間 3（含無障礙 1）、坐式 2、蹲式 3，隔間高 240 cm 附防窺頂板，另設無障礙廁所。主色 PANTONE 2088U 紫。', images: [{ src: 'campus-3d-assets/restroom/d02-2f-entrance.jpg', cap: 'D-02 2F性別友善廁所入口意象模擬' }, { src: 'campus-3d-assets/restroom/d03-2f-entrance-detail.jpg', cap: 'D-03 入口意象設計說明（鐵橋・濕地馬賽克）' }, { src: 'campus-3d-assets/restroom/d06-2f-interior.jpg', cap: 'D-06 2F空間設計模擬（隔間與洗手台）' }, { src: 'campus-3d-assets/restroom/d07-2f-interior.jpg', cap: 'D-07 2F空間設計模擬（濕地馬賽克牆）' }, { src: 'campus-3d-assets/restroom/d08-2f-cubicles.jpg', cap: 'D-08 隔間設備圖示與防窺頂板' }, { src: 'campus-3d-assets/restroom/d01-2f-design.jpg', cap: 'D-01 2F性別友善廁所平面規劃設計' }, { src: 'campus-3d-assets/restroom/b13-2f-plan.jpg', cap: 'B-13 2F性別友善廁所平面配置與地板計畫' }, { src: 'campus-3d-assets/restroom/d09-2f-signage.jpg', cap: 'D-09 指標牌設計' }] },
           // ── 3F 參層 ──
           { floor: '3F', name: '20-3 廁所（西側）', shortName: '20-3 廁所', x: 3.5, z: 3.8, w: 6.5, d: 6.8, y: ELEV.F3, area: 44, isRestroom: true, meta: W, desc: '西側三樓男女廁所。' },
-          { floor: '3F', name: '2-5 資源班教室', shortName: '2-5 資源班', x: 13.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '資源班教室（軸線②–③，原設計檔案室）。' },
-          { floor: '3F', name: '2-4 理化實驗室', shortName: '2-4 理化實驗室', x: 22.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '理化實驗室（軸線③–④，原設計生物理化實驗教室）。' },
+          { floor: '3F', name: '2-5 資源班教室', shortName: '2-5 資源班', x: 12.3, z: 3.9, w: 6.2, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '資源班教室（軸線②往東 6.6 m，原設計檔案室）。' },
+          { floor: '3F', name: '2-4 理化實驗室', shortName: '2-4 理化實驗室', x: 21.5, z: 3.9, w: 10.8, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '理化實驗室（至軸線④，西側有儲藏室與黑板牆，原設計生物理化實驗教室）。' },
           { floor: '3F', name: '2-3 生科教室', shortName: '2-3 生科教室', x: 31.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '生活科技教室（軸線④–⑤，原設計音樂教室）。' },
           { floor: '3F', name: '2-2 資訊教室', shortName: '2-2 資訊教室', x: 40.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '資訊教室（軸線⑤–⑥）。' },
           { floor: '3F', name: '2-1 藝術教室', shortName: '2-1 藝術教室', x: 49.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '藝術教室（軸線⑥–⑦，原設計美術教室），南側為三樓露台。' },
