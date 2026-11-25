@@ -553,6 +553,7 @@
 
       // Lighting (Kaohsiung Dashu Sun + Hemisphere Sky)
       const hemiLight = new THREE.HemisphereLight(0xeef6ff, 0x5c6b57, 0.78);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.28)); // 讓騎樓、外廊天花不至全黑
       scene.add(hemiLight);
 
       const sunLight = new THREE.DirectionalLight(0xfff7e6, 1.55);
@@ -1504,14 +1505,19 @@
         dl(8.0, y1, 10.5, 0, y1 / 2, 0, MAT.ckYellow);                      // 基座
         dl(7.8, 0.06, 10.3, 0, y1 + 0.03, 0, MAT.woodLight);
         dl(0.3, H, 6.2, -3.85, H / 2, -2.0, MAT.ckYellow);                  // 西牆（教室段）
-        dl(0.3, H - y1 - 2.6, 4.3, -3.85, (H + y1 + 2.6) / 2, 3.1, MAT.ckYellow); // 西側外廊入口上楣（下方可通行，接 A01）
+        // 外廊西端（照片）：北側約 2.25 m 為通道接 A01 走廊，南側為洗手台牆（含小窗）
+        dl(0.35, H - y1 - 2.8, 2.25, -3.85, (H + y1 + 2.8) / 2, 2.08, MAT.ckYellow);   // 通道上楣
+        dl(0.35, 1.0, 2.05, -3.85, y1 + 0.5, 4.23, MAT.ckYellow);                      // 洗手台牆：窗下
+        dl(0.35, H - y1 - 1.6, 2.05, -3.85, (H + y1 + 1.6) / 2, 4.23, MAT.ckYellow);   // 窗上
+        dl(0.35, 0.6, 0.5, -3.85, y1 + 1.3, 3.45, MAT.ckYellow);                       // 窗側
+        dl(0.35, 0.6, 0.55, -3.85, y1 + 1.3, 4.97, MAT.ckYellow);
         dl(8.0, H, 0.3, 0, H / 2, -5.1, MAT.ckYellow);                      // 北牆
         dl(0.3, H, 6.2, 3.85, H / 2, -2.0, MAT.ckYellow);                   // 東牆（教室段）
         dl(0.3, H - yR + 0.3, 4.3, 3.85, (H + yR - 0.3) / 2, 3.1, MAT.ckYellow); // 東側外廊上緣
-        // 南面（面向操場）：實牆＋幾何開窗（依基本設計 3D 模擬圖），非整面開放
+        // 南面（面向操場）：實牆＋三個開口（依完工正面照片量測）
         {
           const sw = 7.7, wz = 5.1, base = y1;
-          const holes = [[-2.75, 2.6, 0.7, 0.7], [-0.7, 0.5, 2.4, 1.3], [2.3, 1.2, 1.1, 1.1], [1.4, 3.3, 1.8, 0.45], [-2.9, 0.6, 0.5, 0.5]];
+          const holes = [[-1.18, 3.94, 0.46, 0.46], [-2.33, 0.6, 1.08, 1.09], [2.25, 0.86, 1.78, 1.84]]; // 依完工照片量測：上方小窗、西側中窗、東側大開口
           const sh = new THREE.Shape();
           sh.moveTo(-sw / 2, 0); sh.lineTo(sw / 2, 0); sh.lineTo(sw / 2, H - base); sh.lineTo(-sw / 2, H - base); sh.closePath();
           holes.forEach(([hx, hy, hw, hh]) => {
@@ -1525,12 +1531,13 @@
           dining.add(wall);
         }
         [[-3.85, 5.05], [3.85, 5.05]].forEach(([x, z]) => dl(0.45, H, 0.45, x, H / 2, z, MAT.ckYellow));
-        dl(8.0, 0.3, 10.5, 0, yR - 0.15, 0, MAT.ckWhite).userData = { isKitchenRoofPart: true };
-        dl(7.4, 2.6, 0.08, 0, y1 + 1.3, 1.0, MAT.glass);                    // 教室與外廊間落地門 DW2
+        dl(7.4, 0.3, 9.9, 0, yR - 0.15, 0.05, MAT.ckYellow).userData = { isKitchenRoofPart: true };   // 頂板（內縮避免與外牆重疊閃爍）
+        dl(7.4, 2.6, 0.08, 0, y1 + 1.3, 1.0, makeMat(0xeef0f2, { roughness: 0.6, transparent: true, opacity: 0.85 })); // 教室與外廊間白色格柵摺門 DW2
         dl(0.08, 1.4, 3.2, -4.02, y1 + 1.9, -2.2, MAT.glass);               // 西窗 W13
         dl(0.08, 0.6, 0.6, -4.02, 5.3, -3.8, MAT.glass);                    // 西面小方窗 W14
-        dl(5.0, 0.9, 0.6, -0.8, y1 + 0.45, 4.6, MAT.ckWhite);               // 造型洗手台
+        dl(0.55, 0.15, 1.6, -3.4, y1 + 0.85, 4.2, MAT.ckWhite);              // 造型洗手台（貼洗手台牆）
         [-2.2, 0, 2.2].forEach((tx) => dl(1.0, 0.75, 2.6, tx, y1 + 0.38, -2.4, MAT.woodLight));
+        [-1.6, 0.6].forEach((tx) => dl(1.6, 0.75, 0.8, tx, y1 + 0.38, 3.9, MAT.wallFrameDark));   // 外廊餐桌
         dl(2.2, 0.9, 0.9, -1.6, y1 + 0.45, -4.3, MAT.woodLight);
         kitchen1FGroup.add(dining);
 
@@ -1668,7 +1675,7 @@
           { floor: '1F', building: 'kitchen', name: '21-1 中央廚房', shortName: '21-1 中央廚房', x: -34, z: 0, w: 16.0, d: 12.0, y: ELEV.F1, area: 485, meta: '111.11 完工・保固 5 年', desc: '聯合供餐中央廚房，供應本校及興田、姑山、水寮、大樹國小約 1,500 人午餐。地上一層（局部二層機房），樓板抬高 +1.20 m 與教學大樓一樓走廊同高。', images: [{ src: 'campus-3d-assets/kitchen/04188.jpg', cap: '現況照片：東南側入口與坡道（蜜桃橘、珊瑚粉紅量體）' }, { src: 'campus-3d-assets/kitchen/04107.jpg', cap: '現況照片：北側外觀與不鏽鋼水塔、上屋頂樓梯' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：食育教室外廊（珊瑚粉紅框，面向操場）' }, { src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04008.jpg', cap: '現況照片：走道緩衝區' }, { src: 'campus-3d-assets/kitchen/04052.jpg', cap: '現況照片：出餐／取餐區' }, { src: 'campus-3d-assets/kitchen/04063.jpg', cap: '現況照片：入口洗手台與泡鞋池' }, { src: 'campus-3d-assets/kitchen/04103.jpg', cap: '現況照片：瓦斯間入口' }, { src: 'campus-3d-assets/kitchen/04097.jpg', cap: '現況照片：鍋爐與軟水設備' }, { src: 'campus-3d-assets/kitchen/04133.jpg', cap: '現況照片：主校舍西端與風雨走廊' }] },
           { floor: '1F', building: 'kitchen', name: '10-8 營養師辦公室', shortName: '10-8 營養師', x: -29.5, z: 7.5, w: 3.0, d: 4.5, y: ELEV.F1, area: 15, meta: '111.11 完工・保固 5 年', desc: '營養師辦公室（規劃面積約 15.45 m²）。' },
           { floor: '1F', building: 'kitchen', name: '20-7 廁所（中央廚房）', shortName: '20-7 廁所', x: -26, z: 7.5, w: 3.6, d: 4.5, y: ELEV.F1, area: 18, isRestroom: true, meta: '111.11 完工・保固 5 年', desc: '廚房衛生區：淋浴間、座式馬桶、無障礙廁所（規劃約 18.30 m²）。' },
-          { floor: '1F', building: 'kitchen', name: '2-7 食育教室', shortName: '2-7 食育教室', x: -20, z: 7.5, w: 7.6, d: 6.0, y: ELEV.F1, area: 57, meta: '111.11 完工・保固 5 年', desc: '午餐教育教室（規劃約 57.2 m²），外廊作為餐食教育區，連接風雨走廊。', images: [{ src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：食育教室外廊' }] },
+          { floor: '1F', building: 'kitchen', name: '2-7 食育教室', shortName: '2-7 食育教室', x: -20, z: 7.5, w: 7.6, d: 6.0, y: ELEV.F1, area: 57, meta: '111.11 完工・保固 5 年', desc: '午餐教育教室（規劃約 57.2 m²），外廊作為餐食教育區，連接風雨走廊。', images: [{ src: 'campus-3d-assets/kitchen/yellow-south.jpg', cap: '現況照片：食育教室南面（面向操場）' }, { src: 'campus-3d-assets/kitchen/yellow-track.jpg', cap: '現況照片：由操場看中央廚房南側' }, { src: 'campus-3d-assets/kitchen/yellow-se.jpg', cap: '現況照片：食育教室東南角與風雨走廊' }, { src: 'campus-3d-assets/kitchen/veranda-west.jpg', cap: '現況照片：外廊內部往西（洗手台、通往 A01 走廊）' }, { src: 'campus-3d-assets/kitchen/veranda-entry.jpg', cap: '現況照片：由 A01 走廊進入外廊' }, { src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：粉紅進貨平台內部往南' }] },
           { floor: '1F', building: 'kitchen', name: '廚工休息室・配電室', shortName: '休息室・配電', x: -22.2, z: -0.8, w: 3.4, d: 7.0, y: ELEV.F1, area: 26, meta: '111.11 完工・保固 5 年', desc: '中央廚房東側：廚工休息室與配電室。' },
           { floor: '1F', building: 'kitchen', name: '風雨走廊', shortName: '風雨走廊', x: -7.6, z: 9.45, w: 15.0, d: 3.0, y: ELEV.F1, area: 58, meta: '111.11 完工', desc: '連接中央廚房與主校舍一樓西側走廊（+1.20 m）。' },
           { floor: '2F', building: 'kitchen', name: '消防機房（中央廚房 2F）', shortName: '廚房2F 消防機房', x: -30, z: -6.5, w: 12.0, d: 5.0, y: 4.9, area: 60, meta: '111.11 完工・保固 5 年', desc: '中央廚房局部二層機房（消防機房，約 60 m²），米色量體，屋頂設太陽能板。' },
