@@ -1200,21 +1200,44 @@
           addBox(foundationGroup, 0.08, 1.90, 0.06, gx(71.75), 0.95, gz(lz), MAT.steelDark, false);
         }
 
-        // 東側無障礙坡道（1:12，緊鄰無障礙樓梯 A 西側：X=70.5~72.0, Z=10.85~16.65，依 A1-1 / A1-6 / A3-8）
+        // 東側無障礙坡道（1:12 無障礙坡道，緊鄰無障礙樓梯 A 西側：X=70.5~71.95，從 +1.20m 連續平順降至地面 +0.00m，尾端無階梯！）
         {
+          const rampZ0 = 10.85, rampLen = 9.60, rampZ1 = rampZ0 + rampLen;
           const sh = new THREE.Shape();
-          sh.moveTo(0, 0); sh.lineTo(5.8, 0); sh.lineTo(5.8, 0.72); sh.lineTo(0, ELEV.F1); sh.closePath();
+          sh.moveTo(0, 0); sh.lineTo(rampLen, 0); sh.lineTo(0, ELEV.F1); sh.closePath();
           const geo = new THREE.ExtrudeGeometry(sh, { depth: 1.45, bevelEnabled: false });
           geo.rotateY(-Math.PI / 2);
           const ramp = new THREE.Mesh(geo, MAT.plazaTile);
-          ramp.position.set(gx(71.95), 0, gz(10.85));
+          ramp.position.set(gx(71.95), 0, gz(rampZ0));
           ramp.castShadow = true; ramp.receiveShadow = true;
           foundationGroup.add(ramp);
-          // 15cm RC side cheek curb & handrail along west edge of ramp
-          addBox(foundationGroup, 0.15, 0.95, 5.8, gx(70.48), 0.65, gz(13.75), MAT.wallExt);
-          addRailingZ(foundationGroup, 10.95, 16.55, 0.95, 70.52, 0.85);
-          // South ramp entry approach (+0 -> +0.72)
-          addStepsX(foundationGroup, 70.4, 72.0, 0, 0.72, 18.2, 16.65, 4, MAT.plazaTile);
+          // 地面無障礙平順銜接平台（Z=20.45~21.55，無階梯）
+          addBox(foundationGroup, 1.65, 0.03, 1.15, gx(71.22), 0.015, gz(rampZ1 + 0.55), MAT.plazaTile, false, true);
+          // 西側 15cm 斜向 RC 緣牆（緊隨坡面斜度降至地面，不突兀水平凸出）
+          const curbSh = new THREE.Shape();
+          curbSh.moveTo(0, 0); curbSh.lineTo(rampLen, 0); curbSh.lineTo(rampLen, 0.18); curbSh.lineTo(0, ELEV.F1 + 0.18); curbSh.closePath();
+          const curbGeo = new THREE.ExtrudeGeometry(curbSh, { depth: 0.15, bevelEnabled: false });
+          curbGeo.rotateY(-Math.PI / 2);
+          const curb = new THREE.Mesh(curbGeo, MAT.wallExt);
+          curb.position.set(gx(70.55), 0, gz(rampZ0));
+          curb.castShadow = true; curb.receiveShadow = true;
+          foundationGroup.add(curb);
+          // 雙側斜向不鏽鋼雙層無障礙扶手（高 0.75m / 0.90m，依坡度平行延伸至地面入口）
+          const slopeAng = Math.atan2(ELEV.F1, rampLen);
+          const railLen = Math.hypot(rampLen, ELEV.F1);
+          [70.48, 71.90].forEach((rx) => {
+            [0.75, 0.90].forEach((rh) => {
+              const bar = addBox(foundationGroup, 0.04, 0.04, railLen, gx(rx), ELEV.F1 * 0.5 + rh, gz(rampZ0 + rampLen * 0.5), MAT.steelSilver, false);
+              bar.rotation.x = slopeAng;
+            });
+            const posts = 8;
+            for (let i = 0; i <= posts; i++) {
+              const u = i / posts;
+              const py = ELEV.F1 * (1 - u);
+              const pz = rampZ0 + u * rampLen;
+              addBox(foundationGroup, 0.035, 0.90, 0.035, gx(rx), py + 0.45, gz(pz), MAT.steelSilver, false);
+            }
+          });
         }
       }
 
@@ -2017,16 +2040,46 @@
         framedWinX(kitchen1FGroup, -0.10, 15.3, 17.9, y1 + 1.15, y1 + 1.85, 4); // 西面 W6 四格橫窗（elevW & 04188）
         framedWinX(kitchen1FGroup, -0.10, 15.8, 16.3, 5.15, 5.65, 1);           // 西面 W14 小方窗
 
-        //   2c. 東側蜜桃橘量體（⑥–⑦ × Ⓑ–Ⓒ 食品儲藏／收納／A07 凹入陽台，頂 +5.50，依 04107.jpg & A3-2）
+        //   2c. 東側蜜桃橘量體（⑥–⑦ × Ⓑ–Ⓒ 食品儲藏／收納／A07 東向凹入陽台與對外樓梯，頂 +5.50，依 A2-1 / A4-2 DD' & 04107.jpg）
         kbox(kitchen1FGroup, 21.0, 25.0, 4.45, 4.70, 0, 5.50, MAT.ckPeach);     // 北牆
-        kbox(kitchen1FGroup, 24.78, 25.02, 4.45, 9.80, 0, 5.50, MAT.ckPeach);   // 東牆（北段至陽台口）
-        kbox(kitchen1FGroup, 21.0, 23.1, 11.78, 12.02, 0, 5.50, MAT.ckPeach);   // 南牆（西段）
-        kbox(kitchen1FGroup, 23.0, 25.02, 9.75, 12.02, 4.15, 5.50, MAT.ckPeach); // A07 陽台上方挑簷量體
-        framedWinX(kitchen1FGroup, 25.04, 6.4, 7.6, y1 + 0.85, y1 + 2.65, 1);   // 東面長窗 W5（照片 04107）
-        framedWinX(kitchen1FGroup, 25.04, 5.1, 5.6, 4.65, 5.15, 1);             // 東面高小方窗 W14（照片 04107）
-        framedWinZ(kitchen1FGroup, 23.15, 24.75, 9.78, y1, y1 + 2.55, 2);       // A07 陽台落地黑框門 DW3
-        addWhitePicketZ(kitchen1FGroup, 9.85, 11.95, y1, 24.92, 1.05);          // A07 陽台白色欄杆
-        addStepsX(kitchen1FGroup, KIT.x + 23.2, KIT.x + 24.7, 0, y1, KIT.z + 13.3, KIT.z + 12.0, 5, MAT.concreteBase);
+        kbox(kitchen1FGroup, 24.78, 25.02, 4.45, 9.05, 0, 5.50, MAT.ckPeach);   // 東牆（北段至 A07 陽台口）
+        kbox(kitchen1FGroup, 21.0, 25.02, 11.00, 11.24, 0, 5.50, MAT.ckPeach);  // 南牆（齊平 107 弧牆北面 z=11.15）
+        kbox(kitchen1FGroup, 23.0, 25.02, 9.00, 11.24, 4.10, 5.46, MAT.ckPeach);// A07 陽台上方挑簷量體
+        kbox(kitchen1FGroup, 23.0, 24.85, 8.95, 9.12, y1, 4.15, MAT.ckPeach);   // A07 凹入陽台北側內牆
+        framedWinX(kitchen1FGroup, 25.04, 6.2, 7.4, y1 + 0.85, y1 + 2.65, 1);   // 東面長窗 W5（照片 04107）
+        framedWinX(kitchen1FGroup, 25.04, 5.0, 5.5, 4.65, 5.15, 1);             // 東面高小方窗 W14（照片 04107）
+        //     A07 陽台背牆黑框落地門 DW3（面向東 +X，依 A2-1 & 04107.jpg）
+        kbox(kitchen1FGroup, 22.92, 23.04, 9.10, 11.00, y1, y1 + 2.70, MAT.steelDark, false);
+        framedWinX(kitchen1FGroup, 23.06, 9.18, 10.92, y1 + 0.04, y1 + 2.62, 2);
+        //     A07 陽台東北半段白色密排欄杆（南半段開向對外樓梯）
+        addWhitePicketZ(kitchen1FGroup, 9.08, 10.14, y1, 24.92, 1.05);
+        //     A07 東向對外 6 階混凝土樓梯（沿 107 白弧牆北側由 x=25.0 (+1.20) 往東降至 x=26.85 (0.00)，依 A2-1 / DD' / 04107.jpg）
+        {
+          const xTop = 25.0, xBot = 26.85, sLen = xBot - xTop, z0 = 10.14, z1 = 11.14;
+          const stSh = new THREE.Shape();
+          stSh.moveTo(0, 0); stSh.lineTo(sLen, 0); stSh.lineTo(0, y1); stSh.closePath();
+          const stM = new THREE.Mesh(new THREE.ExtrudeGeometry(stSh, { depth: z1 - z0, bevelEnabled: false }), MAT.concreteBase);
+          stM.position.set(gx(KIT.x + xTop), 0, gz(KIT.z + z0));
+          stM.castShadow = true; stM.receiveShadow = true; kitchen1FGroup.add(stM);
+          const nSteps = 6;
+          for (let i = 0; i < nSteps; i++) {
+            const u0 = i / nSteps, u1 = (i + 1) / nSteps;
+            const sy = y1 * (1 - u0);
+            kbox(kitchen1FGroup, xTop + u0 * sLen, xTop + u1 * sLen + 0.02, z0, z1, Math.max(0, sy - 0.22), sy, MAT.concreteBase, false);
+          }
+          // 對外樓梯北緣斜向白色扶手＋密排垂直欄杆（照片 04107.jpg）
+          const ang = Math.atan2(y1, sLen);
+          const rLen = Math.hypot(sLen, y1);
+          const [rx, rz] = K((xTop + xBot) * 0.5, z0 + 0.03);
+          const rail = addBox(kitchen1FGroup, rLen, 0.04, 0.04, rx, y1 * 0.5 + 0.95, rz, MAT.ckWhite, false);
+          rail.rotation.z = -ang;
+          for (let k = 0; k <= 7; k++) {
+            const u = k / 7;
+            const py = y1 * (1 - u);
+            const [px, pz] = K(xTop + u * sLen, z0 + 0.03);
+            addBox(kitchen1FGroup, 0.025, 0.95, 0.025, px, py + 0.475, pz, MAT.ckWhite, false);
+          }
+        }
 
         // ── 3. 中央廚房 1F 完整室內隔間與廚房設備（依 A2-1 一層平面圖，1F 剖切清晰可見！）──
         const kInt = (x0, x1, z0, z1) => kbox(kitchen1FGroup, x0, x1, z0, z1, y1, yR - 0.15, MAT.wallInt);
@@ -2188,60 +2241,100 @@
         dl(2.2, 0.9, 0.9, -1.6, y1 + 0.45, -4.3, MAT.woodLight);
         kitchen1FGroup.add(dining);
 
-        // ── 9. 107 更衣間（白色弧形牆＋W9 四格橫窗＋D4 東側門）與戶外樓梯 A05（實體階梯＋上段轉折平台＋連續白色密排欄杆，依 04107.jpg & A2-2/A3-2）──
+        // ── 9. 107 更衣間（白色弧形量體 頂 +3.65m＋W9 四格橫窗＋D4 東側白門）與 A05 雙折戶外樓梯（下段沿東側順接弧牆＋上段轉西登頂 +4.90，依 BB'/DD'/A2-2/04107.jpg）──
         {
+          const yMid = 3.65;
+          // 107 白色弧形量體（北面齊平 A07 樓梯南側 z=11.15，圓弧 r=2.40 順切 A05 樓梯東牆 x=30.20，高 yMid=+3.65m！）
           const sh = new THREE.Shape();
-          sh.moveTo(25, -10.7); sh.lineTo(28.0, -10.7);
-          sh.absarc(28.0, -13.3, 2.6, Math.PI / 2, 0, true);
-          sh.lineTo(30.6, -13.8); sh.lineTo(25, -13.8); sh.closePath();
-          const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: yR, bevelEnabled: false, curveSegments: 24 }), MAT.ckWhite);
+          sh.moveTo(25.0, -11.15); sh.lineTo(27.8, -11.15);
+          sh.absarc(27.8, -13.55, 2.4, Math.PI / 2, 0, true);
+          sh.lineTo(30.2, -14.2); sh.lineTo(25.0, -14.2); sh.closePath();
+          const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: yMid, bevelEnabled: false, curveSegments: 28 }), MAT.ckWhite);
           m.rotation.x = -Math.PI / 2; m.position.set(gx(KIT.x), 0, gz(KIT.z));
           m.castShadow = true; m.receiveShadow = true; kitchen1FGroup.add(m);
-          // W9 四格長條橫窗（貼齊北面弧牆平直段 x=25.4~28.1，照片 04107.jpg）
-          framedWinZ(kitchen1FGroup, 25.4, 28.05, 10.66, 1.85, 2.40, 4);
-          // D4 地面白色門（面向東側樓梯旁，白門板＋細框，依 A3-2 東向立面圖 & 04107.jpg）
-          kbox(kitchen1FGroup, 30.58, 30.65, 12.92, 13.84, 0.04, 2.20, MAT.alFrame, false);
-          kbox(kitchen1FGroup, 30.60, 30.68, 12.97, 13.79, 0.06, 2.15, MAT.ckWhite, false);
-        }
-        // 戶外樓梯 A05（實體階梯踏步＋白色斜牆＋上段西向平台＋連續斜向白色密排扶手欄杆，由南 z=18.9 (+1.20) 升至北 z=13.0 (+4.90)）
-        {
-          const zBot = 18.9, zTop = 13.0, L = zBot - zTop;
-          const sh = new THREE.Shape();
-          sh.moveTo(0, 0); sh.lineTo(L, 0); sh.lineTo(L, yR); sh.lineTo(0, y1); sh.closePath();
-          const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 2.0, bevelEnabled: false }), MAT.ckWhite);
-          m.rotation.y = Math.PI / 2;
-          const [sx, sz] = K(28.85, zBot);
-          m.position.set(sx, 0, sz); m.castShadow = true; m.receiveShadow = true; kitchen1FGroup.add(m);
-          // 實際階梯踏步
-          const steps = 16;
-          for (let i = 0; i < steps; i++) {
-            const u = (i + 0.5) / steps;
-            const sy = y1 + u * (yR - y1);
+          // W9 四格長條橫窗（貼齊北面平直段 x=25.55~28.0，位於 A07 對外樓梯上方，照片 04107.jpg）
+          framedWinZ(kitchen1FGroup, 25.55, 28.0, 11.11, 1.65, 2.22, 4);
+          // D4 地面白色門（位於東牆 x=30.20 樓梯下方，白門板＋細框，依 A2-1 / A3-2 / 04107.jpg）
+          kbox(kitchen1FGroup, 30.18, 30.24, 13.65, 14.52, 0.04, 2.18, MAT.alFrame, false);
+          kbox(kitchen1FGroup, 30.20, 30.27, 13.70, 14.47, 0.06, 2.13, MAT.ckWhite, false);
+
+          // A05 戶外樓梯下段（由南 z=18.85 (+1.20) 順升至北 z=13.55 (+3.65)，東牆完全齊平弧牆 x=30.20 無接縫！）
+          const zBot = 18.85, zTop = 13.55, L = zBot - zTop;
+          const s1 = new THREE.Shape();
+          s1.moveTo(0, 0); s1.lineTo(L, 0); s1.lineTo(L, yMid); s1.lineTo(0, y1); s1.closePath();
+          const m1 = new THREE.Mesh(new THREE.ExtrudeGeometry(s1, { depth: 1.80, bevelEnabled: false }), MAT.ckWhite);
+          m1.rotation.y = Math.PI / 2;
+          const [sx, sz] = K(28.40, zBot);
+          m1.position.set(sx, 0, sz); m1.castShadow = true; m1.receiveShadow = true; kitchen1FGroup.add(m1);
+          const steps1 = 14;
+          for (let i = 0; i < steps1; i++) {
+            const u = (i + 0.5) / steps1;
+            const sy = y1 + u * (yMid - y1);
             const szStep = zBot - u * L;
-            kbox(kitchen1FGroup, 28.95, 30.75, szStep - 0.18, szStep + 0.18, sy - 0.12, sy + 0.05, MAT.concreteBase, false);
+            kbox(kitchen1FGroup, 28.48, 30.12, szStep - 0.19, szStep + 0.19, sy - 0.12, sy + 0.04, MAT.concreteBase, false);
           }
-          // 東側連續斜向白色扶手＋密排垂直欄杆（照片 04107.jpg）
-          const slopeAng = Math.atan2(yR - y1, L);
-          const railLen = Math.hypot(L, yR - y1);
-          const [rcx, rcz] = K(30.82, (zBot + zTop) * 0.5);
-          const topRail = addBox(kitchen1FGroup, 0.05, 0.05, railLen, rcx, (y1 + yR) * 0.5 + 1.05, rcz, MAT.ckWhite, false);
-          topRail.rotation.x = slopeAng;
-          const pickets = 20;
-          for (let k = 0; k <= pickets; k++) {
-            const u = k / pickets;
-            const h = y1 + u * (yR - y1);
-            const [px, pz] = K(30.82, zBot - u * L);
+          // 下段東側連續斜向白色扶手＋密排垂直欄杆
+          const slopeAng1 = Math.atan2(yMid - y1, L);
+          const railLen1 = Math.hypot(L, yMid - y1);
+          const [rcx1, rcz1] = K(30.16, (zBot + zTop) * 0.5);
+          const topRail1 = addBox(kitchen1FGroup, 0.05, 0.05, railLen1, rcx1, (y1 + yMid) * 0.5 + 1.05, rcz1, MAT.ckWhite, false);
+          topRail1.rotation.x = slopeAng1;
+          for (let k = 0; k <= 18; k++) {
+            const u = k / 18;
+            const h = y1 + u * (yMid - y1);
+            const [px, pz] = K(30.16, zBot - u * L);
             addBox(kitchen1FGroup, 0.03, 1.05, 0.03, px, h + 0.525, pz, MAT.ckWhite, false);
           }
-          // 上段轉折平台（沿 107 頂面往西銜接屋頂 +4.90，附北緣密排白欄杆，依 A2-2 & 04107.jpg）
-          addWhitePicketX(kitchenRoofGroup, 25.0, 28.2, yR + 0.02, 10.76, 1.05);
+          // 中段弧形轉角白色密排欄杆（沿 107 圓弧頂緣從東切點順繞至北側上段樓梯口，依 04107.jpg & 基本設計 3D）
+          const arcSegs = 12;
+          const arcR = 2.34;
+          for (let a = 0; a <= arcSegs; a++) {
+            const th = (a / arcSegs) * (Math.PI / 2); // 0 = east (30.14, 13.55), PI/2 = north (27.8, 11.21)
+            const [px, pz] = K(27.8 + arcR * Math.cos(th), 13.55 - arcR * Math.sin(th));
+            addBox(kitchen1FGroup, 0.03, 1.05, 0.03, px, yMid + 0.525, pz, MAT.ckWhite, false);
+            if (a < arcSegs) {
+              const th2 = ((a + 1) / arcSegs) * (Math.PI / 2);
+              const [px2, pz2] = K(27.8 + arcR * Math.cos(th2), 13.55 - arcR * Math.sin(th2));
+              const segLen = Math.hypot(px2 - px, pz2 - pz);
+              const seg = addBox(kitchen1FGroup, segLen + 0.03, 0.05, 0.05, (px + px2) * 0.5, yMid + 1.05, (pz + pz2) * 0.5, MAT.ckWhite, false);
+              seg.rotation.y = -Math.atan2(pz2 - pz, px2 - px);
+            }
+          }
+
+          // A05 戶外樓梯上段（位於 107 頂面，由東 x=27.8 (+3.65) 往西爬升至 x=25.0 (+4.90) 銜接主屋頂平台，依 BB'/DD'/A2-2/04107.jpg）
+          const xU0 = 25.0, xU1 = 27.8, uLen = xU1 - xU0, uz0 = 11.22, uz1 = 13.05;
+          const s2 = new THREE.Shape();
+          s2.moveTo(0, yMid); s2.lineTo(uLen, yMid); s2.lineTo(0, yR); s2.closePath();
+          const m2 = new THREE.Mesh(new THREE.ExtrudeGeometry(s2, { depth: uz1 - uz0, bevelEnabled: false }), MAT.ckWhite);
+          m2.position.set(gx(KIT.x + xU0), 0, gz(KIT.z + uz0));
+          m2.castShadow = true; m2.receiveShadow = true; kitchenRoofGroup.add(m2);
+          const steps2 = 7;
+          for (let i = 0; i < steps2; i++) {
+            const u0 = i / steps2, u1 = (i + 1) / steps2;
+            const sy = yR - u0 * (yR - yMid);
+            kbox(kitchenRoofGroup, xU0 + u0 * uLen, xU0 + u1 * uLen + 0.02, uz0 + 0.04, uz1 - 0.04, sy - 0.18, sy, MAT.concreteBase, false);
+          }
+          // 上段北緣斜向白色密排扶手欄杆（往西斜升至 +4.90 屋頂，依 04107.jpg & BB'/DD'）
+          const slopeAng2 = Math.atan2(yR - yMid, uLen);
+          const railLen2 = Math.hypot(uLen, yR - yMid);
+          const [rcx2, rcz2] = K((xU0 + xU1) * 0.5, uz0 + 0.03);
+          const topRail2 = addBox(kitchenRoofGroup, railLen2, 0.05, 0.05, rcx2, (yMid + yR) * 0.5 + 1.05, rcz2, MAT.ckWhite, false);
+          topRail2.rotation.z = -slopeAng2;
+          for (let k = 0; k <= 10; k++) {
+            const u = k / 10;
+            const h = yR - u * (yR - yMid);
+            const [px, pz] = K(xU0 + u * uLen, uz0 + 0.03);
+            addBox(kitchenRoofGroup, 0.03, 1.05, 0.03, px, h + 0.525, pz, MAT.ckWhite, false);
+          }
+          // 上段西端銜接屋頂 +4.90 之過渡踏板（x=21~25, z=11.24~13.1）
+          kbox(kitchenRoofGroup, 21.0, 25.0, 11.22, 13.15, yR - 0.12, yR + 0.12, MAT.slabFloor);
         }
 
         // ── 10. 屋頂層 +4.90（放入 kitchenRoofGroup：切換 1F 剖切時自動隱藏露出完整廚房內裝！依 A2-2 開放屋頂平台無太陽能板）──
         kbox(kitchenRoofGroup, 4, 21, 4.5, 19, yR - 0.12, yR + 0.12, MAT.slabFloor);
         kbox(kitchenRoofGroup, 0, 4, 4.5, 12, yR - 0.12, yR + 0.12, MAT.slabFloor);
         kbox(kitchenRoofGroup, 0.15, 4.05, 12.15, 18.85, yR - 0.12, yR + 0.12, MAT.slabFloor); // 西南蜜桃區屋頂板
-        kbox(kitchenRoofGroup, 21, 25, 4.5, 12, 5.3, 5.5, MAT.slabFloor);
+        kbox(kitchenRoofGroup, 21.05, 24.80, 4.68, 11.02, 5.30, 5.48, MAT.slabFloor);
         kbox(kitchenRoofGroup, 9, 21, 0, 4.5, yR - 0.12, yR + 0.12, MAT.slabFloor);
         // 屋頂周邊排水導溝（依 A2-2 二層平面圖）
         kbox(kitchenRoofGroup, 4.3, 20.7, 18.45, 18.72, yR + 0.11, yR + 0.135, MAT.concreteBase, false);
@@ -3879,7 +3972,8 @@
           updateStreetViewLocationText();
         } else {
           const d = camera.position.clone().sub(controls.target);
-          d.normalize().multiplyScalar(Math.max(8, d.length() * 0.72));
+          const dist = d.length();
+          d.normalize().multiplyScalar(Math.max(8, dist * 0.72));
           const np = controls.target.clone().add(d);
           flyToCamera([np.x, Math.max(5, np.y), np.z], [controls.target.x, controls.target.y, controls.target.z], 340);
         }
@@ -3892,7 +3986,8 @@
           updateStreetViewLocationText();
         } else {
           const d = camera.position.clone().sub(controls.target);
-          d.normalize().multiplyScalar(Math.min(240, d.length() * 1.38));
+          const dist = d.length();
+          d.normalize().multiplyScalar(Math.min(240, dist * 1.38));
           const np = controls.target.clone().add(d);
           flyToCamera([np.x, Math.max(6, np.y), np.z], [controls.target.x, controls.target.y, controls.target.z], 340);
         }
