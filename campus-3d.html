@@ -1200,9 +1200,11 @@
         addBox(foundationGroup, 79.15, ELEV.F1 - 0.2, 10.95, gx(39.525), (ELEV.F1 - 0.2) * 0.5, gz(5.425), MAT.concreteBase);
         // East corridor extension plinth (Grid ⑩–⑪, ONLY along corridor C–B: Z=7.85~10.85m per A1-1 / A1-6)
         addBox(foundationGroup, 3.65, ELEV.F1 - 0.2, 3.0, gx(80.875), (ELEV.F1 - 0.2) * 0.5, gz(9.35), MAT.concreteBase);
-        // East Stair A plinth (Grid ⑨–⑨', X=72.0~76.4m, Z=10.85~18.20m) & 1F Generator/Pump Room plinth (⑨'–⑩, X=76.4~79.05m, Z=10.85~16.65m)
-        addBox(foundationGroup, 4.4, ELEV.F1 - 0.2, 7.35, gx(74.2), (ELEV.F1 - 0.2) * 0.5, gz(14.525), MAT.concreteBase);
-        addBox(foundationGroup, 2.65, 0.45, 5.8, gx(77.725), 0.225, gz(13.75), MAT.concreteBase);
+        // East Stair A & 1F L-shaped Generator/Fire Pump Room foundation (依 A1-6 / A3-7 / A4-2：地坪 +0.45m 貫通樓梯 A 下方，消除舊版 20cm 縫隙與實心誤建！)
+        addBox(foundationGroup, 4.40, 0.45, 7.35, gx(74.20), 0.225, gz(14.525), MAT.concreteBase);  // 樓梯 A 下方發電機／泵浦室延伸底板 (+0.45)
+        addBox(foundationGroup, 2.65, 0.45, 5.80, gx(77.725), 0.225, gz(13.75), MAT.concreteBase);  // 東側發電機室／消防泵浦室底板 (+0.45)
+        addBox(foundationGroup, 4.40, ELEV.F1 - 0.45, 1.80, gx(74.20), 0.45 + (ELEV.F1 - 0.45) * 0.5, gz(11.75), MAT.concreteBase); // 樓梯 A 1F 北平台基座 (Z=10.85~12.65, 齊平 +1.20)
+        addBox(foundationGroup, 2.65, 0.45, 0.80, gx(77.725), 0.225, gz(17.05), MAT.concreteBase);  // D4 機房門前入口踏階 (+0.45/+0.65)
 
         // South entry grand steps along corridor (Grid ③–⑤ per A1-1: X=16.5~42.2m; Grid ②–③ has corridor railing)
         addFlatPoly(foundationGroup, [[16.2, 10.85], [42.4, 10.85], [42.4, 12.15], [18.0, 12.15]], 0, ELEV.F1 - 0.04, MAT.corridorFloor);
@@ -1485,7 +1487,14 @@
       function buildMainFloor(floorNum, targetGroup, yBase) {
         // 1. Structural Floor Slab
         //    Main classroom/restroom block STOPS at Grid ⑩ (X=79.05m) per A1-1~A1-3!
-        addBox(targetGroup, 79.05, 0.18, 10.85, gx(39.525), yBase - 0.09, gz(5.425), MAT.slabFloor);
+        //    On 2F/3F, cut open Stair B stairwell shaft (X=5.15~8.95, Z=0~6.10) per A1-8 & A4-3 so stairs pass unobstructed!
+        if (floorNum === 1) {
+          addBox(targetGroup, 79.05, 0.18, 10.85, gx(39.525), yBase - 0.09, gz(5.425), MAT.slabFloor);
+        } else {
+          addBox(targetGroup, 5.15, 0.18, 10.85, gx(2.575), yBase - 0.09, gz(5.425), MAT.slabFloor);    // West Restroom slab (X=0~5.15)
+          addBox(targetGroup, 3.80, 0.18, 4.75, gx(7.05), yBase - 0.09, gz(8.475), MAT.slabFloor);     // Stair B south landing & corridor (Z=6.10~10.85)
+          addBox(targetGroup, 70.10, 0.18, 10.85, gx(44.00), yBase - 0.09, gz(5.425), MAT.slabFloor);  // Classrooms + East Restroom (X=8.95~79.05)
+        }
         //    East corridor extension (Grid ⑩–⑪, X=79.05~82.70m) exists ONLY along corridor C–B (Z=7.85~10.85m)!
         addBox(targetGroup, 3.65, 0.18, 3.0, gx(80.875), yBase - 0.09, gz(9.35), MAT.slabFloor);
         //    South corridor distinct surface (X=0~82.70m, Z=7.85~10.85m)
@@ -1697,19 +1706,67 @@
           addBox(targetGroup, 0.34, 0.58, 0.28, gx(ux), yBase + 0.85, gz(5.72), MAT.porcelain);
         });
         addBox(targetGroup, 1.95, 0.22, 0.48, gx(2.55), yBase + 0.78, gz(7.42), MAT.porcelain); // 男廁洗手台
-        // Stair B north wall & 1F storage room (儲藏室含 D13 入口門與貨架, A1-8)
-        addWindowWallX(targetGroup, 5.15, 8.95, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.8, 1.4, 1.2);
+        // Helper: Solid RC inclined stair flight along Z with 22cm soffit waist slab, crisp treads, & stainless handrail (A4-2 / A4-3)
+        const addSolidStairFlightZ = (xCenter, width, z0, y0, z1, y1, steps = 12, railSideX = 0, waistThick = 0.22) => {
+          const sMin = Math.min(z0, z1), sMax = Math.max(z0, z1), runL = sMax - sMin;
+          const yAtMin = z0 < z1 ? y0 : y1, yAtMax = z0 < z1 ? y1 : y0;
+          // 1) Solid continuous inclined RC waist slab underneath treads (zero gaps from below!)
+          const sh = new THREE.Shape();
+          sh.moveTo(0, yAtMin - waistThick);
+          sh.lineTo(runL, yAtMax - waistThick);
+          sh.lineTo(runL, yAtMax);
+          sh.lineTo(0, yAtMin);
+          sh.closePath();
+          const wMesh = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: width, bevelEnabled: false }), MAT.concreteBase);
+          wMesh.rotation.y = -Math.PI / 2;
+          wMesh.position.set(gx(xCenter + width * 0.5), 0, gz(sMin));
+          wMesh.castShadow = true; wMesh.receiveShadow = true;
+          targetGroup.add(wMesh);
+          // 2) Crisp stepped concrete treads on top of waist slab
+          const riser = (y1 - y0) / steps;
+          const tread = (z1 - z0) / steps;
+          for (let i = 0; i < steps; i++) {
+            const zMid = z0 + (i + 0.5) * tread;
+            const yTop = y0 + (i + 1) * riser;
+            addBox(targetGroup, width, riser + 0.04, Math.abs(tread) + 0.02, gx(xCenter), yTop - (riser + 0.04) * 0.5, gz(zMid), MAT.concreteBase, false);
+          }
+          // 3) Sloped stainless tubular handrail along stairwell inner edge (扶手(1)/(2))
+          if (railSideX !== 0) {
+            const rx = xCenter + railSideX * (width * 0.5 - 0.06);
+            const rLen = Math.hypot(runL, y1 - y0);
+            const dirZ = Math.sign(z1 - z0) || 1;
+            const bar = addBox(targetGroup, 0.04, 0.04, rLen, gx(rx), (y0 + y1) * 0.5 + 0.92, gz((z0 + z1) * 0.5), MAT.steelSilver, false);
+            bar.rotation.x = -dirZ * Math.atan2(y1 - y0, runL);
+            for (let k = 0; k <= 4; k++) {
+              const u = k / 4;
+              addBox(targetGroup, 0.03, 0.92, 0.03, gx(rx), y0 + u * (y1 - y0) + 0.46, gz(z0 + u * (z1 - z0)), MAT.steelSilver, false);
+            }
+          }
+        };
+
+        // Stair B north wall (Z=0.10, X=5.15~8.95) & 1F Storage Room (儲藏室, A1-8 / A4-3)
         if (floorNum === 1) {
-          addBox(targetGroup, 2.65, FLOOR_H - 0.15, 0.14, gx(7.62), yBase + (FLOOR_H - 0.15) * 0.5, gz(2.45), MAT.wallInt);
-          addInteriorDoorX(targetGroup, 5.78, yBase, FLOOR_H - 0.15, 2.45, 0.92, 2.05, MAT.woodDoor, -1, MAT.wallInt); // D13 儲藏室門
-          addBox(targetGroup, 1.8, 1.6, 0.55, gx(7.6), yBase + 0.80, gz(0.65), MAT.steelSilver, false); // 儲藏室貨架
+          // 1F north wall with W7 high window under +3.10m mid-landing lighting 儲藏室 (A4-3)
+          addWindowWallX(targetGroup, 5.15, 8.95, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.50, 0.85, 0.78);
+          // 1F 儲藏室 under west flight & north +3.10m mid-landing: south wall at Z=6.10 flush to 2F flight soffit (3.58m) with D13 door + east partition at X=7.04
+          addBox(targetGroup, 0.40, 3.58, 0.14, gx(5.35), yBase + 1.79, gz(6.10), MAT.wallInt);
+          addBox(targetGroup, 0.55, 3.58, 0.14, gx(6.77), yBase + 1.79, gz(6.10), MAT.wallInt);
+          addInteriorDoorX(targetGroup, 6.02, yBase, 3.58, 6.10, 0.94, 2.08, MAT.woodDoor, -1, MAT.wallInt); // D13 儲藏室門（面向南走廊）
+          addBox(targetGroup, 0.14, 1.85, 3.60, gx(7.04), yBase + 0.925, gz(4.30), MAT.wallInt);           // 儲藏室東側梯下隔牆
+          addBox(targetGroup, 2.40, 1.50, 0.55, gx(7.35), yBase + 0.75, gz(0.65), MAT.steelSilver, false); // 儲藏室貨架
+        } else {
+          addWindowWallX(targetGroup, 5.15, 8.95, yBase, FLOOR_H, 0.10, MAT.wallExt, 2.0, 1.45, 1.25);
         }
-        // Stair B flights (X=5.4~8.8)
-        for (let s = 0; s < 10; s++) {
-          addBox(targetGroup, 1.4, 0.18, 0.34, gx(6.3), yBase + 0.18 * (s + 1), gz(6.2 - s * 0.34), MAT.concreteBase);
-          addBox(targetGroup, 1.4, 0.18, 0.34, gx(7.9), yBase + 1.90 + 0.18 * (s + 1), gz(2.8 + s * 0.34), MAT.concreteBase);
+        // Stair B flights (依 A1-8 & A4-3：僅 1F→2F 與 2F→3F，每層 12+12=24 階，東段向北上、西段向南回上！3F 無上屋頂樓梯僅設安全欄杆！)
+        if (floorNum === 1 || floorNum === 2) {
+          addSolidStairFlightZ(8.00, 1.72, 6.10, yBase, 2.50, yBase + 1.90, 12, -1);                    // 下段（東側向北上）
+          addBox(targetGroup, 3.76, 0.18, 2.32, gx(7.04), yBase + 1.90 - 0.09, gz(1.34), MAT.concreteBase); // 北側轉折中平台 (+3.10 / +6.90)
+          addSolidStairFlightZ(6.10, 1.72, 2.50, yBase + 1.90, 6.10, yBase + 3.80, 12, 1);              // 上段（西側向南上）
+        } else if (floorNum === 3) {
+          // 3F 樓梯 B 頂部無上屋頂梯段，設 欄杆(2) H=110cm 防護梯井開口（依 A1-8 & A4-3）
+          addRailingX(targetGroup, 7.05, 8.90, yBase, 6.10, 1.10);
+          addRailingZ(targetGroup, 5.55, 6.10, yBase, 7.05, 1.10);
         }
-        addBox(targetGroup, 3.2, 0.18, 1.5, gx(7.1), yBase + 1.90, gz(1.8), MAT.concreteBase);
 
         // Helper for classroom/rear-balcony furnishings (依 A1-1~A1-3, A3-2, A3-5)
         const addRearBalconyFixtures = (rx0, rx1) => {
@@ -1920,29 +1977,37 @@
           addRailingX(targetGroup, 79.1, 82.45, yBase, 7.92, 1.10);
         }
 
-        // 9. East Stair A (Grid ⑨–⑨', X=72.0~76.4m, Z=10.85~18.20m) & 1F Generator/Pump Room (⑨'–⑩, X=76.4~79.05m)
+        // 9. East Stair A (Grid ⑨–⑨', X=72.0~76.4m, Z=10.85~18.20m) & 1F L-Shaped Generator/Pump Room (⑨–⑩, 依 A1-6 / A1-7 / A3-7 / A4-2 / A1-4)
         if (floorNum === 1) {
-          // 1F 中空發電機室／消防泵浦室（X=76.4~79.05, Z=10.85~16.65，地坪 +0.45，南向 D4 雙開檢修門＋東向 W15 百葉＋發電機與紅消防泵浦，依 A1-1）
-          const gH = 4.35; // y = 0.45 -> 4.80
-          addBox(targetGroup, 2.65, gH, 0.20, gx(77.725), 0.45 + gH * 0.5, gz(10.95), MAT.wallFrameGray); // 北牆
-          // 東牆（中段開 W15 百葉窗洞 Z=13.1~14.5）
-          addBox(targetGroup, 0.20, gH, 2.25, gx(78.95), 0.45 + gH * 0.5, gz(11.975), MAT.wallFrameGray);
-          addBox(targetGroup, 0.20, gH, 2.15, gx(78.95), 0.45 + gH * 0.5, gz(15.575), MAT.wallFrameGray);
-          addBox(targetGroup, 0.20, 1.35, 1.40, gx(78.95), 0.45 + 0.675, gz(13.80), MAT.wallFrameGray);
-          addBox(targetGroup, 0.20, gH - 2.65, 1.40, gx(78.95), 0.45 + 2.65 + (gH - 2.65) * 0.5, gz(13.80), MAT.wallFrameGray);
-          for (let ly = 1.90; ly < 3.05; ly += 0.18) {
+          // 1F 中空 L 形發電機室／消防泵浦室（東翼 X=76.4~79.05, Z=10.85~16.65 ＋ 貫通樓梯 A 下方西翼 X=72.2~76.4, Z=12.65~18.0，地坪 +0.45，淨高直達 2F 露台底 +4.82！）
+          const gY0 = 0.0, gY1 = ELEV.F2 - 0.16, gH = gY1 - gY0; // y = 0.0 -> 4.84（零縫隙接 2F 露台底板！）
+          // 北牆（Z=10.95，設 W16 通風百葉）
+          addBox(targetGroup, 2.65, gH, 0.20, gx(77.725), gY0 + gH * 0.5, gz(10.95), MAT.wallFrameGray);
+          // 東牆（X=78.95，中段實開 W15 百葉窗洞 Z=13.1~14.5）
+          addBox(targetGroup, 0.20, gH, 2.25, gx(78.95), gY0 + gH * 0.5, gz(11.975), MAT.wallFrameGray);
+          addBox(targetGroup, 0.20, gH, 2.15, gx(78.95), gY0 + gH * 0.5, gz(15.575), MAT.wallFrameGray);
+          addBox(targetGroup, 0.20, 1.85, 1.40, gx(78.95), 0.925, gz(13.80), MAT.wallFrameGray);
+          addBox(targetGroup, 0.20, gY1 - 3.05, 1.40, gx(78.95), 3.05 + (gY1 - 3.05) * 0.5, gz(13.80), MAT.wallFrameGray);
+          for (let ly = 1.92; ly < 3.02; ly += 0.16) {
             addBox(targetGroup, 0.10, 0.04, 1.36, gx(78.98), ly, gz(13.80), MAT.steelDark, false); // W15 百葉片
           }
-          // 南牆（開 D4 寬 1.4m 雙開機房門洞 X=77.05~78.45，門片向內敞開可檢視內部設備！）
-          addBox(targetGroup, 0.65, gH, 0.20, gx(76.725), 0.45 + gH * 0.5, gz(16.55), MAT.wallFrameGray);
-          addBox(targetGroup, 0.60, gH, 0.20, gx(78.75), 0.45 + gH * 0.5, gz(16.55), MAT.wallFrameGray);
-          addInteriorDoorX(targetGroup, 77.75, 0.45, gH, 16.55, 1.40, 2.25, MAT.steelDark, -1, MAT.wallFrameGray);
-          // 室內設備：緊急柴油發電機 ＋ 紅色消防泵浦組 ＋ 電源控制盤
+          // 南牆（Z=16.55，實開 D4 寬 1.4m 雙開機房門洞 X=77.05~78.45，門檻 +0.65，門片向內敞開可直視 L 形機房與梯下空間！）
+          addBox(targetGroup, 0.65, gH, 0.20, gx(76.725), gY0 + gH * 0.5, gz(16.55), MAT.wallFrameGray);
+          addBox(targetGroup, 0.60, gH, 0.20, gx(78.75), gY0 + gH * 0.5, gz(16.55), MAT.wallFrameGray);
+          addBox(targetGroup, 1.40, 0.65, 0.20, gx(77.75), 0.325, gz(16.55), MAT.wallFrameGray); // D4 下緣 +0.65 門檻基座
+          addInteriorDoorX(targetGroup, 77.75, 0.65, gY1 - 0.65, 16.55, 1.40, 2.20, MAT.steelDark, -1, MAT.wallFrameGray);
+          // 室內設備：東翼（緊急柴油發電機＋控制盤＋消防主泵）＋ 樓梯 A 下方西翼（消防加壓泵浦組＋壓力桶＋紅色管線＋50cm 1/2B 磚矮牆，依 A1-6 / A4-2）
           addBox(targetGroup, 1.15, 1.10, 2.00, gx(77.75), 0.45 + 0.55, gz(12.35), makeMat(0xc49a2a, { roughness: 0.5, metalness: 0.3 }), false);
           addBox(targetGroup, 0.65, 0.72, 1.15, gx(77.35), 0.45 + 0.36, gz(14.55), makeMat(0xb91c1c, { roughness: 0.45, metalness: 0.3 }), false);
           addBox(targetGroup, 0.45, 1.75, 0.90, gx(78.55), 0.45 + 0.88, gz(15.25), MAT.steelSilver, false);
+          addBox(targetGroup, 1.25, 0.78, 0.75, gx(74.85), 0.45 + 0.39, gz(16.20), makeMat(0xb91c1c, { roughness: 0.45, metalness: 0.3 }), false); // 梯下消防加壓泵組
+          {
+            const pt = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.35, 14), makeMat(0xb91c1c, { roughness: 0.4 }));
+            pt.position.set(gx(73.45), 0.45 + 0.675, gz(16.85)); targetGroup.add(pt); // 梯下消防壓力桶
+          }
+          addBox(targetGroup, 4.00, 0.50, 0.14, gx(74.20), 0.45 + 0.25, gz(17.75), MAT.concreteBase, false); // 南側 1/2B 磚矮牆 (H=50cm, A4-2)
         } else if (floorNum === 2) {
-          // 2F Roof Terrace over Generator Room (露台 +500, X=76.4~79.05, Z=10.85~16.65 per A1-6)
+          // 2F Roof Terrace over Generator Room (露台 +500, X=76.4~79.05, Z=10.85~16.65, 女兒牆 +620 per A1-6 & A3-7)
           addBox(targetGroup, 2.65, 0.18, 5.8, gx(77.725), yBase - 0.09, gz(13.75), MAT.corridorFloor);
           addBox(targetGroup, 0.18, 1.20, 5.8, gx(78.96), yBase + 0.60, gz(13.75), MAT.wallFrameGray);
           addBox(targetGroup, 2.65, 1.20, 0.18, gx(77.725), yBase + 0.60, gz(16.56), MAT.wallFrameGray);
@@ -1953,25 +2018,71 @@
           addRailingZ(targetGroup, 10.85, 12.30, yBase, 79.0, 1.10);
         }
 
-        // Stair A enclosure (open-windowed south facade on 2F & 3F per A2-1 South Elevation!)
-        addBox(targetGroup, 0.22, FLOOR_H, 7.35, gx(72.11), yBase + FLOOR_H * 0.5, gz(14.525), MAT.wallFrameGray);
-        addBox(targetGroup, 0.22, FLOOR_H, 7.35, gx(76.29), yBase + FLOOR_H * 0.5, gz(14.525), MAT.wallFrameGray);
+        // Stair A Enclosure, Stepped Height (+10.90m south projection -> +13.80m main roof), & Solid Flights (依 A1-6 / A1-7 / A4-2 / A1-4 / A2-1!)
+        //   North corridor-level landing (Z=10.85~12.65 at yBase = 1F +1.20 / 2F +5.00 / 3F +8.80)
+        addBox(targetGroup, 4.10, 0.18, 1.80, gx(74.20), yBase - 0.09, gz(11.75), MAT.corridorFloor);
         if (floorNum === 1) {
-          // 1F Stair A south wall with ventilation louver W14
-          addBox(targetGroup, 4.4, FLOOR_H, 0.22, gx(74.2), yBase + FLOOR_H * 0.5, gz(18.09), MAT.wallFrameGray);
-          addBox(targetGroup, 1.4, 0.95, 0.08, gx(74.2), yBase + 1.05, gz(18.22), MAT.steelDark, false);
-        } else {
-          // 2F & 3F Stair A south wall: 1.15m spandrel + railing + open gallery + 0.55m top fascia (matching A2-1!)
-          addBox(targetGroup, 4.4, 1.15, 0.22, gx(74.2), yBase + 0.575, gz(18.09), MAT.wallFrameGray);
-          addBox(targetGroup, 4.4, 0.55, 0.22, gx(74.2), yBase + FLOOR_H - 0.275, gz(18.09), MAT.wallFrameGray);
-          addRailingX(targetGroup, 72.25, 76.15, yBase + 0.05, 18.02, 1.15);
+          // 1F 西外牆（由 GL 0.0 連續升至 +5.00，完全消除舊版 20cm 縫隙！）
+          addBox(targetGroup, 0.22, ELEV.F2, 7.35, gx(72.11), ELEV.F2 * 0.5, gz(14.525), MAT.wallFrameGray);
+          // 1F 東界牆 X=76.29：北段 (Z=10.85~12.65) 與南突出段 (Z=16.55~18.20) 實牆到頂；中段 (Z=12.65~16.55) 僅在 y=2.85~5.00 封閉，下方 y=0.45~2.85 敞開貫通 L 形發電機室（依 A1-6 509cm 通透寬度！）
+          addBox(targetGroup, 0.22, ELEV.F2, 1.80, gx(76.29), ELEV.F2 * 0.5, gz(11.75), MAT.wallFrameGray);
+          addBox(targetGroup, 0.22, ELEV.F2, 1.65, gx(76.29), ELEV.F2 * 0.5, gz(17.375), MAT.wallFrameGray);
+          addBox(targetGroup, 0.22, ELEV.F2 - 2.85, 3.90, gx(76.29), 2.85 + (ELEV.F2 - 2.85) * 0.5, gz(14.60), MAT.wallFrameGray);
+          // 1F 梯間與梯下發電機室防火分隔 RC 牆（封閉 Z=12.65 東半與西段梯側，避免 1F 梯廳落差直通機房，依 A1-6 & A4-2！）
+          addBox(targetGroup, 2.25, ELEV.F2 - 0.18 - 0.45, 0.16, gx(75.15), 0.45 + (ELEV.F2 - 0.18 - 0.45) * 0.5, gz(12.65), MAT.wallFrameGray);
+          {
+            // 西段梯下三角分隔牆（沿 X=74.05, Z=12.65~16.25，從 +0.45 貼合西段樓梯斜板底面）
+            const tri = new THREE.Shape();
+            tri.moveTo(0, 0.45); tri.lineTo(3.60, 0.45); tri.lineTo(3.60, 3.10 - 0.20); tri.lineTo(0, 1.20 - 0.18); tri.closePath();
+            const triM = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, { depth: 0.16, bevelEnabled: false }), MAT.wallFrameGray);
+            triM.rotation.y = -Math.PI / 2;
+            triM.position.set(gx(74.13), 0, gz(12.65));
+            triM.castShadow = true; triM.receiveShadow = true; targetGroup.add(triM);
+          }
+          // 1F 南外牆 Z=18.09：由 GL 0.0 實建至 +4.30m（中平台 +3.10 + 120cm 女兒牆 = +430，依 A1-6 & A4-2），下段實挖 W14 百葉通風口進入梯下發電機室！
+          addBox(targetGroup, 1.50, 4.30, 0.22, gx(72.75), 2.15, gz(18.09), MAT.wallFrameGray);
+          addBox(targetGroup, 1.50, 4.30, 0.22, gx(75.65), 2.15, gz(18.09), MAT.wallFrameGray);
+          addBox(targetGroup, 1.40, 0.95, 0.22, gx(74.20), 0.475, gz(18.09), MAT.wallFrameGray);
+          addBox(targetGroup, 1.40, 4.30 - 1.95, 0.22, gx(74.20), 1.95 + (4.30 - 1.95) * 0.5, gz(18.09), MAT.wallFrameGray);
+          for (let ly = 1.04; ly < 1.92; ly += 0.15) {
+            addBox(targetGroup, 1.36, 0.04, 0.12, gx(74.20), ly, gz(18.12), MAT.steelDark, false); // W14 實開百葉
+          }
+          // 1F→2F 實心斜板樓梯（12+12=24 階，西段向南上 +1.20→+3.10，中平台 +3.10，東段向北上 +3.10→+5.00，依 A4-2！）
+          addSolidStairFlightZ(73.12, 1.72, 12.65, yBase, 16.25, yBase + 1.90, 12, 1);
+          addBox(targetGroup, 4.00, 0.20, 1.75, gx(74.20), yBase + 1.90 - 0.10, gz(17.125), MAT.concreteBase); // +3.10 中平台
+          addSolidStairFlightZ(75.28, 1.72, 16.25, yBase + 1.90, 12.65, yBase + 3.80, 12, -1);
+        } else if (floorNum === 2) {
+          // 2F 西／東外牆（+5.00 -> +8.80）
+          addBox(targetGroup, 0.22, FLOOR_H, 7.35, gx(72.11), yBase + FLOOR_H * 0.5, gz(14.525), MAT.wallFrameGray);
+          addBox(targetGroup, 0.22, FLOOR_H, 7.35, gx(76.29), yBase + FLOOR_H * 0.5, gz(14.525), MAT.wallFrameGray);
+          // 2F 南外牆 Z=18.09：精準對齊中平台高程！+4.30~+6.70 為完整通透開口 #1（無中平台橫切窗洞！），+6.70~+8.10 為 2F→3F 中平台 (+6.90) 與 120cm 實牆欄板 (+810, A1-7)！
+          addBox(targetGroup, 0.45, 3.80, 0.22, gx(72.225), 6.20, gz(18.09), MAT.wallFrameGray);
+          addBox(targetGroup, 0.45, 3.80, 0.22, gx(76.175), 6.20, gz(18.09), MAT.wallFrameGray);
+          addBox(targetGroup, 3.50, 1.40, 0.22, gx(74.20), 7.40, gz(18.09), MAT.wallFrameGray); // +6.70 -> +8.10 實牆帶（精準包覆 +6.90 中平台＋欄牆）
+          // 2F→3F 實心斜板樓梯（12+12=24 階，+5.00→+6.90→+8.80，依 A4-2！）
+          addSolidStairFlightZ(73.12, 1.72, 12.65, yBase, 16.25, yBase + 1.90, 12, 1);
+          addBox(targetGroup, 4.00, 0.20, 1.75, gx(74.20), yBase + 1.90 - 0.10, gz(17.125), MAT.concreteBase); // +6.90 中平台
+          addSolidStairFlightZ(75.28, 1.72, 16.25, yBase + 1.90, 12.65, yBase + 3.80, 12, -1);
+        } else if (floorNum === 3) {
+          // 3F 樓梯 A 依 A4-2 / A1-4 / A1-7：無上屋頂梯段！主梯井 (Z=10.85~16.75) 升至 RFL +12.60，南側突出中平台區 (Z=16.75~18.20) 降階收頭於 +10.70/+10.90！
+          //   1) 主梯井西／東外牆（Z=10.85~16.75，y=8.80->12.60）
+          addBox(targetGroup, 0.22, FLOOR_H, 5.90, gx(72.11), yBase + FLOOR_H * 0.5, gz(13.80), MAT.wallFrameGray);
+          addBox(targetGroup, 0.22, FLOOR_H, 5.90, gx(76.29), yBase + FLOOR_H * 0.5, gz(13.80), MAT.wallFrameGray);
+          //   2) 南側突出區西／東側牆（Z=16.75~18.20，僅升至 +10.90m 降階收頭！）
+          const lowH = 10.90 - yBase; // 2.10m
+          addBox(targetGroup, 0.22, lowH, 1.45, gx(72.11), yBase + lowH * 0.5, gz(17.475), MAT.wallFrameGray);
+          addBox(targetGroup, 0.22, lowH, 1.45, gx(76.29), yBase + lowH * 0.5, gz(17.475), MAT.wallFrameGray);
+          //   3) 南外牆 Z=18.09：+8.10~+10.50 為完整通透開口 #2（無假 3F→RF 平台擋窗！），頂部 +10.50~+10.90 簷梁＋突出區降階屋頂板 (+10.70)
+          addBox(targetGroup, 0.45, 2.80, 0.22, gx(72.225), 9.50, gz(18.09), MAT.wallFrameGray);
+          addBox(targetGroup, 0.45, 2.80, 0.22, gx(76.175), 9.50, gz(18.09), MAT.wallFrameGray);
+          addBox(targetGroup, 3.50, 0.40, 0.22, gx(74.20), 10.70, gz(18.09), MAT.wallFrameGray);
+          addBox(targetGroup, 4.40, 0.22, 1.55, gx(74.20), 10.61, gz(17.425), MAT.slabFloor); // 南突出區 +10.70 屋頂板（A1-4 / A4-2）
+          //   4) 軸線 A' 退縮上層南牆（Z=16.65，由 +10.70 封閉升至 RFL +12.60）
+          addBox(targetGroup, 4.40, ELEV.RF - 10.70, 0.22, gx(74.20), 10.70 + (ELEV.RF - 10.70) * 0.5, gz(16.65), MAT.wallFrameGray);
+          //   5) 3F 梯井口安全欄杆 欄杆(2) H=110cm（保護 2F→3F 梯井開口，依 A1-7 & A4-2！）
+          addRailingX(targetGroup, 72.25, 74.20, yBase, 12.65, 1.10);
+          addRailingZ(targetGroup, 12.65, 13.25, yBase, 74.20, 1.10);
         }
-        // Stair A concrete flights & mid-landing
-        for (let s = 0; s < 10; s++) {
-          addBox(targetGroup, 1.75, 0.18, 0.36, gx(73.2), yBase + 0.18 * (s + 1), gz(12.2 + s * 0.36), MAT.concreteBase);
-          addBox(targetGroup, 1.75, 0.18, 0.36, gx(75.2), yBase + 1.90 + 0.18 * (s + 1), gz(15.8 - s * 0.36), MAT.concreteBase);
-        }
-        addBox(targetGroup, 4.0, 0.18, 1.6, gx(74.2), yBase + 1.90, gz(17.1), MAT.concreteBase);
 
         // 10. Corridor Vertical Architectural Feature Walls on South Facade (WF4, 102cm wide per A1-1~A1-3 & A2-1!)
         //     6 exact shafts: [13.5, 22.5, 31.5] stop at 3FL+1.75m; [40.5, 49.5, 67.5] rise to RFL. Breezeway ⑦–⑧ (58.5) is OPEN!
@@ -2000,12 +2111,12 @@
         addRailingX(roofGroup, 0.2, 78.9, ELEV.RF + 0.78, 0.0, 0.58);
         addRailingX(roofGroup, 0.2, 82.5, ELEV.RF + 0.78, 10.85, 0.58);
 
-        // 2. East Stair A low roof & parapet (+12.80 slab / +13.80 parapet per A1-4 & A2-1!) + 15T Combined Water Tank
-        addBox(roofGroup, 4.4, 0.24, 7.35, gx(74.2), ELEV.RF + 0.20, gz(14.525), MAT.slabFloor);
-        addBox(roofGroup, 4.4, 1.05, 0.22, gx(74.2), ELEV.RF + 0.75, gz(18.09), MAT.wallFrameGray);
-        addBox(roofGroup, 0.22, 1.05, 7.35, gx(72.11), ELEV.RF + 0.75, gz(14.525), MAT.wallFrameGray);
-        addBox(roofGroup, 0.22, 1.05, 7.35, gx(76.29), ELEV.RF + 0.75, gz(14.525), MAT.wallFrameGray);
-        addBox(roofGroup, 2.4, 1.35, 3.6, gx(74.2), ELEV.RF + 1.00, gz(14.3), MAT.steelSilver);
+        // 2. East Stair A main roof & parapet (Z=10.85~16.75 至軸線 A'，板頂 +12.80 / 女兒牆 +13.80，南突出區已於 +10.70/+10.90 降階收頭，依 A1-4 & A4-2!) + 15T 組合式水箱
+        addBox(roofGroup, 4.40, 0.24, 5.90, gx(74.20), ELEV.RF + 0.12, gz(13.80), MAT.slabFloor);
+        addBox(roofGroup, 4.40, 1.20, 0.22, gx(74.20), ELEV.RF + 0.60, gz(16.65), MAT.wallFrameGray);
+        addBox(roofGroup, 0.22, 1.20, 5.90, gx(72.11), ELEV.RF + 0.60, gz(13.80), MAT.wallFrameGray);
+        addBox(roofGroup, 0.22, 1.20, 5.90, gx(76.29), ELEV.RF + 0.60, gz(13.80), MAT.wallFrameGray);
+        addBox(roofGroup, 2.40, 1.35, 3.40, gx(74.20), ELEV.RF + 0.92, gz(13.65), MAT.steelSilver);
 
         // 3. West Long Pitched Steel Canopy Roof (Grid ②–⑤ + 1.8m overhangs: X=7.2~37.8m, Z=5.95~17.65m per A1-4 & A3-2!)
         //    Slopes smoothly down toward south: North edge (Z=5.95) = +15.19m, South edge (Z=17.65) = +13.75m
@@ -3932,7 +4043,7 @@
       function getWalkableFloorY(worldX, worldZ, svFloor = 0) {
         const rx = worldX - OFFSET_X;
         const rz = worldZ - OFFSET_Z;
-        const inGenRoom = rx >= 76.3 && rx <= 79.2 && rz >= 10.8 && rz <= 16.8;
+        const inGenRoom = (rx >= 76.3 && rx <= 79.2 && rz >= 10.8 && rz <= 16.8) || (rx >= 72.1 && rx <= 76.4 && rz >= 12.6 && rz <= 18.2);
         const inMain = rx >= -1.0 && rx <= 82.8 && rz >= -2.2 && rz <= 16.8;
         const inWalkway = rx >= KIT.x + 29 && rx <= 0.5 && rz >= 7.8 && rz <= 10.9;
         const inKitchenBoiler = rx >= KIT.x + 4.0 && rx <= KIT.x + 9.0 && rz >= KIT.z - 0.2 && rz <= KIT.z + 4.6;
