@@ -1002,31 +1002,71 @@
         });
       }
 
-      // Classroom / Library door with glass upper transom (D1 100x277 or D16 180x277 per A5-1)
-      function addDoorWithTransomX(parent, cx, yBase, wallH, z, w = 0.96, doorH = 2.17, transomH = 0.60, isGlass = false) {
+      // Classroom / Library / Rear-Balcony door with glass upper transom (D1 100x277, D2/D2A 95x277, D16 180x277 per A5-1)
+      // Door leaves are hinged open inward (~68°) so every room is visibly open and walkable for facility maintenance!
+      function addDoorWithTransomX(parent, cx, yBase, wallH, z, w = 0.96, doorH = 2.17, transomH = 0.60, isGlass = false, openDir = -1) {
         const totalH = doorH + transomH;
         const topWallH = wallH - totalH;
         if (topWallH > 0.02) {
           addBox(parent, w + 0.16, topWallH, 0.18, gx(cx), yBase + totalH + topWallH * 0.5, gz(z), MAT.wallExt);
         }
         // Aluminum door frame jambs & transom rail
-        addBox(parent, 0.06, totalH, 0.14, gx(cx - w * 0.5), yBase + totalH * 0.5, gz(z), MAT.alFrame, false, false);
-        addBox(parent, 0.06, totalH, 0.14, gx(cx + w * 0.5), yBase + totalH * 0.5, gz(z), MAT.alFrame, false, false);
-        addBox(parent, w + 0.06, 0.06, 0.14, gx(cx), yBase + doorH, gz(z), MAT.alFrame, false, false);
-        addBox(parent, w + 0.06, 0.06, 0.14, gx(cx), yBase + totalH, gz(z), MAT.alFrame, false, false);
+        addBox(parent, 0.06, totalH, 0.16, gx(cx - w * 0.5), yBase + totalH * 0.5, gz(z), MAT.alFrame, false, false);
+        addBox(parent, 0.06, totalH, 0.16, gx(cx + w * 0.5), yBase + totalH * 0.5, gz(z), MAT.alFrame, false, false);
+        addBox(parent, w + 0.06, 0.06, 0.16, gx(cx), yBase + doorH, gz(z), MAT.alFrame, false, false);
+        addBox(parent, w + 0.06, 0.06, 0.16, gx(cx), yBase + totalH, gz(z), MAT.alFrame, false, false);
         // Upper transom glass
         addBox(parent, w - 0.04, transomH - 0.04, 0.04, gx(cx), yBase + doorH + transomH * 0.5, gz(z), MAT.glass, false, false);
         if (isGlass) {
-          // Double glass library door D16 (180x277) with center stile & steel handles
-          addBox(parent, w - 0.06, doorH - 0.04, 0.05, gx(cx), yBase + doorH * 0.5, gz(z), MAT.glass, false, false);
-          addBox(parent, 0.07, doorH, 0.10, gx(cx), yBase + doorH * 0.5, gz(z), MAT.alFrame, false, false);
-          addBox(parent, 0.04, 0.45, 0.12, gx(cx - 0.12), yBase + 1.05, gz(z), MAT.steelSilver, false, false);
-          addBox(parent, 0.04, 0.45, 0.12, gx(cx + 0.12), yBase + 1.05, gz(z), MAT.steelSilver, false, false);
+          // Double glass library door D16 (180x277): both leaves hinged open inward into the library
+          const leafW = (w - 0.08) * 0.5;
+          [-1, 1].forEach((side) => {
+            const pivot = new THREE.Group();
+            pivot.position.set(gx(cx + side * (w * 0.5 - 0.04)), yBase, gz(z));
+            pivot.rotation.y = side * openDir * 1.15;
+            addBox(pivot, leafW, doorH - 0.04, 0.05, -side * leafW * 0.5, doorH * 0.5, 0, MAT.glass, false, false);
+            addBox(pivot, 0.05, doorH - 0.02, 0.08, -side * leafW, doorH * 0.5, 0, MAT.alFrame, false, false);
+            addBox(pivot, 0.04, 0.42, 0.10, -side * (leafW - 0.10), 1.05, 0, MAT.steelSilver, false, false);
+            parent.add(pivot);
+          });
         } else {
-          // Standard wood-faced aluminum door D1 with small viewing glass strip
-          addBox(parent, w - 0.06, doorH - 0.02, 0.10, gx(cx), yBase + doorH * 0.5, gz(z), MAT.woodDoor);
-          addBox(parent, 0.16, 0.85, 0.11, gx(cx + w * 0.22), yBase + 1.48, gz(z), MAT.glass, false, false);
+          // Hinged wood-faced door leaf swung open ~68° inward so rooms can be entered & inspected cleanly
+          const leafW = w - 0.08;
+          const pivot = new THREE.Group();
+          pivot.position.set(gx(cx - w * 0.5 + 0.04), yBase, gz(z));
+          pivot.rotation.y = openDir * 1.18;
+          addBox(pivot, leafW, doorH - 0.04, 0.06, leafW * 0.5, doorH * 0.5, 0, MAT.woodDoor, false, false);
+          addBox(pivot, 0.16, 0.80, 0.07, leafW * 0.72, 1.46, 0, MAT.glass, false, false);
+          parent.add(pivot);
         }
+      }
+
+      // Open interior partition doorway helper (leaves clear walkable portal + frame + ajar leaf)
+      function addInteriorDoorX(parent, cx, yBase, wallH, z, w = 0.90, doorH = 2.12, leafMat = MAT.woodDoor, openDir = -1, wallMat = MAT.wallInt) {
+        const topH = wallH - doorH;
+        if (topH > 0.02) addBox(parent, w + 0.08, topH, 0.14, gx(cx), yBase + doorH + topH * 0.5, gz(z), wallMat);
+        addBox(parent, 0.05, doorH, 0.16, gx(cx - w * 0.5), yBase + doorH * 0.5, gz(z), MAT.alFrame, false, false);
+        addBox(parent, 0.05, doorH, 0.16, gx(cx + w * 0.5), yBase + doorH * 0.5, gz(z), MAT.alFrame, false, false);
+        addBox(parent, w + 0.05, 0.05, 0.16, gx(cx), yBase + doorH, gz(z), MAT.alFrame, false, false);
+        const leafW = w - 0.06;
+        const pivot = new THREE.Group();
+        pivot.position.set(gx(cx - w * 0.5 + 0.03), yBase, gz(z));
+        pivot.rotation.y = openDir * 1.15;
+        addBox(pivot, leafW, doorH - 0.04, 0.05, leafW * 0.5, doorH * 0.5, 0, leafMat, false, false);
+        parent.add(pivot);
+      }
+      function addInteriorDoorZ(parent, x, yBase, wallH, cz, w = 0.90, doorH = 2.12, leafMat = MAT.woodDoor, openDir = 1, wallMat = MAT.wallInt) {
+        const topH = wallH - doorH;
+        if (topH > 0.02) addBox(parent, 0.14, topH, w + 0.08, gx(x), yBase + doorH + topH * 0.5, gz(cz), wallMat);
+        addBox(parent, 0.16, doorH, 0.05, gx(x), yBase + doorH * 0.5, gz(cz - w * 0.5), MAT.alFrame, false, false);
+        addBox(parent, 0.16, doorH, 0.05, gx(x), yBase + doorH * 0.5, gz(cz + w * 0.5), MAT.alFrame, false, false);
+        addBox(parent, 0.16, 0.05, w + 0.05, gx(x), yBase + doorH, gz(cz), MAT.alFrame, false, false);
+        const leafW = w - 0.06;
+        const pivot = new THREE.Group();
+        pivot.position.set(gx(x), yBase, gz(cz - w * 0.5 + 0.03));
+        pivot.rotation.y = openDir * 1.15;
+        addBox(pivot, 0.05, doorH - 0.04, leafW, 0, doorH * 0.5, leafW * 0.5, leafMat, false, false);
+        parent.add(pivot);
       }
 
       // Helper for steel pipe handrail
@@ -1189,8 +1229,21 @@
         addBox(foundationGroup, 0.14, 0.90, 1.85, gx(55.15), 0.75, gz(-3.15), MAT.wallExt);
         addRailingX(foundationGroup, 55.2, 63.0, ELEV.F1, -2.25, 1.05);
 
-        // 北側東旁：水箱室（X=63.2~67.8, Z=-3.8~-1.835, +40~+260）＋ 資源回收場（鋁格柵 H=+190，依 A1-1 / A2-2）
-        addBox(foundationGroup, 4.6, 2.4, 1.95, gx(65.5), 1.2, gz(-2.82), MAT.wallFrameGray);
+        // 北側東旁：水箱室（中空圍牆＋北向檢修門＋橫臥式不鏽鋼水箱，X=63.2~67.8, Z=-3.8~-1.835, +40~+260）＋ 資源回收場（鋁格柵 H=+190，依 A1-1 / A2-2）
+        addBox(foundationGroup, 4.6, 0.40, 1.95, gx(65.5), 0.20, gz(-2.82), MAT.concreteBase); // +40 水箱室底板
+        addBox(foundationGroup, 0.16, 2.20, 1.95, gx(63.28), 1.30, gz(-2.82), MAT.wallFrameGray); // 西牆
+        addBox(foundationGroup, 0.16, 2.20, 1.95, gx(67.72), 1.30, gz(-2.82), MAT.wallFrameGray); // 東牆
+        addBox(foundationGroup, 2.80, 2.20, 0.16, gx(64.65), 1.30, gz(-3.72), MAT.wallFrameGray); // 北牆西段（東段留 1.15m 檢修門洞）
+        addBox(foundationGroup, 0.55, 2.20, 0.16, gx(67.48), 1.30, gz(-3.72), MAT.wallFrameGray); // 北牆東段
+        addInteriorDoorX(foundationGroup, 66.62, 0.40, 2.00, -3.72, 1.10, 1.95, MAT.steelDark, 1, MAT.wallFrameGray);
+        {
+          // 橫臥式不鏽鋼水箱（依 A1-1 標註）
+          const hTank = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 2.8, 18), MAT.steelSilver);
+          hTank.rotation.z = Math.PI / 2;
+          hTank.position.set(gx(65.0), 1.15, gz(-2.80));
+          hTank.castShadow = true;
+          foundationGroup.add(hTank);
+        }
         addBox(foundationGroup, 4.0, 0.12, 1.95, gx(69.8), 0.06, gz(-2.82), MAT.concreteBase);
         for (let lx = 67.95; lx <= 71.7; lx += 0.24) {
           addBox(foundationGroup, 0.06, 1.90, 0.08, gx(lx), 0.95, gz(-3.76), MAT.steelDark, false);
@@ -1265,7 +1318,8 @@
         addBox(parent, 2.40, 2.40, 0.14, gx(77.75), yBase + 1.20, gz(5.55), MAT.wallInt); // North partition
         addBox(parent, 2.40, 1.15, 0.14, gx(77.75), yBase + 2.98, gz(5.55), MAT.restYelUpper);
         addBox(parent, 0.14, 3.55, 1.10, gx(76.55), yBase + 1.78, gz(6.10), MAT.wallInt); // West side wall (leaves 1.03m sliding door opening)
-        addBox(parent, 0.08, 2.10, 1.02, gx(76.53), yBase + 1.05, gz(7.16), MAT.restCubicleWood); // Sliding door
+        addBox(parent, 0.14, 1.40, 1.05, gx(76.55), yBase + 2.85, gz(7.16), MAT.wallInt); // Door lintel above D6
+        addBox(parent, 0.06, 2.10, 0.96, gx(76.47), yBase + 1.05, gz(6.22), MAT.restCubicleWood); // D6 拉門開啟（滑至牆側，通道全開）
         // Accessible toilet & basin inside
         addBox(parent, 0.45, 0.45, 0.65, gx(78.45), yBase + 0.25, gz(6.05), MAT.porcelain);
         addBox(parent, 0.55, 0.18, 0.45, gx(77.15), yBase + 0.78, gz(5.90), MAT.porcelain);
@@ -1274,8 +1328,14 @@
         const entTexMat = floorNum === 1 ? MAT.ent1F : (floorNum === 2 ? MAT.ent2F : MAT.ent3F);
         addBox(parent, 2.42, 3.55, 0.16, gx(77.76), yBase + 1.78, gz(7.82), entTexMat);
 
-        // 5. East Mech Room (X=77.8~79.0, Z=3.1~5.5)
-        addBox(parent, 1.18, 3.55, 2.40, gx(78.38), yBase + 1.78, gz(4.30), MAT.wallInt);
+        // 5. East Mech Room (機械室，中空＋西向 D8 檢修門＋管線／電熱設備，X=77.8~79.0, Z=3.1~5.5，依 A1-1~A1-3)
+        addBox(parent, 1.20, 3.55, 0.14, gx(78.40), yBase + 1.78, gz(3.15), MAT.wallInt); // 北牆
+        addBox(parent, 0.14, 3.55, 0.70, gx(77.82), yBase + 1.78, gz(3.50), MAT.wallInt); // 西牆北段
+        addBox(parent, 0.14, 3.55, 0.75, gx(77.82), yBase + 1.78, gz(5.12), MAT.wallInt); // 西牆南段
+        addInteriorDoorZ(parent, 77.82, yBase, 3.55, 4.30, 0.88, 2.10, MAT.steelDark, -1, MAT.wallInt); // D8 檢修門
+        // 機械室內管線立管與配電／熱水設備
+        addBox(parent, 0.45, 1.45, 0.65, gx(78.55), yBase + 0.725, gz(3.80), MAT.steelSilver, false);
+        addBox(parent, 0.14, 3.20, 0.14, gx(78.70), yBase + 1.60, gz(4.85), MAT.steelDark, false);
 
         // 6. Upper Wall Paint Band (淡藍 for 1F/3F, 淡紫 for 2F)
         const upperMat = is2F ? MAT.restLavUpper : MAT.restBlueUpper;
@@ -1406,14 +1466,30 @@
 
         //    North rear balcony slab (Grid ②–⑨, Z = -1.835 ~ 0 per A1-1~A1-3)
         addBox(targetGroup, 63.0, 0.16, 1.835, gx(40.5), yBase - 0.08, gz(-0.9175), MAT.corridorFloor);
-        //    North pipe shafts / storage closets (管道間兼儲藏室, Z = -1.835 ~ 0 per A1-1~A1-3 & A2-2)
-        addBox(targetGroup, 0.88, FLOOR_H, 1.835, gx(9.44), yBase + FLOOR_H * 0.5, gz(-0.9175), MAT.wallFrameGray);
+        //    North pipe shafts / storage closets (中空管道間兼儲藏室＋面向後陽台之檢修門洞＋給排水立管，Z = -1.835 ~ 0，依 A1-1~A1-3)
+        const addHollowPipeShaft = (cx, w, doorSide = 1) => {
+          const hw = w * 0.5;
+          // North exterior wall & opposite side wall
+          addBox(targetGroup, w, FLOOR_H, 0.14, gx(cx), yBase + FLOOR_H * 0.5, gz(-1.765), MAT.wallFrameGray);
+          addBox(targetGroup, 0.14, FLOOR_H, 1.835, gx(cx - doorSide * (hw - 0.07)), yBase + FLOOR_H * 0.5, gz(-0.9175), MAT.wallFrameGray);
+          // Door side wall with open 0.85m inspection doorway facing balcony
+          addBox(targetGroup, 0.14, FLOOR_H, 0.45, gx(cx + doorSide * (hw - 0.07)), yBase + FLOOR_H * 0.5, gz(-1.60), MAT.wallFrameGray);
+          addBox(targetGroup, 0.14, FLOOR_H, 0.48, gx(cx + doorSide * (hw - 0.07)), yBase + FLOOR_H * 0.5, gz(-0.24), MAT.wallFrameGray);
+          addInteriorDoorZ(targetGroup, cx + doorSide * (hw - 0.07), yBase, FLOOR_H, -0.92, 0.88, 2.05, MAT.steelDark, -doorSide, MAT.wallFrameGray);
+          // Vertical plumbing risers inside shaft for maintenance inspection
+          [-0.16, 0.16].forEach((dz) => {
+            const rPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, FLOOR_H - 0.1, 8), MAT.steelSilver);
+            rPipe.position.set(gx(cx - doorSide * 0.12), yBase + FLOOR_H * 0.5, gz(-1.30 + dz));
+            targetGroup.add(rPipe);
+          });
+        };
+        addHollowPipeShaft(9.44, 0.88, 1);
         [18, 27, 36, 45, 54, 63, 72].forEach((px) => {
           if (floorNum === 1 && px === 54) {
-            // Keep Grid ⑦ rear stair entry clear on 1F; slender pier only
-            addBox(targetGroup, 0.70, FLOOR_H, 1.835, gx(53.65), yBase + FLOOR_H * 0.5, gz(-0.9175), MAT.wallFrameGray);
+            // Keep Grid ⑦ rear stair entry clear on 1F; slender shaft with west inspection door
+            addHollowPipeShaft(53.65, 0.70, -1);
           } else {
-            addBox(targetGroup, 1.28, FLOOR_H, 1.835, gx(px), yBase + FLOOR_H * 0.5, gz(-0.9175), MAT.wallFrameGray);
+            addHollowPipeShaft(px, 1.28, px === 72 ? -1 : 1);
           }
         });
         //    North rear balcony railings between pipe shafts
@@ -1575,8 +1651,16 @@
           addBox(targetGroup, 0.90, 2.00, 0.04, gx(sx), yBase + 1.00, gz(2.86), MAT.restCubicleWood);
         }
         addBox(targetGroup, 0.48, 0.22, 1.85, gx(4.78), yBase + 0.78, gz(1.45), MAT.porcelain); // 女廁洗手台
-        // 男廁 (South: Z=4.25~7.70): 管道兼掃具間 + 2 west stalls + 3 urinals + south wash trough
-        addBox(targetGroup, 1.40, FLOOR_H - 0.15, 1.25, gx(3.15), yBase + (FLOOR_H - 0.15) * 0.5, gz(4.92), MAT.wallInt); // 管道兼掃具間
+        // 男廁 (South: Z=4.25~7.70): 中空管道兼掃具間(D12) + 2 west stalls + 3 urinals + south wash trough + D11 入口門框
+        //   中空管道兼掃具間（X=2.45~3.85, Z=4.25~5.55，東向 D12 檢修門開向玄關，內設給排水立管與拖布盆，依 A1-8）
+        addBox(targetGroup, 0.14, FLOOR_H - 0.15, 1.30, gx(2.48), yBase + (FLOOR_H - 0.15) * 0.5, gz(4.90), MAT.wallInt);
+        addBox(targetGroup, 1.40, FLOOR_H - 0.15, 0.14, gx(3.15), yBase + (FLOOR_H - 0.15) * 0.5, gz(5.52), MAT.wallInt);
+        addInteriorDoorZ(targetGroup, 3.82, yBase, FLOOR_H - 0.15, 4.90, 0.85, 2.05, MAT.woodDoor, -1, MAT.wallInt); // D12 掃具間門
+        addBox(targetGroup, 0.48, 0.32, 0.46, gx(2.85), yBase + 0.16, gz(4.85), MAT.porcelain, false); // 拖布盆
+        addBox(targetGroup, 0.12, 3.20, 0.12, gx(2.75), yBase + 1.60, gz(5.25), MAT.steelSilver, false); // 排水立管
+        //   男女廁入口門框 D11（連接玄關 X=3.85~5.05 至女廁北側與男廁南側，依 A1-8）
+        addInteriorDoorX(targetGroup, 4.45, yBase, FLOOR_H - 0.15, 4.25, 0.96, 2.10, MAT.woodDoor, -1, MAT.wallInt); // 女廁 D11
+        addInteriorDoorZ(targetGroup, 3.85, yBase, FLOOR_H - 0.15, 6.25, 0.96, 2.10, MAT.woodDoor, -1, MAT.wallInt); // 男廁 D11
         addBox(targetGroup, 1.25, 2.05, 0.05, gx(0.85), yBase + 1.025, gz(5.45), MAT.restCubicleWood);
         addBox(targetGroup, 1.25, 2.05, 0.05, gx(0.85), yBase + 1.025, gz(6.55), MAT.restCubicleWood);
         addBox(targetGroup, 0.04, 2.00, 2.10, gx(1.48), yBase + 1.00, gz(5.45), MAT.restCubicleWood);
@@ -1584,10 +1668,12 @@
           addBox(targetGroup, 0.34, 0.58, 0.28, gx(ux), yBase + 0.85, gz(5.72), MAT.porcelain);
         });
         addBox(targetGroup, 1.95, 0.22, 0.48, gx(2.55), yBase + 0.78, gz(7.42), MAT.porcelain); // 男廁洗手台
-        // Stair B north wall & 1F storage room (儲藏室, A1-8)
+        // Stair B north wall & 1F storage room (儲藏室含 D13 入口門與貨架, A1-8)
         addWindowWallX(targetGroup, 5.15, 8.95, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.8, 1.4, 1.2);
         if (floorNum === 1) {
-          addBox(targetGroup, 3.8, FLOOR_H - 0.15, 0.14, gx(7.05), yBase + (FLOOR_H - 0.15) * 0.5, gz(2.45), MAT.wallInt);
+          addBox(targetGroup, 2.65, FLOOR_H - 0.15, 0.14, gx(7.62), yBase + (FLOOR_H - 0.15) * 0.5, gz(2.45), MAT.wallInt);
+          addInteriorDoorX(targetGroup, 5.78, yBase, FLOOR_H - 0.15, 2.45, 0.92, 2.05, MAT.woodDoor, -1, MAT.wallInt); // D13 儲藏室門
+          addBox(targetGroup, 1.8, 1.6, 0.55, gx(7.6), yBase + 0.80, gz(0.65), MAT.steelSilver, false); // 儲藏室貨架
         }
         // Stair B flights (X=5.4~8.8)
         for (let s = 0; s < 10; s++) {
@@ -1641,11 +1727,10 @@
             const med = new THREE.Mesh(new THREE.CylinderGeometry(3.75, 3.75, 0.04, 48), MAT.breezewayCenter);
             med.position.set(gx(58.5), yBase + 0.03, gz(4.05));
             targetGroup.add(med);
-            // 穿堂西側隔間牆（軸線⑦，A1-1：總務處與穿堂之間，近走廊端設門 D1）
-            addBox(targetGroup, 0.18, FLOOR_H - 0.15, 5.6, gx(54.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(0.1 + 2.8), MAT.wallInt);
-            addBox(targetGroup, 0.18, FLOOR_H - 0.15, 0.85, gx(54.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(7.33), MAT.wallInt);
-            addBox(targetGroup, 0.18, FLOOR_H - 2.35, 1.0, gx(54.0), yBase + 2.2 + (FLOOR_H - 2.35) * 0.5, gz(6.2), MAT.wallInt);
-            addBox(targetGroup, 0.08, 2.15, 0.95, gx(54.0), yBase + 1.08, gz(6.2), MAT.woodDoor);
+            // 穿堂西側隔間牆（軸線⑦，A1-1：總務處與穿堂之間，近走廊端設門 D1 可開啟進出）
+            addBox(targetGroup, 0.18, FLOOR_H - 0.15, 5.55, gx(54.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(0.1 + 2.775), MAT.wallInt);
+            addBox(targetGroup, 0.18, FLOOR_H - 0.15, 0.90, gx(54.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(7.32), MAT.wallInt);
+            addInteriorDoorZ(targetGroup, 54.0, yBase, FLOOR_H - 0.15, 6.22, 0.96, 2.15, MAT.woodDoor, -1, MAT.wallInt);
             // 穿堂兩側木框公布欄（依 A1-1：穿堂兩側設置公布欄）
             [1.6, 3.2, 4.8].forEach((bz) => {
               addBox(targetGroup, 0.08, 1.25, 1.35, gx(54.14), yBase + 1.65, gz(bz), MAT.woodDoor, false);
@@ -1656,9 +1741,13 @@
             continue;
           }
 
-          // 3F Bay 0 & Bay 1: custom window/door walls matching A1-3 (X=9.0~15.6 資源班, X=15.6~27.0 理化實驗室＋雙儲藏室)
+          // 3F Bay 0 & Bay 1: custom window/door walls matching A1-3 (X=9.0~15.6 資源班, X=15.6~27.0 理化實驗室＋中空雙儲藏室)
           if (floorNum === 3 && bay === 0) {
-            addTwinWindowWallX(targetGroup, 9.3, 15.45, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.85, 0.95, 0.45, 2);
+            // 北牆含 D2A/D2 後陽台出入雙門＋窗（依 A1-3）
+            addTwinWindowWallX(targetGroup, 10.2, 14.45, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.85, 0.95, 0.45, 2);
+            addDoorWithTransomX(targetGroup, 9.65, yBase, FLOOR_H, 0.10, 0.92, 2.15, 0.60, false, 1);
+            addDoorWithTransomX(targetGroup, 15.00, yBase, FLOOR_H, 0.10, 0.92, 2.15, 0.60, false, 1);
+            // 南牆
             addTwinWindowWallX(targetGroup, 10.2, 14.5, yBase, FLOOR_H, 7.75, MAT.wallExt, 1.90, 0.90, 0.40, 2);
             addDoorWithTransomX(targetGroup, 9.65, yBase, FLOOR_H, 7.75, 0.96);
             addDoorWithTransomX(targetGroup, 15.02, yBase, FLOOR_H, 7.75, 0.96);
@@ -1670,17 +1759,25 @@
             continue;
           }
           if (floorNum === 3 && bay === 1) {
-            // Partition at X=15.6m + twin storage closets (north/south) + lab chalkboard
+            // Partition at X=15.6m + HOLLOW twin storage closets (north/south) with east-facing D3A doors + lab chalkboard (A1-3)
             addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(15.6), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
-            [[0.15, 2.1], [5.75, 7.7]].forEach(([z0, z1]) => {
-              addBox(targetGroup, 1.2, FLOOR_H - 0.15, z1 - z0, gx(16.25), yBase + (FLOOR_H - 0.15) * 0.5, gz((z0 + z1) / 2), MAT.wallInt);
+            [[0.15, 2.15, 1.15], [5.70, 7.70, 6.70]].forEach(([z0, z1, dcz]) => {
+              const innerZ = z0 < 3 ? z1 : z0;
+              addBox(targetGroup, 1.25, FLOOR_H - 0.15, 0.14, gx(16.25), yBase + (FLOOR_H - 0.15) * 0.5, gz(innerZ), MAT.wallInt);
+              addBox(targetGroup, 0.14, FLOOR_H - 0.15, 0.55, gx(16.86), yBase + (FLOOR_H - 0.15) * 0.5, gz(z0 + 0.28), MAT.wallInt);
+              addBox(targetGroup, 0.14, FLOOR_H - 0.15, 0.55, gx(16.86), yBase + (FLOOR_H - 0.15) * 0.5, gz(z1 - 0.28), MAT.wallInt);
+              addInteriorDoorZ(targetGroup, 16.86, yBase, FLOOR_H - 0.15, dcz, 0.88, 2.08, MAT.woodDoor, 1, MAT.wallInt); // D3A 儲藏室門
+              addBox(targetGroup, 0.45, 1.75, 1.35, gx(15.95), yBase + 0.88, gz(dcz), MAT.steelSilver, false); // 實驗室儲藏架
             });
-            addBox(targetGroup, 0.08, 1.2, 3.4, gx(16.90), yBase + 1.55, gz(3.9), CHALKBOARD_MAT, false);
+            addBox(targetGroup, 0.14, FLOOR_H - 0.15, 3.55, gx(16.86), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
+            addBox(targetGroup, 0.08, 1.2, 3.4, gx(16.96), yBase + 1.55, gz(3.9), CHALKBOARD_MAT, false);
             // Solid exterior wall segments closing storage ends (X=15.6~17.0)
             addBox(targetGroup, 1.4, FLOOR_H, 0.18, gx(16.3), yBase + FLOOR_H * 0.5, gz(0.10), MAT.wallExt);
             addBox(targetGroup, 1.4, FLOOR_H, 0.18, gx(16.3), yBase + FLOOR_H * 0.5, gz(7.75), MAT.wallExt);
-            // Lab windows & doors cleanly east of storage closets (X=17.0~27.0)
-            addTwinWindowWallX(targetGroup, 17.0, 26.7, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.85, 0.95, 0.65, 3);
+            // Lab windows & doors cleanly east of storage closets (X=17.0~27.0) — BOTH North (D2A/D2) and South (D1×2)
+            addTwinWindowWallX(targetGroup, 18.1, 25.8, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.85, 0.95, 0.65, 3);
+            addDoorWithTransomX(targetGroup, 17.55, yBase, FLOOR_H, 0.10, 0.92, 2.15, 0.60, false, 1);
+            addDoorWithTransomX(targetGroup, 26.35, yBase, FLOOR_H, 0.10, 0.92, 2.15, 0.60, false, 1);
             addTwinWindowWallX(targetGroup, 18.1, 25.8, yBase, FLOOR_H, 7.75, MAT.wallExt, 1.90, 0.90, 0.55, 3);
             addDoorWithTransomX(targetGroup, 17.55, yBase, FLOOR_H, 7.75, 0.96);
             addDoorWithTransomX(targetGroup, 26.35, yBase, FLOOR_H, 7.75, 0.96);
@@ -1693,10 +1790,21 @@
             continue;
           }
 
-          // Standard 9.0m bay exterior walls: authentic twin 3-pane aluminum windows (W1/W3) + transomed doors (D1/D16)
-          addTwinWindowWallX(targetGroup, bx0 + 0.35, bx1 - 0.35, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.85, 0.95, 0.58, 3);
+          // Standard 9.0m bay North wall (Z=0.10): rear-balcony doors D2A (west) & D2 (east) + twin 3-pane W3 windows (A1-1~A1-3!)
+          if (floorNum === 1 && bay === 6) {
+            // 1F 軸線⑧–⑨：西半 10-2 人事會計 (63~67.5) ＋ 東半 7-1 健康中心 (67.5~72)，各有獨立 D2A 後陽台門＋窗
+            addDoorWithTransomX(targetGroup, bx0 + 0.65, yBase, FLOOR_H, 0.10, 0.92, 2.15, 0.60, false, 1);
+            addWindowWallX(targetGroup, bx0 + 1.20, 67.35, yBase, FLOOR_H, 0.10, MAT.wallExt, 2.3, 1.85, 0.95);
+            addWindowWallX(targetGroup, 67.65, bx1 - 1.20, yBase, FLOOR_H, 0.10, MAT.wallExt, 2.3, 1.85, 0.95);
+            addDoorWithTransomX(targetGroup, bx1 - 0.65, yBase, FLOOR_H, 0.10, 0.92, 2.15, 0.60, false, 1);
+          } else {
+            addTwinWindowWallX(targetGroup, bx0 + 1.20, bx1 - 1.20, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.85, 0.95, 0.58, 3);
+            addDoorWithTransomX(targetGroup, bx0 + 0.65, yBase, FLOOR_H, 0.10, 0.92, 2.15, 0.60, false, 1);
+            addDoorWithTransomX(targetGroup, bx1 - 0.65, yBase, FLOOR_H, 0.10, 0.92, 2.15, 0.60, false, 1);
+          }
+          // Standard 9.0m bay South wall (Z=7.75): twin 3-pane W1 windows + transomed open doors D1 / D16
           if (floorNum === 1 && bay === 1) {
-            // 1F 圖書室西半：D16 寬 180cm 雙開玻璃門 ＋ 還書箱（依 A1-1 & A5-1）
+            // 1F 圖書室西半：D16 寬 180cm 雙開玻璃門（向內開啟）＋ 窗（依 A1-1 & A5-1）
             addDoorWithTransomX(targetGroup, bx0 + 1.15, yBase, FLOOR_H, 7.75, 1.76, 2.17, 0.60, true);
             addTwinWindowWallX(targetGroup, bx0 + 2.15, bx1 - 0.35, yBase, FLOOR_H, 7.75, MAT.wallExt, 1.90, 0.90, 0.50, 3);
           } else {
@@ -1732,10 +1840,12 @@
           if (floorNum === 1 && bay === 6) {
             addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(67.5), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
           }
-          // 2F 軸線⑦–⑧ 東北角隔間（原休息室兼哺乳室／現輔導室與諮商室隔間，依 A1-2）
+          // 2F 軸線⑦–⑧ 東北角隔間（10-4 諮商室／原休息室兼哺乳室，含 D3A 門洞與 W18 觀察窗，依 A1-2）
           if (floorNum === 2 && bay === 5) {
-            addBox(targetGroup, 4.3, FLOOR_H - 0.15, 0.12, gx(60.8), yBase + (FLOOR_H - 0.15) * 0.5, gz(2.35), MAT.wallInt);
             addBox(targetGroup, 0.12, FLOOR_H - 0.15, 2.25, gx(58.65), yBase + (FLOOR_H - 0.15) * 0.5, gz(1.22), MAT.wallInt);
+            addWindowWallX(targetGroup, 58.65, 61.45, yBase, FLOOR_H - 0.15, 2.35, MAT.wallInt, 1.55, 1.15, 1.05, 0.12); // W18 觀察窗
+            addInteriorDoorX(targetGroup, 61.95, yBase, FLOOR_H - 0.15, 2.35, 0.90, 2.10, MAT.woodDoor, -1, MAT.wallInt); // D3A 門
+            addBox(targetGroup, 0.55, FLOOR_H - 0.15, 0.12, gx(62.72), yBase + (FLOOR_H - 0.15) * 0.5, gz(2.35), MAT.wallInt);
           }
 
           // Chalkboard, +18cm podium & student desks ONLY in actual classroom bays
@@ -1753,8 +1863,12 @@
 
         // 8. East Renovated Restroom Block (Grid ⑨–⑩, X=72.0~79.05m, Z=0~7.85m)
         addTwinWindowWallX(targetGroup, 72.3, 78.8, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.65, 1.15, 0.65, 2); // North window wall
-        // East exterior wall with small restroom/mech window per A2-1 East Elevation
-        addBox(targetGroup, 0.20, FLOOR_H, 7.85, gx(79.05), yBase + FLOOR_H * 0.5, gz(3.925), MAT.wallExt);
+        // East exterior wall with W6 mechanical/restroom window cutout (Z=4.65~5.45 per A1-1~A1-3 & A2-1)
+        addBox(targetGroup, 0.20, FLOOR_H, 4.65, gx(79.05), yBase + FLOOR_H * 0.5, gz(2.325), MAT.wallExt);
+        addBox(targetGroup, 0.20, FLOOR_H, 2.40, gx(79.05), yBase + FLOOR_H * 0.5, gz(6.65), MAT.wallExt);
+        addBox(targetGroup, 0.20, 1.35, 0.80, gx(79.05), yBase + 0.675, gz(5.05), MAT.wallExt);
+        addBox(targetGroup, 0.20, FLOOR_H - 2.45, 0.80, gx(79.05), yBase + 2.45 + (FLOOR_H - 2.45) * 0.5, gz(5.05), MAT.wallExt);
+        addBox(targetGroup, 0.05, 1.10, 0.76, gx(79.05), yBase + 1.90, gz(5.05), MAT.glass, false, false); // W6 窗
         buildEastRenovatedRestroom(targetGroup, floorNum, yBase);
 
         // 8b. East Corridor End Balcony & Architectural Frame (Grid ⑩–⑪, X=79.05~82.70m, Z=7.85~10.85m per A2-1)
@@ -1768,9 +1882,25 @@
 
         // 9. East Stair A (Grid ⑨–⑨', X=72.0~76.4m, Z=10.85~18.20m) & 1F Generator/Pump Room (⑨'–⑩, X=76.4~79.05m)
         if (floorNum === 1) {
-          // 1F Fire Pump / Generator Room (X=76.4~79.05, Z=10.85~16.65, floor +0.45 -> 4.80m below 2F slab to avoid Z-fighting)
-          addBox(targetGroup, 2.65, 4.35, 5.8, gx(77.725), 0.45 + 2.175, gz(13.75), MAT.wallFrameGray);
-          addBox(targetGroup, 0.08, 1.2, 1.4, gx(79.07), 2.3, gz(13.8), MAT.steelDark, false); // East louver W15
+          // 1F 中空發電機室／消防泵浦室（X=76.4~79.05, Z=10.85~16.65，地坪 +0.45，南向 D4 雙開檢修門＋東向 W15 百葉＋發電機與紅消防泵浦，依 A1-1）
+          const gH = 4.35; // y = 0.45 -> 4.80
+          addBox(targetGroup, 2.65, gH, 0.20, gx(77.725), 0.45 + gH * 0.5, gz(10.95), MAT.wallFrameGray); // 北牆
+          // 東牆（中段開 W15 百葉窗洞 Z=13.1~14.5）
+          addBox(targetGroup, 0.20, gH, 2.25, gx(78.95), 0.45 + gH * 0.5, gz(11.975), MAT.wallFrameGray);
+          addBox(targetGroup, 0.20, gH, 2.15, gx(78.95), 0.45 + gH * 0.5, gz(15.575), MAT.wallFrameGray);
+          addBox(targetGroup, 0.20, 1.35, 1.40, gx(78.95), 0.45 + 0.675, gz(13.80), MAT.wallFrameGray);
+          addBox(targetGroup, 0.20, gH - 2.65, 1.40, gx(78.95), 0.45 + 2.65 + (gH - 2.65) * 0.5, gz(13.80), MAT.wallFrameGray);
+          for (let ly = 1.90; ly < 3.05; ly += 0.18) {
+            addBox(targetGroup, 0.10, 0.04, 1.36, gx(78.98), ly, gz(13.80), MAT.steelDark, false); // W15 百葉片
+          }
+          // 南牆（開 D4 寬 1.4m 雙開機房門洞 X=77.05~78.45，門片向內敞開可檢視內部設備！）
+          addBox(targetGroup, 0.65, gH, 0.20, gx(76.725), 0.45 + gH * 0.5, gz(16.55), MAT.wallFrameGray);
+          addBox(targetGroup, 0.60, gH, 0.20, gx(78.75), 0.45 + gH * 0.5, gz(16.55), MAT.wallFrameGray);
+          addInteriorDoorX(targetGroup, 77.75, 0.45, gH, 16.55, 1.40, 2.25, MAT.steelDark, -1, MAT.wallFrameGray);
+          // 室內設備：緊急柴油發電機 ＋ 紅色消防泵浦組 ＋ 電源控制盤
+          addBox(targetGroup, 1.15, 1.10, 2.00, gx(77.75), 0.45 + 0.55, gz(12.35), makeMat(0xc49a2a, { roughness: 0.5, metalness: 0.3 }), false);
+          addBox(targetGroup, 0.65, 0.72, 1.15, gx(77.35), 0.45 + 0.36, gz(14.55), makeMat(0xb91c1c, { roughness: 0.45, metalness: 0.3 }), false);
+          addBox(targetGroup, 0.45, 1.75, 0.90, gx(78.55), 0.45 + 0.88, gz(15.25), MAT.steelSilver, false);
         } else if (floorNum === 2) {
           // 2F Roof Terrace over Generator Room (露台 +500, X=76.4~79.05, Z=10.85~16.65 per A1-6)
           addBox(targetGroup, 2.65, 0.18, 5.8, gx(77.725), yBase - 0.09, gz(13.75), MAT.corridorFloor);
@@ -1946,22 +2076,125 @@
         };
         // Framed aluminum window helper (along Z wall or X wall)
         const framedWinZ = (grp, x0, x1, z, ya, yb, panes = 2) => {
-          kbox(grp, x0, x1, z - 0.03, z + 0.03, ya, yb, MAT.glass, false);
-          kbox(grp, x0, x1, z - 0.05, z + 0.05, ya, ya + 0.05, MAT.alFrame, false);
-          kbox(grp, x0, x1, z - 0.05, z + 0.05, yb - 0.05, yb, MAT.alFrame, false);
+          kbox(grp, x0, x1, z - 0.025, z + 0.025, ya, yb, MAT.glass, false);
+          kbox(grp, x0, x1, z - 0.06, z + 0.06, ya, ya + 0.05, MAT.alFrame, false);
+          kbox(grp, x0, x1, z - 0.06, z + 0.06, yb - 0.05, yb, MAT.alFrame, false);
           for (let i = 0; i <= panes; i++) {
             const mx = x0 + (i / panes) * (x1 - x0);
-            kbox(grp, mx - 0.025, mx + 0.025, z - 0.05, z + 0.05, ya, yb, MAT.alFrame, false);
+            kbox(grp, mx - 0.025, mx + 0.025, z - 0.06, z + 0.06, ya, yb, MAT.alFrame, false);
           }
         };
         const framedWinX = (grp, x, z0, z1, ya, yb, panes = 2) => {
-          kbox(grp, x - 0.03, x + 0.03, z0, z1, ya, yb, MAT.glass, false);
-          kbox(grp, x - 0.05, x + 0.05, z0, z1, ya, ya + 0.05, MAT.alFrame, false);
-          kbox(grp, x - 0.05, x + 0.05, z0, z1, yb - 0.05, yb, MAT.alFrame, false);
+          kbox(grp, x - 0.025, x + 0.025, z0, z1, ya, yb, MAT.glass, false);
+          kbox(grp, x - 0.06, x + 0.06, z0, z1, ya, ya + 0.05, MAT.alFrame, false);
+          kbox(grp, x - 0.06, x + 0.06, z0, z1, yb - 0.05, yb, MAT.alFrame, false);
           for (let i = 0; i <= panes; i++) {
             const mz = z0 + (i / panes) * (z1 - z0);
-            kbox(grp, x - 0.05, x + 0.05, mz - 0.025, mz + 0.025, ya, yb, MAT.alFrame, false);
+            kbox(grp, x - 0.06, x + 0.06, mz - 0.025, mz + 0.025, ya, yb, MAT.alFrame, false);
           }
+        };
+        // Real-cutout wall helpers for facility-maintenance walkability & clear sightlines (zero solid walls behind doors/windows!)
+        const renderOpeningZ = (grp, z, op) => {
+          const w = op.b - op.a, h = op.y1 - op.y0;
+          if (op.type === 'win') {
+            framedWinZ(grp, op.a, op.b, z, op.y0, op.y1, op.panes || 2);
+          } else if (op.type === 'louver') {
+            kbox(grp, op.a, op.b, z - 0.06, z + 0.06, op.y0, op.y0 + 0.05, MAT.steelDark, false);
+            kbox(grp, op.a, op.b, z - 0.06, z + 0.06, op.y1 - 0.05, op.y1, MAT.steelDark, false);
+            kbox(grp, op.a, op.a + 0.05, z - 0.06, z + 0.06, op.y0, op.y1, MAT.steelDark, false);
+            kbox(grp, op.b - 0.05, op.b, z - 0.06, z + 0.06, op.y0, op.y1, MAT.steelDark, false);
+            for (let ly = op.y0 + 0.12; ly < op.y1 - 0.06; ly += 0.15) {
+              kbox(grp, op.a + 0.04, op.b - 0.04, z - 0.04, z + 0.04, ly, ly + 0.035, MAT.steelSilver, false);
+            }
+          } else if (op.type === 'grille') {
+            // White vertical security bars (e.g. Gas Room SD3) — left half fixed, right half hinged ajar for access
+            kbox(grp, op.a, op.b, z - 0.05, z + 0.05, op.y1 - 0.05, op.y1, MAT.ckWhite, false);
+            for (let gx0 = op.a + 0.08; gx0 < op.a + w * 0.52; gx0 += 0.14) {
+              kbox(grp, gx0 - 0.015, gx0 + 0.015, z - 0.02, z + 0.02, op.y0, op.y1, MAT.ckWhite, false);
+            }
+          } else if (op.type === 'door' || op.type === 'dblDoor') {
+            const fMat = op.frameMat || MAT.alFrame;
+            const lMat = op.leafMat || MAT.ckWhite;
+            const dir = op.openDir ?? -1;
+            kbox(grp, op.a, op.a + 0.05, z - 0.08, z + 0.08, op.y0, op.y1, fMat, false);
+            kbox(grp, op.b - 0.05, op.b, z - 0.08, z + 0.08, op.y0, op.y1, fMat, false);
+            kbox(grp, op.a, op.b, z - 0.08, z + 0.08, op.y1 - 0.05, op.y1, fMat, false);
+            if (op.type === 'dblDoor') {
+              const lw = (w - 0.10) * 0.5;
+              [-1, 1].forEach((side) => {
+                const [px, pz] = K(side < 0 ? op.a + 0.05 : op.b - 0.05, z);
+                const piv = new THREE.Group(); piv.position.set(px, op.y0, pz);
+                piv.rotation.y = side * dir * 1.15;
+                addBox(piv, lw, h - 0.05, 0.05, -side * lw * 0.5, (h - 0.05) * 0.5, 0, lMat, false, false);
+                if (op.hasGlass) addBox(piv, lw * 0.72, h * 0.42, 0.06, -side * lw * 0.5, h * 0.68, 0, MAT.glass, false, false);
+                grp.add(piv);
+              });
+            } else {
+              const lw = w - 0.10;
+              const [px, pz] = K(op.a + 0.05, z);
+              const piv = new THREE.Group(); piv.position.set(px, op.y0, pz);
+              piv.rotation.y = dir * 1.15;
+              addBox(piv, lw, h - 0.05, 0.05, lw * 0.5, (h - 0.05) * 0.5, 0, lMat, false, false);
+              if (op.hasGlass) addBox(piv, lw * 0.65, h * 0.40, 0.06, lw * 0.5, h * 0.68, 0, MAT.glass, false, false);
+              grp.add(piv);
+            }
+          }
+        };
+        const renderOpeningX = (grp, x, op) => {
+          const w = op.b - op.a, h = op.y1 - op.y0;
+          if (op.type === 'win') {
+            framedWinX(grp, x, op.a, op.b, op.y0, op.y1, op.panes || 2);
+          } else if (op.type === 'door' || op.type === 'dblDoor') {
+            const fMat = op.frameMat || MAT.alFrame;
+            const lMat = op.leafMat || MAT.ckWhite;
+            const dir = op.openDir ?? 1;
+            kbox(grp, x - 0.08, x + 0.08, op.a, op.a + 0.05, op.y0, op.y1, fMat, false);
+            kbox(grp, x - 0.08, x + 0.08, op.b - 0.05, op.b, op.y0, op.y1, fMat, false);
+            kbox(grp, x - 0.08, x + 0.08, op.a, op.b, op.y1 - 0.05, op.y1, fMat, false);
+            if (op.type === 'dblDoor') {
+              const lw = (w - 0.10) * 0.5;
+              [-1, 1].forEach((side) => {
+                const [px, pz] = K(x, side < 0 ? op.a + 0.05 : op.b - 0.05);
+                const piv = new THREE.Group(); piv.position.set(px, op.y0, pz);
+                piv.rotation.y = -side * dir * 1.15;
+                addBox(piv, 0.05, h - 0.05, lw, 0, (h - 0.05) * 0.5, -side * lw * 0.5, lMat, false, false);
+                if (op.hasGlass) addBox(piv, 0.06, h * 0.42, lw * 0.72, 0, h * 0.68, -side * lw * 0.5, MAT.glass, false, false);
+                grp.add(piv);
+              });
+            } else {
+              const lw = w - 0.10;
+              const [px, pz] = K(x, op.a + 0.05);
+              const piv = new THREE.Group(); piv.position.set(px, op.y0, pz);
+              piv.rotation.y = dir * 1.15;
+              addBox(piv, 0.05, h - 0.05, lw, 0, (h - 0.05) * 0.5, lw * 0.5, lMat, false, false);
+              if (op.hasGlass) addBox(piv, 0.06, h * 0.40, lw * 0.65, 0, h * 0.68, lw * 0.5, MAT.glass, false, false);
+              grp.add(piv);
+            }
+          }
+        };
+        const wallZWithOpenings = (grp, x0, x1, z, thick, ya, yb, mat, openings = []) => {
+          const ops = [...openings].sort((p, q) => p.a - q.a);
+          let cur = x0;
+          ops.forEach((op) => {
+            if (op.a > cur + 0.01) kbox(grp, cur, op.a, z - thick * 0.5, z + thick * 0.5, ya, yb, mat);
+            if (op.y0 > ya + 0.01) kbox(grp, op.a, op.b, z - thick * 0.5, z + thick * 0.5, ya, op.y0, mat);
+            if (op.y1 < yb - 0.01) kbox(grp, op.a, op.b, z - thick * 0.5, z + thick * 0.5, op.y1, yb, mat);
+            renderOpeningZ(grp, z, op);
+            cur = op.b;
+          });
+          if (x1 > cur + 0.01) kbox(grp, cur, x1, z - thick * 0.5, z + thick * 0.5, ya, yb, mat);
+        };
+        const wallXWithOpenings = (grp, x, z0, z1, thick, ya, yb, mat, openings = []) => {
+          const ops = [...openings].sort((p, q) => p.a - q.a);
+          let cur = z0;
+          ops.forEach((op) => {
+            if (op.a > cur + 0.01) kbox(grp, x - thick * 0.5, x + thick * 0.5, cur, op.a, ya, yb, mat);
+            if (op.y0 > ya + 0.01) kbox(grp, x - thick * 0.5, x + thick * 0.5, op.a, op.b, ya, op.y0, mat);
+            if (op.y1 < yb - 0.01) kbox(grp, x - thick * 0.5, x + thick * 0.5, op.a, op.b, op.y1, yb, mat);
+            renderOpeningX(grp, x, op);
+            cur = op.b;
+          });
+          if (z1 > cur + 0.01) kbox(grp, x - thick * 0.5, x + thick * 0.5, cur, z1, ya, yb, mat);
         };
         // Dense white vertical-picket railing matching site photos 04188.jpg / 04107.jpg / yellow-se.jpg
         const addWhitePicketX = (grp, x0, x1, yBase, z, h = 1.1) => {
@@ -1997,60 +2230,84 @@
         kbox(kitchenBaseGroup, 0, 21, 4.5, 19, 0, y1, MAT.slabFloor);           // 主作業區底板
         kbox(kitchenBaseGroup, 9, 21, 0, 4.5, 0, y1, MAT.slabFloor);            // 烹飪／處理區北半底板
         kbox(kitchenBaseGroup, 4, 9, 0, 4.5, 0, 0.40, MAT.concreteBase);        // 115 鍋爐／116 瓦斯間降板 (+0.40)
-        kbox(kitchenBaseGroup, 21, 25, 4.5, 12, 0, y1, MAT.slabFloor);          // 109 食品儲藏／A07 陽台底板
+        kbox(kitchenBaseGroup, 21, 25, 4.5, 13.8, 0, y1, MAT.slabFloor);        // 109/108 儲藏＋102 東緩衝走廊＋A07 陽台底板
 
-        // ── 2. 一層中空外牆殼體（開放頂面，切換「壹層」剖切時可完整檢視 16 區室內隔間與設備！）──
+        // ── 2. 一層中空外牆殼體（全面實開門窗洞口，室內外視線貫通、每間皆可通行巡檢！）──
         //   2a. 白色主體外牆（②–⑥ × Ⓐ–Ⓓ & ①–② × Ⓑ–Ⓒ，高至 yR = +4.90）
-        kbox(kitchen1FGroup, 9, 21, 0, 0.22, 0, yR, MAT.ckWhite);               // 北牆 (③–⑥ × Ⓐ)
-        framedWinZ(kitchen1FGroup, 10.6, 13.4, -0.02, y1 + 1.55, y1 + 2.55, 3); // 北面 W18（高條窗，A3-2）
-        framedWinZ(kitchen1FGroup, 14.3, 16.5, -0.02, y1 + 0.95, y1 + 2.55, 2); // 北面 W19（雙格中窗，A3-2）
-        framedWinZ(kitchen1FGroup, 17.4, 20.4, -0.02, y1 + 0.95, y1 + 2.55, 3); // 北面 W12（三格大窗，A3-2）
-        kbox(kitchen1FGroup, 0, 4.0, 4.5, 4.72, 0, yR, MAT.ckWhite);            // 西北角北牆 (①–② × Ⓑ)
-        framedWinZ(kitchen1FGroup, 0.6, 3.4, 4.48, y1 + 1.45, y1 + 2.45, 3);    // 西北面 W17 三格高窗（A3-2）
-        kbox(kitchen1FGroup, 0, 0.22, 4.5, 12.0, 0, yR, MAT.ckWhite);           // 西牆 (① × Ⓑ–Ⓒ)
-        framedWinX(kitchen1FGroup, -0.04, 7.4, 9.4, y1 + 1.15, y1 + 2.35, 2);   // 西面 W7 雙格窗（白牆段，elevW & 04188）
-        kbox(kitchen1FGroup, 4.2, 9.0, 18.80, 19.02, 0, yR, MAT.ckWhite);       // 南牆 (②–③ × Ⓓ，含高瘦窗 W4 與雨遮)
-        framedWinZ(kitchen1FGroup, 7.65, 8.35, 19.04, y1 + 0.45, y1 + 2.55, 1); // 南面 W4 垂直窗（照片 04188）
+        wallZWithOpenings(kitchen1FGroup, 9, 21, 0.11, 0.22, 0, yR, MAT.ckWhite, [
+          { a: 10.6, b: 13.4, y0: y1 + 1.55, y1: y1 + 2.55, type: 'win', panes: 3 }, // 北面 W18
+          { a: 14.3, b: 16.5, y0: y1 + 0.95, y1: y1 + 2.55, type: 'win', panes: 2 }, // 北面 W19
+          { a: 17.4, b: 20.4, y0: y1 + 0.95, y1: y1 + 2.55, type: 'win', panes: 3 }  // 北面 W12
+        ]);
+        wallZWithOpenings(kitchen1FGroup, 0, 4.0, 4.61, 0.22, 0, yR, MAT.ckWhite, [
+          { a: 0.6, b: 3.4, y0: y1 + 1.45, y1: y1 + 2.45, type: 'win', panes: 3 }    // 西北面 W17
+        ]);
+        wallXWithOpenings(kitchen1FGroup, 0.11, 4.5, 9.75, 0.22, 0, yR, MAT.ckWhite, [
+          { a: 7.4, b: 9.4, y0: y1 + 1.15, y1: y1 + 2.35, type: 'win', panes: 2 }    // 西面 W7（白牆段）
+        ]);
+        wallZWithOpenings(kitchen1FGroup, 4.2, 9.0, 18.91, 0.22, 0, yR, MAT.ckWhite, [
+          { a: 7.65, b: 8.35, y0: y1 + 0.45, y1: y1 + 2.55, type: 'win', panes: 1 }  // 南面 W4 垂直窗
+        ]);
         kbox(kitchen1FGroup, 7.45, 8.55, 19.02, 19.55, y1 + 2.58, y1 + 2.74, MAT.ckWhite); // W4 白色小雨遮
-        kbox(kitchen1FGroup, 9.0, 14.0, 18.80, 19.02, y1, 4.15, MAT.ckPinkDeep); // 驗收區北牆（深珊瑚粉紅）
-        kbox(kitchen1FGroup, 14.0, 21.0, 18.80, 19.02, 0, yR, MAT.ckWhite);     // A01 走廊北牆 (④–⑥ × Ⓓ)
-        framedWinZ(kitchen1FGroup, 14.8, 16.5, 19.04, y1 + 1.0, y1 + 2.25, 2);  // W2 營養師室窗
-        framedWinZ(kitchen1FGroup, 17.5, 19.0, 19.04, y1 + 1.0, y1 + 2.25, 2);  // W3 廁所窗
-        framedWinZ(kitchen1FGroup, 19.6, 20.5, 19.04, y1 + 1.8, y1 + 2.45, 1);  // W13 高窗
-        kbox(kitchen1FGroup, 20.80, 21.02, 0, 4.5, 0, yR, MAT.ckWhite);         // 東北退縮段東牆 (⑥ × Ⓐ–Ⓑ)
-        framedWinX(kitchen1FGroup, 21.04, 0.55, 3.95, y1 + 1.55, y1 + 2.55, 3); // 東北面 W11 三格橫窗（照片 04107 & A3-2）
-        kbox(kitchen1FGroup, 21.04, 21.42, 4.02, 4.42, y1 + 0.9, y1 + 1.7, MAT.wallFrameDark, false); // 壁掛室外機（照片 04107）
-        kbox(kitchen1FGroup, 20.80, 21.02, 12.0, 19.0, 0, yR, MAT.ckWhite);     // 廚房主體東牆 (⑥ × Ⓒ–Ⓓ)
+        //   驗收區南牆（深珊瑚粉紅，開 DW1 雙開進貨大門與 W2 窗！）
+        wallZWithOpenings(kitchen1FGroup, 9.0, 14.0, 18.91, 0.22, y1, 4.15, MAT.ckPinkDeep, [
+          { a: 9.6, b: 10.8, y0: y1 + 1.0, y1: y1 + 2.20, type: 'win', panes: 2 },   // W2 驗收區窗
+          { a: 11.2, b: 12.8, y0: y1, y1: y1 + 2.25, type: 'dblDoor', leafMat: MAT.ckWhite, hasGlass: true, openDir: -1 } // DW1 雙開大門
+        ]);
+        kbox(kitchen1FGroup, 9.0, 14.0, 18.80, 19.02, 4.15, yR, MAT.ckWhite);        // 驗收區上方白牆至屋頂
+        //   A01 走廊北牆（④–⑥ × Ⓓ，實開 W2/W3/W13 窗洞）
+        wallZWithOpenings(kitchen1FGroup, 14.0, 21.0, 18.91, 0.22, 0, yR, MAT.ckWhite, [
+          { a: 14.8, b: 16.5, y0: y1 + 1.0, y1: y1 + 2.25, type: 'win', panes: 2 },  // W2 營養師室窗
+          { a: 17.5, b: 19.0, y0: y1 + 1.0, y1: y1 + 2.25, type: 'win', panes: 2 },  // W3 廁所窗
+          { a: 19.6, b: 20.5, y0: y1 + 1.8, y1: y1 + 2.45, type: 'win', panes: 1 }   // W13 高窗
+        ]);
+        //   東北退縮段東牆（⑥ × Ⓐ–Ⓑ，實開 W11 三格橫窗洞＋壁掛室外機）
+        wallXWithOpenings(kitchen1FGroup, 20.91, 0, 4.5, 0.22, 0, yR, MAT.ckWhite, [
+          { a: 0.55, b: 3.95, y0: y1 + 1.55, y1: y1 + 2.55, type: 'win', panes: 3 }  // 東北面 W11
+        ]);
+        kbox(kitchen1FGroup, 21.04, 21.42, 4.02, 4.42, y1 + 0.9, y1 + 1.7, MAT.wallFrameDark, false); // 壁掛室外機（04107）
+        //   廚房主體東牆南段（⑥ × z=14.2~19.0 隔開 104 廁所與 106 食育教室；z=9.1~14.2 開放連通 102 走道緩衝區！）
+        kbox(kitchen1FGroup, 20.80, 21.02, 14.2, 19.0, 0, yR, MAT.ckWhite);
 
-        //   2b. 西南角蜜桃橘量體（①–② × Ⓒ–Ⓓ 餐食放置區，女兒牆頂 +6.00，依 04188.jpg & elevW）
-        kbox(kitchen1FGroup, -0.04, 4.20, 18.80, 19.06, 0, 6.00, MAT.ckPeach);  // 南牆 (頂 +6.00)
-        kbox(kitchen1FGroup, -0.06, 0.22, 12.0, 19.06, 0, 6.00, MAT.ckPeach);   // 西牆 (頂 +6.00)
-        kbox(kitchen1FGroup, 3.98, 4.22, 12.0, 19.06, yR - 0.1, 6.00, MAT.ckPeach); // 東側女兒牆
-        kbox(kitchen1FGroup, -0.04, 4.20, 12.0, 12.24, yR - 0.1, 6.00, MAT.ckPeach); // 北側女兒牆
-        kbox(kitchen1FGroup, -0.08, 0.18, 9.75, 12.0, 0, yR, MAT.ckPeach);      // 西牆蜜桃橘延伸段（W7 與北側 D1 之間，照片 04188）
-        //     南面 W1 雙格窗 + 蜜桃橘雨遮 + 上方小方窗 W14（依 04188.jpg）
-        framedWinZ(kitchen1FGroup, 0.65, 2.35, 19.08, y1 + 1.0, y1 + 2.55, 2);
+        //   2b. 西南角蜜桃橘量體（①–② × Ⓒ–Ⓓ 餐食放置區，女兒牆頂 +6.00，依 04188.jpg & elevW，實開 W1/W14/D1×2/W6！）
+        //       南牆分上下帶（0..yR 開 W1、yR..6.00 女兒牆開 W14），避免兩窗水平區間重疊
+        wallZWithOpenings(kitchen1FGroup, -0.02, 4.20, 18.93, 0.24, 0, yR, MAT.ckPeach, [
+          { a: 0.65, b: 2.35, y0: y1 + 1.0, y1: y1 + 2.55, type: 'win', panes: 2 }   // 南面 W1 雙格窗
+        ]);
+        wallZWithOpenings(kitchen1FGroup, -0.02, 4.20, 18.93, 0.24, yR, 6.00, MAT.ckPeach, [
+          { a: 0.55, b: 1.05, y0: 5.15, y1: 5.65, type: 'win', panes: 1 }            // 南面 W14 小方窗（女兒牆）
+        ]);
         kbox(kitchen1FGroup, 0.45, 2.55, 19.05, 19.50, y1 + 2.58, y1 + 2.74, MAT.ckPeach); // W1 雨遮
-        framedWinZ(kitchen1FGroup, 0.55, 1.05, 19.08, 5.15, 5.65, 1);           // 南面 W14 小方窗
-        //     西面雙開出餐門 D1 (×2 分列中柱 Ⓒ 兩側) + 橫條窗 W6 (4格) + 上方小方窗 W14（依 elevW & 04188.jpg）
-        [10.75, 13.55].forEach((dz) => {
-          kbox(kitchen1FGroup, -0.11, -0.04, dz - 0.72, dz + 0.72, y1, y1 + 2.20, MAT.ckWhite, false);
-          framedWinX(kitchen1FGroup, -0.12, dz - 0.52, dz + 0.52, y1 + 1.15, y1 + 2.02, 2); // 門上視窗格
-        });
-        framedWinX(kitchen1FGroup, -0.10, 15.3, 17.9, y1 + 1.15, y1 + 1.85, 4); // 西面 W6 四格橫窗（elevW & 04188）
-        framedWinX(kitchen1FGroup, -0.10, 15.8, 16.3, 5.15, 5.65, 1);           // 西面 W14 小方窗
+        //   西牆蜜桃橘北延伸段（z=9.75~12.0，高至 yR，實開北側雙開出餐門 D1）
+        wallXWithOpenings(kitchen1FGroup, 0.08, 9.75, 12.0, 0.24, 0, yR, MAT.ckPeach, [
+          { a: 10.05, b: 11.45, y0: y1, y1: y1 + 2.20, type: 'dblDoor', leafMat: MAT.ckWhite, hasGlass: true, openDir: 1 } // 北側 D1
+        ]);
+        //   西牆蜜桃橘主段（z=12.0~19.05，分上下帶實開南側 D1 ＋ W6 四格橫窗 ＋ 女兒牆 W14 小方窗）
+        wallXWithOpenings(kitchen1FGroup, 0.08, 12.0, 19.05, 0.24, 0, yR, MAT.ckPeach, [
+          { a: 12.85, b: 14.25, y0: y1, y1: y1 + 2.20, type: 'dblDoor', leafMat: MAT.ckWhite, hasGlass: true, openDir: 1 }, // 南側 D1
+          { a: 15.30, b: 17.90, y0: y1 + 1.15, y1: y1 + 1.85, type: 'win', panes: 4 }                                       // W6 四格橫窗
+        ]);
+        wallXWithOpenings(kitchen1FGroup, 0.08, 12.0, 19.05, 0.24, yR, 6.00, MAT.ckPeach, [
+          { a: 15.80, b: 16.30, y0: 5.15, y1: 5.65, type: 'win', panes: 1 }                                                 // 西面高窗 W14（女兒牆）
+        ]);
+        kbox(kitchen1FGroup, 3.98, 4.22, 12.0, 19.05, yR - 0.1, 6.00, MAT.ckPeach);  // 東側女兒牆
+        kbox(kitchen1FGroup, -0.02, 4.20, 12.0, 12.24, yR - 0.1, 6.00, MAT.ckPeach); // 北側女兒牆
 
         //   2c. 東側蜜桃橘量體（⑥–⑦ × Ⓑ–Ⓒ 食品儲藏／收納／A07 東向凹入陽台與對外樓梯，頂 +5.50，依 A2-1 / A4-2 DD' & 04107.jpg）
-        kbox(kitchen1FGroup, 21.0, 25.0, 4.45, 4.70, 0, 5.50, MAT.ckPeach);     // 北牆
-        kbox(kitchen1FGroup, 24.78, 25.02, 4.45, 9.05, 0, 5.50, MAT.ckPeach);   // 東牆（北段至 A07 陽台口）
-        kbox(kitchen1FGroup, 21.0, 25.02, 11.00, 11.24, 0, 5.50, MAT.ckPeach);  // 南牆（齊平 107 弧牆北面 z=11.15）
-        kbox(kitchen1FGroup, 23.0, 25.02, 9.00, 11.24, 4.10, 5.46, MAT.ckPeach);// A07 陽台上方挑簷量體
-        kbox(kitchen1FGroup, 23.0, 24.85, 8.95, 9.12, y1, 4.15, MAT.ckPeach);   // A07 凹入陽台北側內牆
-        framedWinX(kitchen1FGroup, 25.04, 6.2, 7.4, y1 + 0.85, y1 + 2.65, 1);   // 東面長窗 W5（照片 04107）
-        framedWinX(kitchen1FGroup, 25.04, 5.0, 5.5, 4.65, 5.15, 1);             // 東面高小方窗 W14（照片 04107）
-        //     A07 陽台背牆黑框落地門 DW3（面向東 +X，依 A2-1 & 04107.jpg）
-        kbox(kitchen1FGroup, 22.92, 23.04, 9.10, 11.00, y1, y1 + 2.70, MAT.steelDark, false);
-        framedWinX(kitchen1FGroup, 23.06, 9.18, 10.92, y1 + 0.04, y1 + 2.62, 2);
+        kbox(kitchen1FGroup, 21.0, 25.0, 4.45, 4.70, 0, 5.50, MAT.ckPeach);          // 北牆
+        wallXWithOpenings(kitchen1FGroup, 24.90, 4.45, 9.05, 0.24, 0, 5.50, MAT.ckPeach, [
+          { a: 5.0, b: 5.5, y0: 4.65, y1: 5.15, type: 'win', panes: 1 },             // 東面高小方窗 W14
+          { a: 6.2, b: 7.4, y0: y1 + 0.85, y1: y1 + 2.65, type: 'win', panes: 1 }    // 東面長窗 W5
+        ]);
+        //   南牆（x=23.0~25.02 構成 A07 陽台與 107 弧牆北面隔牆；x=21.0~23.0 開放貫通 102 走道緩衝區！）
+        kbox(kitchen1FGroup, 23.0, 25.02, 11.00, 11.24, 0, 5.50, MAT.ckPeach);       // A07 南牆（齊平 107 北面 z=11.15）
+        kbox(kitchen1FGroup, 21.0, 23.0, 11.00, 11.24, yR - 0.1, 5.50, MAT.ckPeach); // 102 上方蜜桃挑眉
+        kbox(kitchen1FGroup, 23.0, 25.02, 9.00, 11.24, 4.10, 5.46, MAT.ckPeach);     // A07 陽台上方挑簷量體
+        kbox(kitchen1FGroup, 23.0, 24.85, 8.95, 9.12, y1, 4.15, MAT.ckPeach);        // A07 凹入陽台北側內牆
+        //     A07 陽台背牆黑框落地門 DW3（面向東 +X，真正打通進入 102 走道緩衝區，依 A2-1 & 04008/04107.jpg！）
+        wallXWithOpenings(kitchen1FGroup, 23.0, 9.08, 11.02, 0.16, y1, 4.15, MAT.ckWhite, [
+          { a: 9.16, b: 10.94, y0: y1, y1: y1 + 2.65, type: 'dblDoor', frameMat: MAT.steelDark, leafMat: MAT.glass, openDir: -1 }
+        ]);
         //     A07 陽台東北半段白色密排欄杆（南半段開向對外樓梯）
         addWhitePicketZ(kitchen1FGroup, 9.08, 10.14, y1, 24.92, 1.05);
         //     A07 東向對外 6 階混凝土樓梯（沿 107 白弧牆北側由 x=25.0 (+1.20) 往東降至 x=26.85 (0.00)，依 A2-1 / DD' / 04107.jpg）
@@ -2081,17 +2338,57 @@
           }
         }
 
-        // ── 3. 中央廚房 1F 完整室內隔間與廚房設備（依 A2-1 一層平面圖，1F 剖切清晰可見！）──
-        const kInt = (x0, x1, z0, z1) => kbox(kitchen1FGroup, x0, x1, z0, z1, y1, yR - 0.15, MAT.wallInt);
-        kInt(3.92, 4.08, 4.7, 18.8);          // 軸線 ② 隔牆（污餐具／餐食放置 vs 潔淨餐具）
-        kInt(8.92, 9.08, 0.2, 18.8);          // 軸線 ③ 隔牆（西半餐具區 vs 烹飪區／驗收區）
-        kInt(13.92, 14.08, 12.0, 18.8);       // 軸線 ④ 隔牆（101 驗收區 vs 102/103 營養師室）
-        kInt(16.92, 17.08, 0.2, 12.0);        // 軸線 ⑤ 隔牆（111 烹飪區 vs 110 魚肉蔬菜處理區）
-        kInt(17.72, 17.88, 14.2, 18.8);       // 103 營養師室 vs 104/105 廁所淋浴隔牆
-        kInt(20.92, 21.08, 4.6, 12.0);        // 軸線 ⑥ 隔牆（處理區 vs 109 食品儲藏）
-        kInt(0.2, 20.9, 11.92, 12.08);        // 軸線 Ⓒ 主隔牆（北側熱廚洗滌 vs 南側驗收／辦公）
-        kInt(14.0, 20.9, 14.12, 14.28);       // 102 走道緩衝區 vs 103 營養師／105 廁所隔牆
-        kInt(21.0, 24.8, 9.12, 9.28);         // 109 食品儲藏 vs 108 儲藏室隔牆
+        // ── 3. 中央廚房 1F 完整室內隔間（全面依 A2-1 打通所有房間門洞！）與廚房設備 ──
+        const yI = yR - 0.15;
+        //   軸線 ② 隔牆（僅 z=4.7~12.0 隔開 113 污餐具與 114 潔淨餐具，設 D1 雙開門；z=12~19 依 A2-1 為 112 開放空間無牆！）
+        wallXWithOpenings(kitchen1FGroup, 4.0, 4.7, 12.0, 0.16, y1, yI, MAT.wallInt, [
+          { a: 9.0, b: 10.4, y0: y1, y1: y1 + 2.15, type: 'dblDoor', leafMat: MAT.ckWhite, hasGlass: true, openDir: 1 } // D1
+        ]);
+        //   軸線 ③ 隔牆（西半餐具區 vs 烹飪區／驗收區，開 D5 / SD1 / D2！）
+        wallXWithOpenings(kitchen1FGroup, 9.0, 0.2, 18.8, 0.16, y1, yI, MAT.wallInt, [
+          { a: 1.5, b: 2.4, y0: y1, y1: y1 + 2.10, type: 'door', leafMat: MAT.steelSilver, openDir: 1 },              // D5 (A06 油脂截留)
+          { a: 9.5, b: 11.1, y0: y1, y1: y1 + 2.20, type: 'dblDoor', leafMat: MAT.steelSilver, hasGlass: true, openDir: 1 }, // SD1
+          { a: 14.5, b: 15.5, y0: y1, y1: y1 + 2.15, type: 'door', leafMat: MAT.ckWhite, hasGlass: true, openDir: -1 }       // D2 (112↔101)
+        ]);
+        //   軸線 ④ 隔牆（101 驗收區 vs 102 走道緩衝／103 營養師室，開 D2 進入 102！）
+        wallXWithOpenings(kitchen1FGroup, 14.0, 12.0, 18.8, 0.16, y1, yI, MAT.wallInt, [
+          { a: 12.6, b: 13.6, y0: y1, y1: y1 + 2.15, type: 'door', leafMat: MAT.woodDoor, openDir: 1 }                // D2 (101↔102)
+        ]);
+        //   軸線 ⑤ 隔牆（111 烹飪區 vs 110 魚肉蔬菜處理區，開 SD1 雙開大門！）
+        wallXWithOpenings(kitchen1FGroup, 17.0, 0.2, 12.0, 0.16, y1, yI, MAT.wallInt, [
+          { a: 8.6, b: 10.2, y0: y1, y1: y1 + 2.20, type: 'dblDoor', leafMat: MAT.steelSilver, hasGlass: true, openDir: 1 } // SD1
+        ]);
+        //   103 營養師室 vs 104/105 廁所淋浴隔牆（各自從 102 走道開門進出）
+        kbox(kitchen1FGroup, 17.72, 17.88, 14.2, 18.8, y1, yI, MAT.wallInt);
+        //   軸線 ⑥ 隔牆（僅 z=4.6~9.1 隔開 110 處理區與 109/108 儲藏室；z=9.1~14.2 開放連通 102 東緩衝走道！）
+        kbox(kitchen1FGroup, 20.92, 21.08, 4.6, 9.1, y1, yI, MAT.wallInt);
+        //   軸線 Ⓒ 主隔牆（北側熱廚洗滌 vs 南側驗收／102 走道，開 D1 / SW1×2 / SD3 / W8 / D2！）
+        wallZWithOpenings(kitchen1FGroup, 0.2, 20.9, 12.0, 0.16, y1, yI, MAT.wallInt, [
+          { a: 6.2, b: 7.6, y0: y1, y1: y1 + 2.15, type: 'dblDoor', leafMat: MAT.ckWhite, hasGlass: true, openDir: 1 },     // D1 (114↔112)
+          { a: 9.8, b: 11.4, y0: y1 + 1.0, y1: y1 + 2.0, type: 'win', panes: 2 },                                           // SW1 傳菜／展示窗
+          { a: 12.0, b: 13.6, y0: y1 + 1.0, y1: y1 + 2.0, type: 'win', panes: 2 },                                          // SW1 展示窗
+          { a: 14.4, b: 16.0, y0: y1, y1: y1 + 2.20, type: 'dblDoor', leafMat: MAT.steelSilver, hasGlass: true, openDir: -1 }, // SD3 (111↔102)
+          { a: 17.4, b: 18.8, y0: y1 + 1.0, y1: y1 + 2.1, type: 'win', panes: 2 },                                          // W8 觀察窗
+          { a: 19.3, b: 20.3, y0: y1, y1: y1 + 2.15, type: 'door', leafMat: MAT.woodDoor, openDir: -1 }                     // D2 衛生入口 (110↔102，照片 04063)
+        ]);
+        //   102 走道緩衝區南牆（z=14.2，開 D2 進 103 營養師室、D2 進 105 淋浴間、D6 進 104 廁所！）
+        wallZWithOpenings(kitchen1FGroup, 14.0, 20.9, 14.2, 0.16, y1, yI, MAT.wallInt, [
+          { a: 15.0, b: 15.9, y0: y1, y1: y1 + 2.15, type: 'door', leafMat: MAT.woodDoor, openDir: 1 }, // D2 (103 營養師室)
+          { a: 18.0, b: 18.9, y0: y1, y1: y1 + 2.15, type: 'door', leafMat: MAT.woodDoor, openDir: 1 }, // D2 (105 淋浴間)
+          { a: 19.6, b: 20.5, y0: y1, y1: y1 + 2.15, type: 'door', leafMat: MAT.woodDoor, openDir: 1 }  // D6 (104 無障礙廁所)
+        ]);
+        //   109 食品儲藏 & 108 儲藏室（南牆 z=9.12 開 D2×2 面對 102 東緩衝走道，依 A2-1 & 照片 04008.jpg！）
+        wallZWithOpenings(kitchen1FGroup, 21.0, 24.8, 7.60, 0.14, y1, yI, MAT.wallInt, [
+          { a: 21.25, b: 22.15, y0: y1, y1: y1 + 2.15, type: 'door', leafMat: MAT.woodDoor, openDir: -1 } // 109 食品儲藏門 D2
+        ]);
+        wallZWithOpenings(kitchen1FGroup, 21.0, 23.0, 9.12, 0.14, y1, yI, MAT.wallInt, [
+          { a: 21.25, b: 22.05, y0: y1, y1: y1 + 2.15, type: 'door', leafMat: MAT.woodDoor, openDir: -1 }, // 通往 109 門 D2
+          { a: 22.15, b: 22.92, y0: y1, y1: y1 + 2.15, type: 'door', leafMat: MAT.woodDoor, openDir: -1 }  // 108 儲藏室門 D2
+        ]);
+        kbox(kitchen1FGroup, 22.12, 22.24, 7.60, 9.12, y1, yI, MAT.wallInt); // 109 走廊 vs 108 儲藏室隔牆
+        //   102 衛生入口一體式洗手台與洗腳池（照片 04063.jpg & 04008.jpg）
+        kbox(kitchen1FGroup, 19.3, 20.3, 12.15, 12.85, y1, y1 + 0.06, MAT.steelSilver, false); // 洗腳池格柵
+        kbox(kitchen1FGroup, 20.2, 20.85, 12.15, 12.75, y1, y1 + 0.85, MAT.steelSilver, false); // 不鏽鋼洗手台
         //   廚房不鏽鋼大型設備（A2-1）：
         //   - 111 烹飪區（9~17, 0~12）：4 座大型迴轉鍋 ＋ 中央炒鍋檯 ＋ 集煙罩
         [2.4, 4.6, 6.8, 9.0].forEach((kz) => {
@@ -2103,15 +2400,15 @@
         kbox(kitchen1FGroup, 14.3, 16.3, 1.8, 9.8, y1 + 2.4, y1 + 2.85, MAT.steelSilver, false); // 不鏽鋼排煙罩
         //   - 110 魚肉及蔬菜處理區（17~21, 0~12）：3 座不鏽鋼工作檯 ＋ 洗米槽
         [2.4, 5.6, 8.8].forEach((kz) => kbox(kitchen1FGroup, 17.8, 20.2, kz - 0.55, kz + 0.55, y1, y1 + 0.85, MAT.steelSilver, false));
-        //   - 109 食品儲藏區（21~25, 4.7~9.1）：不鏽鋼四層貨架 ×2
-        kbox(kitchen1FGroup, 21.5, 22.3, 5.2, 8.6, y1, y1 + 1.85, MAT.steelSilver, false);
-        kbox(kitchen1FGroup, 23.6, 24.4, 5.2, 8.6, y1, y1 + 1.85, MAT.steelSilver, false);
+        //   - 109 食品儲藏區（21~25, 4.7~7.5）：不鏽鋼四層貨架 ×2
+        kbox(kitchen1FGroup, 21.4, 22.2, 5.0, 7.2, y1, y1 + 1.85, MAT.steelSilver, false);
+        kbox(kitchen1FGroup, 23.7, 24.5, 5.0, 7.2, y1, y1 + 1.85, MAT.steelSilver, false);
         //   - 113 污餐具洗滌區（0~4, 4.7~11.8）：大型浸泡槽與清潔檯
         kbox(kitchen1FGroup, 0.8, 2.2, 5.8, 10.6, y1, y1 + 0.85, MAT.steelSilver, false);
         //   - 114 潔淨餐具 & 112 餐食放置（0~9, 4.7~18.6）：活動餐車與配膳檯
         [6.2, 8.4].forEach((kz) => kbox(kitchen1FGroup, 5.0, 7.6, kz - 0.5, kz + 0.5, y1, y1 + 0.90, MAT.steelSilver, false));
-        kbox(kitchen1FGroup, 1.4, 3.2, 13.5, 17.2, y1, y1 + 0.85, MAT.steelSilver, false);
-        kbox(kitchen1FGroup, 5.4, 7.6, 14.2, 17.2, y1, y1 + 0.85, MAT.steelSilver, false);
+        kbox(kitchen1FGroup, 1.8, 3.6, 14.6, 17.4, y1, y1 + 0.85, MAT.steelSilver, false);
+        kbox(kitchen1FGroup, 5.4, 7.6, 14.6, 17.4, y1, y1 + 0.85, MAT.steelSilver, false);
         //   - 101 驗收區（9~14, 12.2~18.6）：雙門冷藏冰箱 ＋ 驗收檯
         kbox(kitchen1FGroup, 9.4, 11.4, 15.8, 16.8, y1, y1 + 2.05, MAT.steelSilver, false);
         //   - 103 營養師室（14.2~17.6, 14.4~18.6）：辦公桌與會議桌
@@ -2178,9 +2475,7 @@
           const [wx, wz] = K(9.45, 22.95);
           m.position.set(wx, y1, wz); m.castShadow = true; m.receiveShadow = true; kitchen1FGroup.add(m);
         }
-        kbox(kitchenBaseGroup, 9.45, 13.55, 22.95, 23.3, 0, y1, MAT.ckPink);         // 南牆基座
-        framedWinZ(kitchen1FGroup, 11.2, 12.8, 19.06, y1, y1 + 2.25, 2);             // 驗收區雙門 DW1
-        framedWinZ(kitchen1FGroup, 9.6, 10.8, 19.06, y1 + 1.0, y1 + 2.2, 2);         // 驗收區窗 W2
+        kbox(kitchenBaseGroup, 9.45, 13.55, 22.95, 23.3, 0, y1, MAT.ckPink);         // 南牆基座（驗收區 DW1/W2 已於 2a 實開門窗洞）
 
         // ── 7. 粉紅與黃色之間的走廊＋外廊（A01，④–⑥'×Ⓓ–Ⓔ，白色頂蓋，照片 yellow-south）──
         kbox(kitchenBaseGroup, 14, 22.2, 19, 23, 0, y1, MAT.plazaTile);
@@ -2205,7 +2500,18 @@
         dl(0.35, H - y1 - 1.6, 2.05, -3.85, (H + y1 + 1.6) / 2, 4.23, MAT.ckYellow);
         dl(0.35, 0.6, 0.5, -3.85, y1 + 1.3, 3.45, MAT.ckYellow);
         dl(0.35, 0.6, 0.55, -3.85, y1 + 1.3, 4.97, MAT.ckYellow);
-        dl(8.0, H, 0.3, 0, H / 2, -5.1, MAT.ckYellow);
+        //   北牆（z=-5.1，西端開 DW4 雙開門洞 x=-3.55..-1.95 連通 102 走道緩衝區，依 A2-1！）
+        dl(0.45, H, 0.3, -3.775, H / 2, -5.1, MAT.ckYellow);
+        dl(5.95, H, 0.3, 1.025, H / 2, -5.1, MAT.ckYellow);
+        dl(1.60, H - y1 - 2.25, 0.3, -2.75, (H + y1 + 2.25) / 2, -5.1, MAT.ckYellow);
+        dl(0.06, 2.25, 0.14, -3.52, y1 + 1.125, -5.1, MAT.alFrame);
+        dl(0.06, 2.25, 0.14, -1.98, y1 + 1.125, -5.1, MAT.alFrame);
+        {
+          // DW4 門片向內敞開（連通 102 緩衝走廊與 106 食育教室）
+          const piv = new THREE.Group(); piv.position.set(-3.48, y1, -5.1); piv.rotation.y = -1.15;
+          const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.85, 2.20, 0.05), MAT.ckWhite);
+          leaf.position.set(0.425, 1.10, 0); piv.add(leaf); dining.add(piv);
+        }
         dl(0.3, H, 6.2, 3.85, H / 2, -2.0, MAT.ckYellow);
         dl(0.3, H - yR + 0.3, 4.3, 3.85, (H + yR - 0.3) / 2, 3.1, MAT.ckYellow);
         {
@@ -2229,10 +2535,18 @@
         }
         [[-3.85, 5.05], [3.85, 5.05]].forEach(([x, z]) => dl(0.45, H, 0.45, x, H / 2, z, MAT.ckYellow));
         dl(7.4, 0.26, 9.9, 0, yR - 0.13, 0.05, MAT.ckYellow).userData = { isKitchenRoofPart: true };
-        // 教室與外廊間白色格柵摺門 DW2 + 鋁框橫楣
-        dl(7.4, 2.6, 0.08, 0, y1 + 1.3, 1.0, makeMat(0xeef0f2, { roughness: 0.6, transparent: true, opacity: 0.85 }));
-        [-3.6, -1.8, 0, 1.8, 3.6].forEach((mx) => dl(0.06, 2.6, 0.11, mx, y1 + 1.3, 1.0, MAT.ckWhite));
+        // 教室與外廊間白色格柵摺門 DW2 + 鋁框橫楣（中段雙開門敞開 1.7m 可直接出入外廊與教室，依 04156.jpg）
+        const dw2Mat = makeMat(0xeef0f2, { roughness: 0.6, transparent: true, opacity: 0.65 });
+        dl(2.8, 2.6, 0.08, -2.3, y1 + 1.3, 1.0, dw2Mat);
+        dl(2.8, 2.6, 0.08, 2.3, y1 + 1.3, 1.0, dw2Mat);
+        dl(1.8, 0.55, 0.08, 0, y1 + 2.32, 1.0, dw2Mat); // 中門上氣窗
+        [-3.6, -1.8, -0.9, 0.9, 1.8, 3.6].forEach((mx) => dl(0.06, 2.6, 0.11, mx, y1 + 1.3, 1.0, MAT.ckWhite));
         dl(7.4, 0.06, 0.11, 0, y1 + 2.05, 1.0, MAT.ckWhite);
+        [-1, 1].forEach((side) => {
+          const piv = new THREE.Group(); piv.position.set(side * 0.88, y1, 1.0); piv.rotation.y = side * 1.15;
+          const lf = new THREE.Mesh(new THREE.BoxGeometry(0.84, 2.02, 0.06), dw2Mat);
+          lf.position.set(-side * 0.42, 1.01, 0); piv.add(lf); dining.add(piv);
+        });
         dl(0.08, 1.4, 3.2, -4.02, y1 + 1.9, -2.2, MAT.glass);
         dl(0.08, 0.6, 0.6, -4.02, 5.3, -3.8, MAT.glass);
         dl(0.55, 0.15, 1.6, -3.4, y1 + 0.85, 4.2, MAT.ckWhite);
@@ -2241,19 +2555,41 @@
         dl(2.2, 0.9, 0.9, -1.6, y1 + 0.45, -4.3, MAT.woodLight);
         kitchen1FGroup.add(dining);
 
-        // ── 9. 107 更衣間（白色弧形量體 頂 +3.65m＋W9 四格橫窗＋D4 東側白門）與 A05 雙折戶外樓梯（下段沿東側順接弧牆＋上段轉西登頂 +4.90，依 BB'/DD'/A2-2/04107.jpg）──
+        // ── 9. 107 更衣間（中空白色弧形量體 頂 +3.65m＋西向 D2 進 102＋W9 四格橫窗＋東向 D4 地面門＋更衣櫃）與 A05 雙折戶外樓梯 ──
         {
           const yMid = 3.65;
-          // 107 白色弧形量體（北面齊平 A07 樓梯南側 z=11.15，圓弧 r=2.40 順切 A05 樓梯東牆 x=30.20，高 yMid=+3.65m！）
-          const sh = new THREE.Shape();
-          sh.moveTo(25.0, -11.15); sh.lineTo(27.8, -11.15);
-          sh.absarc(27.8, -13.55, 2.4, Math.PI / 2, 0, true);
-          sh.lineTo(30.2, -14.2); sh.lineTo(25.0, -14.2); sh.closePath();
-          const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: yMid, bevelEnabled: false, curveSegments: 28 }), MAT.ckWhite);
-          m.rotation.x = -Math.PI / 2; m.position.set(gx(KIT.x), 0, gz(KIT.z));
-          m.castShadow = true; m.receiveShadow = true; kitchen1FGroup.add(m);
-          // W9 四格長條橫窗（貼齊北面平直段 x=25.55~28.0，位於 A07 對外樓梯上方，照片 04107.jpg）
-          framedWinZ(kitchen1FGroup, 25.55, 28.0, 11.11, 1.65, 2.22, 4);
+          // 107 中空底板（內側 +1.20 接 102 緩衝走道，頂板歸入 kitchenRoofGroup 讓 1F 剖切可見更衣櫃！）
+          const shFloor = new THREE.Shape();
+          shFloor.moveTo(25.0, -11.15); shFloor.lineTo(27.8, -11.15);
+          shFloor.absarc(27.8, -13.55, 2.4, Math.PI / 2, 0, true);
+          shFloor.lineTo(30.2, -14.2); shFloor.lineTo(25.0, -14.2); shFloor.closePath();
+          const mBase = new THREE.Mesh(new THREE.ExtrudeGeometry(shFloor, { depth: y1, bevelEnabled: false, curveSegments: 28 }), MAT.ckWhite);
+          mBase.rotation.x = -Math.PI / 2; mBase.position.set(gx(KIT.x), 0, gz(KIT.z));
+          mBase.castShadow = true; mBase.receiveShadow = true; kitchenBaseGroup.add(mBase);
+          // 107 頂板（+3.50 ~ +3.65，放入 kitchenRoofGroup：1F 剖切時自動開啟露出更衣間內部！）
+          const mRoof107 = new THREE.Mesh(new THREE.ExtrudeGeometry(shFloor, { depth: 0.16, bevelEnabled: false, curveSegments: 28 }), MAT.ckWhite);
+          mRoof107.rotation.x = -Math.PI / 2; mRoof107.position.set(gx(KIT.x), yMid - 0.16, gz(KIT.z));
+          mRoof107.castShadow = true; mRoof107.receiveShadow = true; kitchenRoofGroup.add(mRoof107);
+          // 107 北牆平直段（z=11.15~11.37，實開 W9 四格橫窗洞！）
+          wallZWithOpenings(kitchen1FGroup, 25.0, 27.9, 11.26, 0.22, y1, yMid, MAT.ckWhite, [
+            { a: 25.55, b: 27.85, y0: 1.65, y1: 2.22, type: 'win', panes: 4 }
+          ]);
+          // 107 東北圓弧外牆殼（r=2.40 外徑 / r=2.18 內徑，中空！）
+          const shArc = new THREE.Shape();
+          shArc.absarc(27.8, -13.55, 2.40, Math.PI / 2, 0, true);
+          shArc.lineTo(30.20, -14.20); shArc.lineTo(29.98, -14.20);
+          shArc.lineTo(29.98, -13.55);
+          shArc.absarc(27.8, -13.55, 2.18, 0, Math.PI / 2, false);
+          shArc.closePath();
+          const mArc = new THREE.Mesh(new THREE.ExtrudeGeometry(shArc, { depth: yMid - y1, bevelEnabled: false, curveSegments: 28 }), MAT.ckWhite);
+          mArc.rotation.x = -Math.PI / 2; mArc.position.set(gx(KIT.x), y1, gz(KIT.z));
+          mArc.castShadow = true; mArc.receiveShadow = true; kitchen1FGroup.add(mArc);
+          // 107 西牆（x=25.0，開 D2 門連通 102 走道緩衝區，依 A2-1 & 照片 04008.jpg 右側「更衣室」門！）
+          wallXWithOpenings(kitchen1FGroup, 25.0, 11.24, 14.1, 0.16, y1, yMid, MAT.wallInt, [
+            { a: 11.75, b: 12.68, y0: y1, y1: y1 + 2.15, type: 'door', leafMat: MAT.woodDoor, openDir: 1 } // D2 更衣室門
+          ]);
+          // 107 室內更衣櫃（不鏽鋼／木質置物櫃，避開南側 106 旋轉北牆與西側 D2 門）
+          kbox(kitchen1FGroup, 26.2, 28.2, 12.40, 12.90, y1, y1 + 1.85, MAT.woodLight, false);
           // D4 地面白色門（位於東牆 x=30.20 樓梯下方，白門板＋細框，依 A2-1 / A3-2 / 04107.jpg）
           kbox(kitchen1FGroup, 30.18, 30.24, 13.65, 14.52, 0.04, 2.18, MAT.alFrame, false);
           kbox(kitchen1FGroup, 30.20, 30.27, 13.70, 14.47, 0.06, 2.13, MAT.ckWhite, false);
@@ -2289,7 +2625,7 @@
           const arcSegs = 12;
           const arcR = 2.34;
           for (let a = 0; a <= arcSegs; a++) {
-            const th = (a / arcSegs) * (Math.PI / 2); // 0 = east (30.14, 13.55), PI/2 = north (27.8, 11.21)
+            const th = (a / arcSegs) * (Math.PI / 2);
             const [px, pz] = K(27.8 + arcR * Math.cos(th), 13.55 - arcR * Math.sin(th));
             addBox(kitchen1FGroup, 0.03, 1.05, 0.03, px, yMid + 0.525, pz, MAT.ckWhite, false);
             if (a < arcSegs) {
@@ -2346,30 +2682,37 @@
         addWhitePicketZ(kitchenRoofGroup, 4.5, 12.0, yR + 0.12, 0.08, 1.10);
         addWhitePicketX(kitchenRoofGroup, 0.08, 4.0, yR + 0.12, 4.55, 1.10);
 
-        // ── 11. 北側：115 鍋爐間／116 瓦斯間（②–③×Ⓐ–Ⓑ，粉紅外牆，頂為 +3.45 水塔平台 8T×2，依 elevW / 04097 / 04103）──
-        kbox(kitchen1FGroup, 4, 9, -0.05, 0.18, 0, 3.45, MAT.ckPink);           // 北牆
-        kbox(kitchen1FGroup, 4, 4.22, -0.05, 4.5, 0, 3.45, MAT.ckPink);         // 西牆
+        // ── 11. 北側：115 鍋爐間／116 瓦斯間（②–③×Ⓐ–Ⓑ，中空實開西面 W3/SD3 與北面 SD3 格柵門，依 elevW / 04097 / 04103）──
+        wallZWithOpenings(kitchen1FGroup, 4, 9, 0.07, 0.22, 0, 3.45, MAT.ckPink, [
+          { a: 6.2, b: 7.8, y0: 0.40, y1: 2.50, type: 'grille' } // 北面 116 瓦斯間白格柵門 SD3（右半敞開可進出）
+        ]);
+        wallXWithOpenings(kitchen1FGroup, 4.11, -0.04, 4.5, 0.22, 0, 3.45, MAT.ckPink, [
+          { a: 0.55, b: 1.45, y0: 1.05, y1: 2.30, type: 'win', panes: 2 },                                             // 西面 W3 窗
+          { a: 2.00, b: 3.80, y0: 0.40, y1: 2.50, type: 'dblDoor', leafMat: MAT.ckWhite, openDir: 1 }                  // 西面 SD3 雙開鍋爐室門
+        ]);
         kbox(kitchen1FGroup, 6.42, 6.58, 0.2, 4.4, 0.4, 3.3, MAT.wallInt);      // 鍋爐／瓦斯分隔牆
-        //   西面（115 鍋爐間）：W3 雙格窗 ＋ SD3 雙開門（依 elevW.png & 04097.jpg）
-        framedWinX(kitchen1FGroup, 3.96, 0.55, 1.45, 1.05, 2.30, 2);
-        kbox(kitchen1FGroup, 3.94, 4.02, 2.0, 3.8, 0.40, 2.50, MAT.ckWhite, false);
-        kbox(kitchen1FGroup, 3.93, 4.00, 2.86, 2.94, 0.40, 2.50, MAT.alFrame, false);
-        //   北面（116 瓦斯間）：白格柵門 SD3 ＋ 不鏽鋼排煙彎管（依 04103.jpg & A3-2）
-        kbox(kitchen1FGroup, 6.2, 7.8, -0.10, -0.02, 0.4, 2.5, MAT.wallFrameDark, false);
-        for (let gx0 = 6.32; gx0 <= 7.7; gx0 += 0.14) {
-          kbox(kitchen1FGroup, gx0 - 0.015, gx0 + 0.015, -0.11, -0.07, 0.45, 2.48, MAT.ckWhite, false);
-        }
         {
           // 不鏽鋼排氣煙囪（照片 04103.jpg）
           const [fx, fz] = K(5.3, -0.22);
           const flue = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.05, 12), MAT.steelSilver);
           flue.position.set(fx, 2.85, fz); kitchen1FGroup.add(flue);
         }
-        // 鍋爐與熱水儲槽示意（照片 04097.jpg）
+        // 115 鍋爐間設備（鍋爐＋川明不鏽鋼熱水儲槽＋藍色軟水機，依照片 04097.jpg）＋ 116 瓦斯鋼瓶 ×4
         {
-          const [bx, bz] = K(5.2, 2.2);
-          const bl = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 1.8, 14), MAT.steelSilver);
-          bl.position.set(bx, 1.3, bz); kitchen1FGroup.add(bl);
+          const [bx, bz] = K(5.1, 1.8);
+          const bl = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 1.75, 14), MAT.ckWhite);
+          bl.position.set(bx, 0.40 + 0.88, bz); kitchen1FGroup.add(bl);
+          const [hx, hz] = K(5.5, 3.1);
+          const hw = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.65, 14), MAT.steelSilver);
+          hw.position.set(hx, 0.40 + 0.82, hz); kitchen1FGroup.add(hw);
+          const [sx, sz] = K(5.9, 2.2);
+          const sf = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.25, 12), makeMat(0x1d6fb8, { roughness: 0.4 }));
+          sf.position.set(sx, 0.40 + 0.62, sz); kitchen1FGroup.add(sf);
+          [[7.2, 2.2], [7.9, 2.2], [7.2, 3.2], [7.9, 3.2]].forEach(([gx1, gz1]) => {
+            const [cx, cz] = K(gx1, gz1);
+            const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.15, 12), MAT.wallFrameGray);
+            cyl.position.set(cx, 0.40 + 0.58, cz); kitchen1FGroup.add(cyl);
+          });
         }
         kbox(kitchenRoofGroup, 4, 9, -0.05, 4.5, 3.30, 3.50, MAT.slabFloor);    // +3.45 水塔平台板
         [[5.5, 1.5], [7.5, 2.9]].forEach(([lx, lz]) => {
@@ -2380,21 +2723,45 @@
         addWhitePicketX(kitchenRoofGroup, 4.0, 9.0, 3.50, 0.02, 1.10);
         addWhitePicketZ(kitchenRoofGroup, 0.02, 4.5, 3.50, 4.05, 1.10);
 
-        // ── 12. 2F 機房（③–⑥×Ⓐ–Ⓑ，+4.90 → +7.90，淺米灰，含消防機房／RO機房／儲藏室門窗與百葉 W15，依 A2-2 & A3-1/A3-2）──
-        kbox(kitchenRoofGroup, 9, 21, 0, 4.5, yR, yP, MAT.ckSage);
-        // 南面：W15 百葉（西側）＋ SD3 雙開防火門 ＋ D3 單開門 ×2
-        kbox(kitchenRoofGroup, 9.8, 11.2, 4.51, 4.56, yR + 1.25, yR + 2.35, MAT.steelDark, false); // W15 百葉
-        for (let ly = yR + 1.35; ly < yR + 2.3; ly += 0.16) {
-          kbox(kitchenRoofGroup, 9.85, 11.15, 4.55, 4.59, ly, ly + 0.04, MAT.steelSilver, false);
-        }
-        kbox(kitchenRoofGroup, 13.0, 14.6, 4.51, 4.56, yR, yR + 2.2, MAT.steelDark, false);        // SD3
-        kbox(kitchenRoofGroup, 16.1, 17.0, 4.51, 4.56, yR, yR + 2.1, MAT.steelDark, false);        // D3 (RO)
-        kbox(kitchenRoofGroup, 18.5, 19.4, 4.51, 4.56, yR, yR + 2.1, MAT.steelDark, false);        // D3 (儲藏)
-        // 北面：W2 雙格窗（東側）＋ W15 百葉（中側，依 A3-2 北向立面圖）
-        framedWinZ(kitchenRoofGroup, 18.0, 19.6, -0.04, yR + 1.1, yR + 2.25, 2);
-        kbox(kitchenRoofGroup, 12.2, 13.4, -0.06, -0.02, yR + 1.0, yR + 2.1, MAT.steelDark, false);
-        for (let ly = yR + 1.1; ly < yR + 2.05; ly += 0.16) {
-          kbox(kitchenRoofGroup, 12.25, 13.35, -0.08, -0.05, ly, ly + 0.04, MAT.steelSilver, false);
+        // ── 12. 2F 中空三間機房（③–⑥×Ⓐ–Ⓑ，+4.90 → +7.90，依 A2-2：消防機房／RO機房 8T+1T／儲藏室 2T×2，全部實開門窗！）──
+        //   南牆（z=4.40，實開 W15 百葉＋SD3 消防機房雙開門＋D3 RO機房門＋D3 儲藏室門！）
+        wallZWithOpenings(kitchenRoofGroup, 9, 21, 4.40, 0.22, yR, yP, MAT.ckSage, [
+          { a: 9.8, b: 11.2, y0: yR + 1.25, y1: yR + 2.35, type: 'louver' },                                      // W15 南百葉
+          { a: 12.9, b: 14.5, y0: yR, y1: yR + 2.20, type: 'dblDoor', leafMat: MAT.steelDark, openDir: -1 },      // SD3 消防機房門
+          { a: 16.0, b: 16.9, y0: yR, y1: yR + 2.15, type: 'door', leafMat: MAT.steelDark, openDir: -1 },         // D3 RO機房門
+          { a: 18.4, b: 19.3, y0: yR, y1: yR + 2.15, type: 'door', leafMat: MAT.steelDark, openDir: -1 }          // D3 儲藏室門
+        ]);
+        //   北牆（z=0.11，實開 W15 百葉＋W2 雙格窗！）
+        wallZWithOpenings(kitchenRoofGroup, 9, 21, 0.11, 0.22, yR, yP, MAT.ckSage, [
+          { a: 12.2, b: 13.4, y0: yR + 1.0, y1: yR + 2.10, type: 'louver' },                                      // W15 北百葉
+          { a: 18.0, b: 19.6, y0: yR + 1.1, y1: yR + 2.25, type: 'win', panes: 2 }                                // W2 北窗
+        ]);
+        kbox(kitchenRoofGroup, 9.0, 9.22, 0, 4.5, yR, yP, MAT.ckSage);          // 西外牆
+        kbox(kitchenRoofGroup, 20.78, 21.0, 0, 4.5, yR, yP, MAT.ckSage);        // 東外牆
+        //   2F 機房內隔牆（分出消防機房 9~14.6、RO機房 14.6~17.3、儲藏室 17.3~21，依 A2-2）
+        kbox(kitchenRoofGroup, 14.55, 14.70, 0.2, 4.3, yR, yP - 0.18, MAT.wallInt);
+        kbox(kitchenRoofGroup, 17.25, 17.40, 0.2, 4.3, yR, yP - 0.18, MAT.wallInt);
+        //   2F 機房頂蓋（設 isKitchen2FRoof 旗標：切換「貳層」剖切時自動開啟露出 8T/1T/2T×2 水塔與消防泵浦！）
+        const k2Roof = kbox(kitchenRoofGroup, 9.02, 20.98, 0.02, 4.48, yP - 0.16, yP, MAT.ckSage);
+        k2Roof.userData = { isKitchen2FRoof: true };
+        //   2F 機房內部設備（依 A2-2 二層平面圖）：
+        //     - 消防機房：消防泵浦組 HD ＋ 控制盤
+        kbox(kitchenRoofGroup, 10.2, 12.2, 1.4, 2.8, yR + 0.12, yR + 1.15, makeMat(0xb91c1c, { roughness: 0.45 }), false);
+        kbox(kitchenRoofGroup, 9.5, 10.3, 0.5, 1.3, yR + 0.12, yR + 1.90, MAT.steelSilver, false);
+        //     - RO 機房：8T 主水塔 ＋ 1T 緩衝水塔
+        {
+          const [t8x, t8z] = K(15.9, 1.8);
+          const t8 = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 2.25, 18), MAT.steelSilver);
+          t8.position.set(t8x, yR + 0.12 + 1.125, t8z); kitchenRoofGroup.add(t8);
+          const [t1x, t1z] = K(16.6, 3.4);
+          const t1 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.45, 14), MAT.steelSilver);
+          t1.position.set(t1x, yR + 0.12 + 0.725, t1z); kitchenRoofGroup.add(t1);
+          // - 儲藏／淨水機房：2T 不鏽鋼水塔 ×2
+          [[18.6, 1.3], [18.6, 2.8]].forEach(([tx2, tz2]) => {
+            const [cx, cz] = K(tx2, tz2);
+            const t2 = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 1.85, 16), MAT.steelSilver);
+            t2.position.set(cx, yR + 0.12 + 0.925, cz); kitchenRoofGroup.add(t2);
+          });
         }
         // 西側不鏽鋼爬梯（連接 +3.45 平台與 2F 機房，依 A4-2 DD'剖面）
         kbox(kitchenRoofGroup, 8.88, 8.93, 2.0, 2.05, 3.5, yR + 1.2, MAT.steelSilver, false);
@@ -2518,7 +2885,7 @@
           { floor: '1F', building: 'kitchen', name: '2-7 食育教室', shortName: '2-7 食育教室', x: -20, z: 7.5, w: 7.6, d: 6.0, y: ELEV.F1, area: 57, meta: '111.11 完工・保固 5 年', desc: '午餐教育教室（規劃約 57.2 m²），外廊作為餐食教育區，連接風雨走廊。', images: [{ src: 'campus-3d-assets/kitchen/yellow-south.jpg', cap: '現況照片：食育教室南面（面向操場）' }, { src: 'campus-3d-assets/kitchen/yellow-track.jpg', cap: '現況照片：由操場看中央廚房南側' }, { src: 'campus-3d-assets/kitchen/yellow-se.jpg', cap: '現況照片：食育教室東南角與風雨走廊' }, { src: 'campus-3d-assets/kitchen/veranda-west.jpg', cap: '現況照片：外廊內部往西（洗手台、通往 A01 走廊）' }, { src: 'campus-3d-assets/kitchen/veranda-entry.jpg', cap: '現況照片：由 A01 走廊進入外廊' }, { src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：粉紅進貨平台內部往南' }] },
           { floor: '1F', building: 'kitchen', name: '廚工休息室・配電室', shortName: '休息室・配電', x: -22.2, z: -0.8, w: 3.4, d: 7.0, y: ELEV.F1, area: 26, meta: '111.11 完工・保固 5 年', desc: '中央廚房東側：廚工休息室與配電室。' },
           { floor: '1F', building: 'kitchen', name: '風雨走廊', shortName: '風雨走廊', x: -7.6, z: 9.45, w: 15.0, d: 3.0, y: ELEV.F1, area: 58, meta: '111.11 完工', desc: '連接中央廚房與主校舍一樓西側走廊（+1.20 m）。' },
-          { floor: '2F', building: 'kitchen', name: '消防機房（中央廚房 2F）', shortName: '廚房2F 消防機房', x: -30, z: -6.5, w: 12.0, d: 5.0, y: 4.9, area: 60, meta: '111.11 完工・保固 5 年', desc: '中央廚房局部二層機房（消防機房，約 60 m²），米色量體，屋頂設太陽能板。' },
+          { floor: '2F', building: 'kitchen', name: '消防機房（中央廚房 2F）', shortName: '廚房2F 消防機房', x: -30, z: -6.5, w: 12.0, d: 5.0, y: 4.9, area: 60, meta: '111.11 完工・保固 5 年', desc: '中央廚房局部二層機房（約 60 m²），由西向東分為消防機房（消防泵浦組 HD）、RO 機房（8T+1T 不鏽鋼水塔）與儲藏室（2T 水塔×2），南向設 SD3/D3 檢修門與 W15 百葉（依 A2-2 二層平面圖）。' },
           // ── 戶外設施 ──
           { floor: 'GF', building: 'site', name: '操場（200 m 跑道）', shortName: '操場', x: SITE.track.cx, z: SITE.track.cz, w: 30, d: 16, y: 0, area: 3200, meta: '跑道 99 年度工程重新施作', desc: '200 m 跑道＋南側直線跑道。' },
           { floor: 'GF', building: 'site', name: '司令台', shortName: '司令台', x: SITE.stage.cx, z: SITE.stage.cz, w: SITE.stage.w, d: SITE.stage.d, y: 0.6, area: 40, meta: '78.7 建置（21 年以上）', desc: '操場南側司令台。' },
@@ -2632,21 +2999,49 @@
         addBox(campusSiteGroup, ST.w, 3.2, 0.3, gx(ST.cx), 2.6, gz(ST.cz + ST.d / 2 - 0.15), MAT.ckWhite);
         addStepsX(campusSiteGroup, ST.cx - 2, ST.cx + 2, 0, 1.0, ST.cz - ST.d / 2 - 1.6, ST.cz - ST.d / 2, 5, MAT.plazaTile);
 
-        // 17-2 公用儲藏室（83.12，配置圖 1R）
+        // 17-2 公用儲藏室（83.12，配置圖 1R — 中空實開北向雙開大門＋採光窗＋室內儲物架）
         const S2 = SITE.storage172;
-        addBox(campusSiteGroup, S2.w, 2.2, S2.d, gx(S2.cx), 1.1, gz(S2.cz), MAT.ckWhite);                 // 白色下部牆
-        addBox(campusSiteGroup, S2.w - 1.0, 2.2, S2.d - 1.0, gx(S2.cx), 3.3, gz(S2.cz), MAT.wallFrameDark); // 內牆
-        for (let k = 0; k <= 7; k++) {                                                                       // 外圍格柵柱
-          const fx = S2.cx - S2.w / 2 + (k / 7) * S2.w;
-          [S2.cz - S2.d / 2, S2.cz + S2.d / 2].forEach((fz) => addBox(campusSiteGroup, 0.18, 2.2, 0.18, gx(fx), 3.3, gz(fz), MAT.steelDark));
-        }
-        addRailingX(campusSiteGroup, S2.cx - S2.w / 2, S2.cx + S2.w / 2, 2.2, S2.cz + S2.d / 2, 1.2);
         {
+          const x0 = S2.cx - S2.w / 2, x1 = S2.cx + S2.w / 2, z0 = S2.cz - S2.d / 2, z1 = S2.cz + S2.d / 2;
+          addBox(campusSiteGroup, S2.w, 0.16, S2.d, gx(S2.cx), 0.08, gz(S2.cz), MAT.slabFloor); // 地坪
+          // 南、西、東三面實牆（東牆設採光窗）
+          addBox(campusSiteGroup, S2.w, 2.2, 0.22, gx(S2.cx), 1.1, gz(z1 - 0.11), MAT.ckWhite);
+          addBox(campusSiteGroup, 0.22, 2.2, S2.d, gx(x0 + 0.11), 1.1, gz(S2.cz), MAT.ckWhite);
+          addBox(campusSiteGroup, 0.22, 2.2, S2.d * 0.35, gx(x1 - 0.11), 1.1, gz(z0 + S2.d * 0.175), MAT.ckWhite);
+          addBox(campusSiteGroup, 0.22, 2.2, S2.d * 0.35, gx(x1 - 0.11), 1.1, gz(z1 - S2.d * 0.175), MAT.ckWhite);
+          addBox(campusSiteGroup, 0.22, 0.9, S2.d * 0.30, gx(x1 - 0.11), 0.45, gz(S2.cz), MAT.ckWhite);
+          addBox(campusSiteGroup, 0.22, 0.35, S2.d * 0.30, gx(x1 - 0.11), 2.025, gz(S2.cz), MAT.ckWhite);
+          addBox(campusSiteGroup, 0.06, 0.95, S2.d * 0.30, gx(x1 - 0.11), 1.375, gz(S2.cz), MAT.glass, false);
+          // 北牆（面向司令台與操場）：開 1.8m 雙開檢修大門＋兩側採光窗
+          addBox(campusSiteGroup, 2.2, 2.2, 0.22, gx(x0 + 1.1), 1.1, gz(z0 + 0.11), MAT.ckWhite);
+          addBox(campusSiteGroup, 2.2, 2.2, 0.22, gx(x1 - 1.1), 1.1, gz(z0 + 0.11), MAT.ckWhite);
+          [S2.cx - 3.3, S2.cx + 3.3].forEach((wx) => {
+            addBox(campusSiteGroup, 2.4, 0.95, 0.22, gx(wx), 0.475, gz(z0 + 0.11), MAT.ckWhite);
+            addBox(campusSiteGroup, 2.4, 0.35, 0.22, gx(wx), 2.025, gz(z0 + 0.11), MAT.ckWhite);
+            addBox(campusSiteGroup, 2.4, 0.90, 0.06, gx(wx), 1.40, gz(z0 + 0.11), MAT.glass, false);
+            addBox(campusSiteGroup, 2.44, 0.05, 0.12, gx(wx), 0.96, gz(z0 + 0.11), MAT.alFrame, false);
+            addBox(campusSiteGroup, 2.44, 0.05, 0.12, gx(wx), 1.85, gz(z0 + 0.11), MAT.alFrame, false);
+          });
+          addBox(campusSiteGroup, 1.2, 2.2, 0.22, gx(S2.cx - 1.5), 1.1, gz(z0 + 0.11), MAT.ckWhite);
+          addBox(campusSiteGroup, 1.2, 2.2, 0.22, gx(S2.cx + 1.5), 1.1, gz(z0 + 0.11), MAT.ckWhite);
+          addInteriorDoorX(campusSiteGroup, S2.cx, 0.16, 2.04, z0 + 0.11, 1.80, 1.98, MAT.steelDark, -1, MAT.ckWhite);
+          // 室內儲物貨架
+          [-3.8, 3.8].forEach((dx) => addBox(campusSiteGroup, 1.2, 1.7, 7.5, gx(S2.cx + dx), 1.0, gz(S2.cz + 1.5), MAT.steelSilver, false));
+          // 上層結構與紅屋頂（1F 剖切時自動開啟露出室內）
+          const s2RoofGrp = new THREE.Group();
+          s2RoofGrp.userData = { isSiteRoofPart: true };
+          addBox(s2RoofGrp, S2.w - 1.0, 2.2, S2.d - 1.0, gx(S2.cx), 3.3, gz(S2.cz), MAT.wallFrameDark);
+          for (let k = 0; k <= 7; k++) {
+            const fx = x0 + (k / 7) * S2.w;
+            [z0, z1].forEach((fz) => addBox(s2RoofGrp, 0.18, 2.2, 0.18, gx(fx), 3.3, gz(fz), MAT.steelDark));
+          }
+          addRailingX(s2RoofGrp, x0, x1, 2.2, z1, 1.2);
           const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(S2.w, S2.d) * 0.78, 2.6, 4, 1), makeMat(0xb8463c, { roughness: 0.7 }));
           roof.rotation.y = Math.PI / 4;
           roof.scale.set(S2.w / Math.max(S2.w, S2.d), 1, S2.d / Math.max(S2.w, S2.d));
           roof.position.set(gx(S2.cx), 4.4 + 1.3, gz(S2.cz)); roof.castShadow = true;
-          campusSiteGroup.add(roof);
+          s2RoofGrp.add(roof);
+          campusSiteGroup.add(s2RoofGrp);
         }
         // 紫色貨櫃（南側側門東邊，依街景）
         [[0, 0], [7.0, 0.4]].forEach(([dx, dz]) => addBox(campusSiteGroup, 6.0, 2.6, 2.4, gx(SITE.containers.cx + dx), 1.3, gz(SITE.containers.cz + dz), MAT.containerPurple));
@@ -2681,13 +3076,51 @@
         const diagWalk = addBox(campusSiteGroup, 7.0, 0.06, 30.0, gx(69.0), 0.035, gz(27.0), MAT.plazaTile, false, true);
         diagWalk.rotation.y = 0.42;
 
-        // 東側附屬建物：17-1 檔案室／4-1 體育器材室／22-1 備勤室／14-1 警衛室（103.4，北→南）
+        // 東側附屬建物：17-1 檔案室／4-1 體育器材室／22-1 備勤室／14-1 警衛室（103.4，北→南，4 獨立隔間＋西向敞開大門與鋁窗＋警衛室南向觀景窗！）
         const AX = SITE.annex;
-        addBox(campusSiteGroup, AX.x1 - AX.x0, 3.3, AX.z1 - AX.z0, gx((AX.x0 + AX.x1) / 2), 1.65, gz((AX.z0 + AX.z1) / 2), makeMat(0xc9ddd6, { roughness: 0.85 }));
-        addBox(campusSiteGroup, AX.x1 - AX.x0 + 0.4, 0.3, AX.z1 - AX.z0 + 0.4, gx((AX.x0 + AX.x1) / 2), 3.45, gz((AX.z0 + AX.z1) / 2), MAT.wallFrameGray);
-        // 屋頂太陽能棚架
-        [[AX.x0 + 0.5, AX.z0 + 0.5], [AX.x1 - 0.5, AX.z0 + 0.5], [AX.x0 + 0.5, AX.z1 - 0.5], [AX.x1 - 0.5, AX.z1 - 0.5]].forEach(([px, pz]) => addBox(campusSiteGroup, 0.14, 2.0, 0.14, gx(px), 4.6, gz(pz), MAT.steelDark));
-        addBox(campusSiteGroup, AX.x1 - AX.x0 + 1.6, 0.1, AX.z1 - AX.z0 + 1.0, gx((AX.x0 + AX.x1) / 2), 5.65, gz((AX.z0 + AX.z1) / 2), MAT.solarPanel, false);
+        {
+          const annexWallMat = makeMat(0xc9ddd6, { roughness: 0.85, xrayable: true });
+          const aw = AX.x1 - AX.x0, ad = AX.z1 - AX.z0, acx = (AX.x0 + AX.x1) / 2, acz = (AX.z0 + AX.z1) / 2;
+          const roomH = 3.3, yFl = 0.16;
+          addBox(campusSiteGroup, aw, yFl, ad, gx(acx), yFl / 2, gz(acz), MAT.slabFloor);            // 地坪
+          addBox(campusSiteGroup, 0.20, roomH, ad, gx(AX.x1 - 0.10), roomH / 2, gz(acz), annexWallMat); // 東後牆
+          addBox(campusSiteGroup, aw, roomH, 0.20, gx(acx), roomH / 2, gz(AX.z0 + 0.10), annexWallMat); // 北牆
+          // 南牆（14-1 警衛室面向大門設大片觀察窗）
+          addBox(campusSiteGroup, 1.5, roomH, 0.20, gx(AX.x0 + 0.75), roomH / 2, gz(AX.z1 - 0.10), annexWallMat);
+          addBox(campusSiteGroup, 1.5, roomH, 0.20, gx(AX.x1 - 0.75), roomH / 2, gz(AX.z1 - 0.10), annexWallMat);
+          addBox(campusSiteGroup, aw - 3.0, 1.0, 0.20, gx(acx), 0.5, gz(AX.z1 - 0.10), annexWallMat);
+          addBox(campusSiteGroup, aw - 3.0, 1.0, 0.20, gx(acx), 2.8, gz(AX.z1 - 0.10), annexWallMat);
+          addBox(campusSiteGroup, aw - 3.0, 1.3, 0.06, gx(acx), 1.65, gz(AX.z1 - 0.10), MAT.glass, false);
+          addBox(campusSiteGroup, aw - 2.95, 0.05, 0.14, gx(acx), 1.01, gz(AX.z1 - 0.10), MAT.alFrame, false);
+          addBox(campusSiteGroup, aw - 2.95, 0.05, 0.14, gx(acx), 2.30, gz(AX.z1 - 0.10), MAT.alFrame, false);
+          // 4 間房間（每間 3.5m 深）：內隔牆 ＋ 西向出入口敞開門與鋁窗 ＋ 簡易室內設施
+          const bayD = ad / 4;
+          for (let i = 0; i < 4; i++) {
+            const rz0 = AX.z0 + i * bayD, rz1 = rz0 + bayD;
+            if (i > 0) addBox(campusSiteGroup, aw - 0.3, roomH - yFl, 0.14, gx(acx), yFl + (roomH - yFl) / 2, gz(rz0), MAT.wallInt);
+            // 西牆（面向校園大門廣場）：北段牆柱 + 敞開入口門 (0.95m) + 中間窗台與鋁窗 (1.35m) + 南段牆柱
+            const doorCz = rz0 + 0.85, winCz = rz0 + 2.35;
+            addBox(campusSiteGroup, 0.20, roomH, 0.38, gx(AX.x0 + 0.10), roomH / 2, gz(rz0 + 0.19), annexWallMat);
+            addInteriorDoorZ(campusSiteGroup, AX.x0 + 0.10, yFl, roomH - yFl, doorCz, 0.94, 2.12, MAT.woodDoor, 1, annexWallMat);
+            addBox(campusSiteGroup, 0.20, roomH, 0.36, gx(AX.x0 + 0.10), roomH / 2, gz(rz0 + 1.50), annexWallMat);
+            addBox(campusSiteGroup, 0.20, 1.05, 1.36, gx(AX.x0 + 0.10), 0.525, gz(winCz), annexWallMat);
+            addBox(campusSiteGroup, 0.20, 0.95, 1.36, gx(AX.x0 + 0.10), 2.825, gz(winCz), annexWallMat);
+            addBox(campusSiteGroup, 0.06, 1.30, 1.34, gx(AX.x0 + 0.10), 1.70, gz(winCz), MAT.glass, false);
+            addBox(campusSiteGroup, 0.12, 0.05, 1.38, gx(AX.x0 + 0.10), 1.06, gz(winCz), MAT.alFrame, false);
+            addBox(campusSiteGroup, 0.12, 0.05, 1.38, gx(AX.x0 + 0.10), 2.35, gz(winCz), MAT.alFrame, false);
+            addBox(campusSiteGroup, 0.20, roomH, 0.47, gx(AX.x0 + 0.10), roomH / 2, gz(rz1 - 0.235), annexWallMat);
+            // 室內桌櫃（17-1 檔案櫃 / 4-1 器材架 / 22-1 備勤桌床 / 14-1 警衛櫃檯）
+            const furnMat = (i === 0 || i === 1) ? MAT.steelSilver : MAT.woodLight;
+            addBox(campusSiteGroup, 1.2, (i < 2 ? 1.85 : 0.78), 2.2, gx(AX.x1 - 1.1), yFl + (i < 2 ? 0.925 : 0.39), gz((rz0 + rz1) / 2), furnMat, false);
+          }
+          // 屋頂板＋屋頂太陽能棚架（1F 剖切時可自動掀開檢視 4 間室內配置）
+          const axRoofGrp = new THREE.Group();
+          axRoofGrp.userData = { isSiteRoofPart: true };
+          addBox(axRoofGrp, aw + 0.4, 0.3, ad + 0.4, gx(acx), 3.45, gz(acz), MAT.wallFrameGray);
+          [[AX.x0 + 0.5, AX.z0 + 0.5], [AX.x1 - 0.5, AX.z0 + 0.5], [AX.x0 + 0.5, AX.z1 - 0.5], [AX.x1 - 0.5, AX.z1 - 0.5]].forEach(([px, pz]) => addBox(axRoofGrp, 0.14, 2.0, 0.14, gx(px), 4.6, gz(pz), MAT.steelDark));
+          addBox(axRoofGrp, aw + 1.6, 0.1, ad + 1.0, gx(acx), 5.65, gz(acz), MAT.solarPanel, false);
+          campusSiteGroup.add(axRoofGrp);
+        }
         // 校名牆（大門南側）
         addBox(campusSiteGroup, 0.5, 1.8, 9.0, gx(SITE.gates.main[0] - 0.6), 0.9, gz(SITE.gates.main[1] + 9.0), makeMat(0x8a6f63, { roughness: 0.9 }));
         // 大門內通道南側風雨廊（紫色柱）
@@ -2696,9 +3129,25 @@
         for (let x = PC.x0 + 0.5; x <= PC.x1; x += 4.0) {
           [PC.z0 + 0.3, PC.z1 - 0.3].forEach((z) => addBox(campusSiteGroup, 0.2, 3.2, 0.2, gx(x), 1.6, gz(z), MAT.roofColumnPurple));
         }
-        // 主校舍西北側小型附屬建物（衛星圖可見）
+        // 主校舍西北側小型附屬建物（中空實開南向維護雙門＋採光窗）
         const NS = SITE.northShed;
-        addBox(campusSiteGroup, NS.x1 - NS.x0, 2.8, NS.z1 - NS.z0, gx((NS.x0 + NS.x1) / 2), 1.4, gz((NS.z0 + NS.z1) / 2), MAT.ckWhite);
+        {
+          const nw = NS.x1 - NS.x0, nd = NS.z1 - NS.z0, ncx = (NS.x0 + NS.x1) / 2, ncz = (NS.z0 + NS.z1) / 2, nh = 2.8;
+          addBox(campusSiteGroup, nw, 0.14, nd, gx(ncx), 0.07, gz(ncz), MAT.slabFloor);
+          addBox(campusSiteGroup, nw, nh, 0.20, gx(ncx), nh / 2, gz(NS.z0 + 0.10), MAT.ckWhite);
+          addBox(campusSiteGroup, 0.20, nh, nd, gx(NS.x0 + 0.10), nh / 2, gz(ncz), MAT.ckWhite);
+          addBox(campusSiteGroup, 0.20, nh, nd, gx(NS.x1 - 0.10), nh / 2, gz(ncz), MAT.ckWhite);
+          // 南牆：西側開 1.4m 維護入口門，東側開 1.8m 採光窗
+          addBox(campusSiteGroup, 0.9, nh, 0.20, gx(NS.x0 + 0.45), nh / 2, gz(NS.z1 - 0.10), MAT.ckWhite);
+          addInteriorDoorX(campusSiteGroup, NS.x0 + 1.60, 0.14, nh - 0.14, NS.z1 - 0.10, 1.40, 2.10, MAT.steelSilver, 1, MAT.ckWhite);
+          addBox(campusSiteGroup, 1.0, nh, 0.20, gx(NS.x0 + 2.80), nh / 2, gz(NS.z1 - 0.10), MAT.ckWhite);
+          addBox(campusSiteGroup, 1.8, 1.0, 0.20, gx(NS.x0 + 4.20), 0.5, gz(NS.z1 - 0.10), MAT.ckWhite);
+          addBox(campusSiteGroup, 1.8, 0.6, 0.20, gx(NS.x0 + 4.20), 2.5, gz(NS.z1 - 0.10), MAT.ckWhite);
+          addBox(campusSiteGroup, 1.8, 1.2, 0.06, gx(NS.x0 + 4.20), 1.6, gz(NS.z1 - 0.10), MAT.glass, false);
+          addBox(campusSiteGroup, 2.1, nh, 0.20, gx(NS.x1 - 1.05), nh / 2, gz(NS.z1 - 0.10), MAT.ckWhite);
+          const nsRoof = addBox(campusSiteGroup, nw + 0.2, 0.18, nd + 0.2, gx(ncx), nh + 0.09, gz(ncz), MAT.wallFrameGray);
+          nsRoof.userData = { isSiteRoofPart: true };
+        }
 
         // 停車場（東北側既設汽車停車場、東南側既設停車場）
         const PN = SITE.parkingNE;
@@ -2734,8 +3183,8 @@
 
         // 樹木（沿地界與廣場周邊，示意）
         const treeCoords = [
-          [-44, -6], [-55, 20], [-58, 40], [-62, 58], [-20, 70], [-35, 85], [20, 90], [35, 75],
-          [40, 62], [70, 68], [95, 60], [100, 40], [88, 30], [82, 8], [92, -3], [40, -11.5], [-10, -11.5], [118, 60], [118, 85]
+          [-49, -14], [-55, 20], [-58, 40], [-62, 58], [-20, 70], [-35, 85], [20, 90], [35, 75],
+          [40, 62], [70, 68], [95, 60], [100, 40], [88, 30], [85.5, 8], [92, -3], [40, -11.5], [-12.5, -11.0], [118, 60], [118, 85]
         ];
         treeCoords.forEach(([tx, tz], i) => {
           const g = new THREE.Group();
@@ -2844,6 +3293,16 @@
         kitchenRoofGroup.visible = state.showKitchen && (f === 'all' || f === '2F' || f === '3F') && state.showRoof;
         kitchen1FGroup.traverse((obj) => {
           if (obj.userData && obj.userData.isKitchenRoofPart) {
+            obj.visible = (f !== '1F');
+          }
+        });
+        kitchenRoofGroup.traverse((obj) => {
+          if (obj.userData && obj.userData.isKitchen2FRoof) {
+            obj.visible = (f !== '2F');
+          }
+        });
+        campusSiteGroup.traverse((obj) => {
+          if (obj.userData && obj.userData.isSiteRoofPart) {
             obj.visible = (f !== '1F');
           }
         });
@@ -3062,13 +3521,20 @@
       const SV_EYE_HEIGHT = 1.65;
       const STREET_VIEW_SPOTS = [
         { id: 'sv_gate', name: '東側大門・14-1 警衛室前', x: gx(110.0), z: gz(47.5), floor: 0, yaw: Math.PI * 0.5 },
+        { id: 'sv_annex_front', name: '東側警衛室・附屬建物前', x: gx(109.0), z: gz(34.5), floor: 0, yaw: -Math.PI * 0.5 },
         { id: 'sv_pond', name: '噴水池中央廣場', x: gx(82.0), z: gz(47.0), floor: 0, yaw: Math.PI * 0.38 },
+        { id: 'sv_1f_genroom', name: '1F 發電機室／消防泵浦室前', x: gx(77.7), z: gz(17.8), floor: 0, yaw: 0 },
         { id: 'sv_breezeway', name: '1F 主穿堂中央', x: gx(58.5), z: gz(5.0), floor: 1, yaw: 0 },
         { id: 'sv_breezeway_north', name: '1F 穿堂後方樓梯口 (往北側車棚)', x: gx(56.5), z: gz(-5.5), floor: 0, yaw: Math.PI },
         { id: 'sv_1f_corridor', name: '1F 主校舍南向走廊', x: gx(32.0), z: gz(9.4), floor: 1, yaw: Math.PI * 0.5 },
+        { id: 'sv_1f_library', name: '1F 8-1 圖書室內部', x: gx(27.0), z: gz(4.2), floor: 1, yaw: Math.PI * 0.5 },
         { id: 'sv_1f_west_junc', name: '1F 西側走廊與風雨走廊銜接口', x: gx(0.5), z: gz(9.5), floor: 1, yaw: Math.PI * 0.5 },
         { id: 'sv_walkway', name: '中央廚房風雨走廊 (貫通通道)', x: gx(-8.0), z: gz(9.45), floor: 1, yaw: Math.PI * 0.5 },
         { id: 'sv_dining_veranda', name: '2-7 食育教室戶外外廊', x: gx(-19.8), z: gz(12.5), floor: 1, yaw: 0.2 },
+        { id: 'sv_dining_in', name: '1F 2-7 食育教室內部', x: gx(KIT.x + 25.0), z: gz(KIT.z + 16.5), floor: 1, yaw: Math.PI },
+        { id: 'sv_kitchen_102', name: '1F 中央廚房 102 走道緩衝區', x: gx(KIT.x + 20.0), z: gz(KIT.z + 13.0), floor: 1, yaw: Math.PI * 0.5 },
+        { id: 'sv_kitchen_111', name: '1F 中央廚房 111 烹飪區', x: gx(KIT.x + 13.0), z: gz(KIT.z + 9.5), floor: 1, yaw: 0 },
+        { id: 'sv_kitchen_2f', name: '2F 中央廚房屋頂與機房前', x: gx(KIT.x + 15.0), z: gz(KIT.z + 7.5), floor: 2, yaw: 0 },
         { id: 'sv_kitchen_plaza', name: '中央廚房南側（粉紅門廊前）', x: gx(-33.5), z: gz(19.5), floor: 0, yaw: 0 },
         { id: 'sv_1f_restroom', name: '1F 東側 20-4 廁所入口', x: gx(75.6), z: gz(9.4), floor: 1, yaw: 0 },
         { id: 'sv_2f_corridor', name: '2F 走廊（導師室・校長室前）', x: gx(45.0), z: gz(9.4), floor: 2, yaw: -Math.PI * 0.45 },
@@ -3083,16 +3549,24 @@
       function getWalkableFloorY(worldX, worldZ, svFloor = 0) {
         const rx = worldX - OFFSET_X;
         const rz = worldZ - OFFSET_Z;
-        const inMain = rx >= -1.0 && rx <= 82.8 && rz >= -2.2 && rz <= 16.5;
+        const inGenRoom = rx >= 76.3 && rx <= 79.2 && rz >= 10.8 && rz <= 16.8;
+        const inMain = rx >= -1.0 && rx <= 82.8 && rz >= -2.2 && rz <= 16.8;
         const inWalkway = rx >= KIT.x + 29 && rx <= 0.5 && rz >= 7.8 && rz <= 11.2;
-        const inKitchen = rx >= KIT.x - 2.6 && rx <= KIT.x + 29.6 && rz >= KIT.z && rz <= KIT.z + 24.4;
+        const inKitchenBoiler = rx >= KIT.x + 4.0 && rx <= KIT.x + 9.0 && rz >= KIT.z - 0.2 && rz <= KIT.z + 4.6;
+        const inKitchen = rx >= KIT.x - 2.6 && rx <= KIT.x + 30.4 && rz >= KIT.z - 0.2 && rz <= KIT.z + 24.4;
 
+        if (inGenRoom && svFloor <= 1) return 0.45;
         if (inMain) {
           if (svFloor === 3) return ELEV.F3;
           if (svFloor === 2) return ELEV.F2;
           return ELEV.F1;
         }
-        if (inWalkway || inKitchen) {
+        if (inKitchenBoiler && svFloor <= 1) return 0.40;
+        if (inKitchen) {
+          if (svFloor >= 2) return 4.90;
+          return ELEV.F1;
+        }
+        if (inWalkway) {
           return ELEV.F1;
         }
         return 0.05;
@@ -3136,8 +3610,10 @@
       });
 
       const svPathSegments = [
-        [[110.0, 47.5, 0.12], [82.0, 47.0, 0.12], [64.0, 20.0, 0.12], [58.5, 9.4, 1.28], [58.5, -1.2, 1.28], [56.5, -5.5, 0.12]],
-        [[75.6, 9.4, 1.28], [58.5, 9.4, 1.28], [0.5, 9.5, 1.28], [-8.0, 9.45, 1.28], [-19.8, 12.5, 1.28], [-33.5, 19.5, 0.12]],
+        [[110.0, 47.5, 0.12], [109.0, 34.5, 0.12], [82.0, 47.0, 0.12], [77.7, 17.8, 0.12], [64.0, 20.0, 0.12], [58.5, 9.4, 1.28], [58.5, -1.2, 1.28], [56.5, -5.5, 0.12]],
+        [[75.6, 9.4, 1.28], [58.5, 9.4, 1.28], [27.0, 9.4, 1.28], [27.0, 4.2, 1.28]],
+        [[27.0, 9.4, 1.28], [0.5, 9.5, 1.28], [-8.0, 9.45, 1.28], [-19.8, 12.5, 1.28], [KIT.x + 25.0, KIT.z + 16.5, 1.28], [KIT.x + 20.0, KIT.z + 13.0, 1.28], [KIT.x + 13.0, KIT.z + 9.5, 1.28]],
+        [[-19.8, 12.5, 1.28], [-33.5, 19.5, 0.12]],
         [[8.0, 48.0, 0.12], [-33.5, 19.5, 0.12]],
         [[8.0, 48.0, 0.12], [82.0, 47.0, 0.12], [69.0, 80.0, 0.12]]
       ];
@@ -3312,7 +3788,7 @@
         } else {
           const rx = worldX - OFFSET_X;
           const rz = worldZ - OFFSET_Z;
-          const inBldg = (rx >= -45.5 && rx <= 82.8 && rz >= -7.5 && rz <= 16.5);
+          const inBldg = (rx >= -47.6 && rx <= 82.8 && rz >= -9.5 && rz <= 16.8);
           state.svFloor = inBldg ? Math.max(1, state.svFloor) : 0;
         }
 
