@@ -137,7 +137,14 @@
     if (!c || !pr) return;
     const todo = missingPresetLogs(c, pr);
     const tName = { PROPERTY_INS: '產物保險', PUBLIC_LIABILITY_INS: '公共意外責任險' };
+    // 相似紀錄：同契約、同類別、保險期間重疊但保單號不同
+    const similar = (appData.tables.Solar_Compliance_Logs || []).filter(l => l.solar_id === c.solar_id && todo.some(x =>
+      x.log_type === l.log_type && !String(l.doc_or_policy_no || '').includes(x.policyKey) &&
+      (l.effective_date || '0000') <= x.expiry_date && (l.expiry_date || '9999') >= x.effective_date));
     openModal(`📄 帶入${pr.label}`, `
+      ${similar.length ? `<div class="gate-banner red" style="margin-bottom:10px;font-size:13px">⚠️ 已有 ${similar.length} 筆相似的保險紀錄（同類別、期間重疊）：
+        ${similar.map(l => `<div class="item-meta">${tName[l.log_type] || l.log_type}｜${esc(l.doc_or_policy_no)}｜${esc(l.effective_date || '-')}～${esc(l.expiry_date || '-')}</div>`).join('')}
+        <div style="margin-top:4px">請確認不是同一張保單後再新增。</div></div>` : ''}
       <div class="item-meta" style="margin-bottom:8px">將於 <strong>${esc(c.solar_id)}｜${esc(solarContractTitle(c))}</strong> 新增 ${todo.length} 筆保險紀錄：</div>
       <table><thead><tr><th>類別</th><th>保單號碼</th><th>保險期間</th><th>內容</th></tr></thead><tbody>
       ${todo.map(x => `<tr>
@@ -226,10 +233,51 @@
 
   window.generateRentSchedule = generateRentSchedule;
 
-  function getRentTerms(c) {
-    const t = parseJSON(c?.rent_terms_json, null);
-    return t && Array.isArray(t.schedule) && t.schedule.length ? t : null;
+  // ------------------------------------------------------------------
+  // 儲存位置：
+  //   主要 → Solar_Compliance_Logs 一列（log_type＝RENT_TERMS，內容存於既有的 compliance_json 欄）。
+  //          此表欄位為雲端既有欄位，保證能寫入試算表並於同步時讀回。
+  //   同步 → Solar_Contracts.rent_terms_json（若試算表有此欄亦一併保存）。
+  //   讀取時兩處取較新（updated_at）者。
+  // ------------------------------------------------------------------
+  const RT_LOG_TYPE = 'RENT_TERMS';
+  const rtLogId = solarId => `RT-${solarId}-TERMS`; // 結尾非數字，不影響保險紀錄 CMP-
+  const validTerms = t => t && Array.isArray(t.schedule) && t.schedule.length ? t : null;
+
+  function rentTermsLog(solarId) {
+    return (appData.tables.Solar_Compliance_Logs || [])
+      .filter(l => l.solar_id === solarId && l.log_type === RT_LOG_TYPE && !(l.is_deleted === true || String(l.is_deleted).toUpperCase() === 'TRUE'))
+      .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0] || null;
   }
+
+  function getRentTerms(c) {
+    if (!c) return null;
+    const fromCol = validTerms(parseJSON(c.rent_terms_json, null));
+    const log = rentTermsLog(c.solar_id);
+    const fromLog = log ? validTerms(parseJSON(log.compliance_json, null)) : null;
+    if (fromCol && fromLog) return String(fromCol.updated_at || '') >= String(fromLog.updated_at || '') ? fromCol : fromLog;
+    return fromCol || fromLog;
+  }
+
+  function buildRentTermsLog(solarId, terms) {
+    const first = terms.schedule[0], last = terms.schedule[terms.schedule.length - 1];
+    return {
+      log_id: rtLogId(solarId), solar_id: solarId, log_type: RT_LOG_TYPE,
+      doc_or_policy_no: terms.source || '年租金繳納條件',
+      effective_date: first?.period_start || '', expiry_date: last?.due_date || '',
+      compliance_json: JSON.stringify(terms), attachment_url: '',
+      notes: '年租金繳納條件（系統自動儲存，請勿手動刪除）',
+      updated_at: nowStr(), is_deleted: false
+    };
+  }
+
+  // 保險合規摘要不納入繳納條件紀錄
+  const _prevComplianceSummary = getContractComplianceSummary;
+  getContractComplianceSummary = function(solarId, contract) {
+    const r = _prevComplianceSummary(solarId, contract);
+    r.logs = (r.logs || []).filter(l => l.log_type !== RT_LOG_TYPE);
+    return r;
+  };
 
   function contractRecords(c) {
     return (appData.tables.Solar_Records || []).filter(r => r.solar_id === c.solar_id);
@@ -393,7 +441,11 @@
 
     const v = k => esc(base[k] ?? DEFAULT_TERMS[k] ?? '');
     const priorChecked = existing ? Number(existing.prior_settled_through) > 0 : true;
+    const similarContracts = isNew ? (appData.tables.Solar_Contracts || []).filter(x =>
+      /二期/.test(x.phase_label || '') || /中央廚房/.test(x.building_name || '') || Math.abs((Number(x.capacity_kwp) || 0) - (Number(c.capacity_kwp) || 0)) < 0.005) : [];
     openModal(isNew ? `📄 新增${preset.label}` : preset ? `📄 帶入${preset.label}條款` : '💰 年租金繳納條件', `
+      ${similarContracts.length ? `<div class="gate-banner red" style="margin-bottom:10px;font-size:13px">⚠️ 已有相似的契約，請確認不是同一份後再建立：
+        ${similarContracts.map(x => `<div class="item-meta">${esc(x.solar_id)}｜${esc(x.building_name)}${x.phase_label ? '（' + esc(x.phase_label) + '）' : ''}｜${esc(x.contract_start || '-')} 起｜${x.capacity_kwp} kWp</div>`).join('')}</div>` : ''}
       ${isNew ? `<div class="gate-banner amber" style="margin-bottom:10px;font-size:13px">將新增契約 <strong>${esc(c.solar_id)}｜${esc(c.building_name)}（${esc(c.phase_label)}）</strong>：${c.capacity_kwp} kWp、租期 ${rocShort(c.contract_start)}～${rocShort(c.contract_end)}（${c.term_months} 個月）、公證 ${esc(c.notary_no)}、履約保證金 ${fmtMoney(c.deposit_amount)}；${esc(fmtPresetFields(preset.contractFields))}。台電電號、保險等其他資料可於建立後以「編輯契約主檔」補上。</div>`
         : preset ? `<div class="gate-banner amber" style="margin-bottom:10px;font-size:13px">將同時更新本契約：${esc(fmtPresetFields(preset.contractFields))}。</div>` : ''}
       <div class="form-grid">
@@ -418,7 +470,7 @@
     const c = appData.tables.Solar_Contracts.find(x => x.solar_id === solarId);
     if (!c || !rtDraft) return;
     const t = getRentTerms(c);
-    c.rent_terms_json = JSON.stringify({ ...(t || {}), schedule: generateRentSchedule(c) });
+    c.rent_terms_json = JSON.stringify({ ...(t || {}), schedule: generateRentSchedule(c), updated_at: nowStr() });
     window.openRentTermsModal(solarId, false);
   };
 
@@ -450,11 +502,16 @@
       updated_at: nowStr()
     };
     upsertLocal('Solar_Contracts', rec, 'solar_id');
+    const logRec = buildRentTermsLog(rec.solar_id, terms);
+    upsertLocal('Solar_Compliance_Logs', logRec, 'log_id');
     const created = rtDraft.isNew;
     closeModal();
     if (created) { solarV2SelectedId = rec.solar_id; solarV2DetailTab = 'billing'; }
     renderCurrentView();
-    await pushToCloud({ action: 'batchUpsert', items: [{ table: 'Solar_Contracts', records: [rec] }] });
+    await pushToCloud({ action: 'batchUpsert', items: [
+      { table: 'Solar_Contracts', records: [rec] },
+      { table: 'Solar_Compliance_Logs', records: [logRec] }
+    ] });
     toast(created ? `✅ 已建立 ${rec.solar_id}｜${rec.building_name}（${terms.schedule.length} 期繳納時程）` : `✅ 已更新年租金繳納條件（${terms.schedule.length} 期）`);
   };
 
