@@ -1898,12 +1898,17 @@
 
         // 8. East Renovated Restroom Block (Grid ⑨–⑩, X=72.0~79.05m, Z=0~7.85m)
         addTwinWindowWallX(targetGroup, 72.3, 78.8, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.65, 1.15, 0.65, 2); // North window wall
-        // East exterior wall with W6 mechanical/restroom window cutout (Z=4.65~5.45 per A1-1~A1-3 & A2-1)
-        addBox(targetGroup, 0.20, FLOOR_H, 4.65, gx(79.05), yBase + FLOOR_H * 0.5, gz(2.325), MAT.wallExt);
-        addBox(targetGroup, 0.20, FLOOR_H, 2.40, gx(79.05), yBase + FLOOR_H * 0.5, gz(6.65), MAT.wallExt);
-        addBox(targetGroup, 0.20, 1.35, 0.80, gx(79.05), yBase + 0.675, gz(5.05), MAT.wallExt);
-        addBox(targetGroup, 0.20, FLOOR_H - 2.45, 0.80, gx(79.05), yBase + 2.45 + (FLOOR_H - 2.45) * 0.5, gz(5.05), MAT.wallExt);
-        addBox(targetGroup, 0.05, 1.10, 0.76, gx(79.05), yBase + 1.90, gz(5.05), MAT.glass, false, false); // W6 窗
+        // East exterior wall with W6 window inside Accessible Restroom (無障礙廁所 Z=5.55~7.75 → W6 at Z=6.15~7.15 per A1-1~A1-3 & A2-1)
+        addBox(targetGroup, 0.20, FLOOR_H, 6.15, gx(79.05), yBase + FLOOR_H * 0.5, gz(3.075), MAT.wallExt);
+        addBox(targetGroup, 0.20, FLOOR_H, 0.70, gx(79.05), yBase + FLOOR_H * 0.5, gz(7.50), MAT.wallExt);
+        addBox(targetGroup, 0.20, 1.35, 1.00, gx(79.05), yBase + 0.675, gz(6.65), MAT.wallExt);
+        addBox(targetGroup, 0.20, FLOOR_H - 2.45, 1.00, gx(79.05), yBase + 2.45 + (FLOOR_H - 2.45) * 0.5, gz(6.65), MAT.wallExt);
+        addBox(targetGroup, 0.05, 1.06, 0.96, gx(79.05), yBase + 1.90, gz(6.65), MAT.glass, false, false); // W6 窗（無障礙廁所東向採光窗）
+        addBox(targetGroup, 0.12, 0.05, 1.02, gx(79.05), yBase + 1.375, gz(6.65), MAT.alFrame, false, false);
+        addBox(targetGroup, 0.12, 0.05, 1.02, gx(79.05), yBase + 2.425, gz(6.65), MAT.alFrame, false, false);
+        addBox(targetGroup, 0.12, 1.10, 0.05, gx(79.05), yBase + 1.90, gz(6.17), MAT.alFrame, false, false);
+        addBox(targetGroup, 0.12, 1.10, 0.05, gx(79.05), yBase + 1.90, gz(7.13), MAT.alFrame, false, false);
+        addBox(targetGroup, 0.10, 1.06, 0.04, gx(79.05), yBase + 1.90, gz(6.65), MAT.alFrame, false, false);
         buildEastRenovatedRestroom(targetGroup, floorNum, yBase);
 
         // 8b. East Corridor End Balcony & Architectural Frame (Grid ⑩–⑪, X=79.05~82.70m, Z=7.85~10.85m per A2-1)
@@ -2090,6 +2095,85 @@
           }
           roofGroup.add(panel);
         });
+
+        // 6. Phase 2 Rooftop Solar PV Canopy #1: Main Building 3F Diagonal Terrace (露臺二期, 32片 / 11.84 KW, 依 112.01 A-1(3)/A-2(2)/A-4(1))
+        //    North edge anchored at Z=10.85, y = 3FL + 3.60m (12.40m); sloping south ~12.05° down to 3FL + 2.618m (11.42m) along 9° diagonal edge
+        {
+          const tSlope = Math.atan2(3.60 - 2.618, 4.60); // ~12.05°
+          const cosS = Math.cos(tSlope), tanS = Math.tan(tSlope);
+          const xStart = 42.50, zNorth = 10.85, yNorth = ELEV.F3 + 3.60;
+          const zSouthAtX = (rx) => 15.80 + ((rx - 42.85) / (66.31 - 42.85)) * (12.10 - 15.80);
+          const yAtZ = (rz) => yNorth - (rz - zNorth) * tanS;
+
+          // Tilted roof plane group: local lx = rawX - 42.50, local lz = (rawZ - 10.85) / cosS
+          const tCanopy = new THREE.Group();
+          tCanopy.position.set(gx(xStart), yNorth, gz(zNorth));
+          tCanopy.rotation.x = tSlope;
+
+          // Corrugated metal sub-roof deck (頂蓋, matching 3F diagonal terrace trapezoid)
+          const deckSh = new THREE.Shape();
+          deckSh.moveTo(0.0, 0.0);
+          deckSh.lineTo(23.95, 0.0);
+          deckSh.lineTo(23.81, -(12.10 - zNorth) / cosS);
+          deckSh.lineTo(0.35, -(15.80 - zNorth) / cosS);
+          deckSh.closePath();
+          const deckGeo = new THREE.ExtrudeGeometry(deckSh, { depth: 0.06, bevelEnabled: false });
+          deckGeo.rotateX(-Math.PI / 2);
+          const deckMesh = new THREE.Mesh(deckGeo, MAT.roofSheet);
+          deckMesh.position.y = -0.07;
+          deckMesh.castShadow = true; deckMesh.receiveShadow = true;
+          tCanopy.add(deckMesh);
+
+          // North anchor H-beam + longitudinal C-purlins (C型鋼 125x50, clipped to diagonal edge!)
+          addBox(tCanopy, 23.95, 0.18, 0.14, 11.975, -0.20, 0.08, MAT.steelDark, false);
+          [0.55, 1.45, 2.35, 3.25, 4.15].forEach((lz) => {
+            const rz = zNorth + lz * cosS;
+            // Solve zSouthAtX(rx) = rz -> rxMax
+            const rxMax = Math.min(66.30, 42.85 + ((rz - 15.80) / (12.10 - 15.80)) * (66.31 - 42.85));
+            const lx0 = 0.25, lx1 = rxMax - xStart - 0.15;
+            if (lx1 > lx0 + 0.4) {
+              addBox(tCanopy, lx1 - lx0, 0.10, 0.08, (lx0 + lx1) * 0.5, -0.14, lz, MAT.steelSilver, false);
+            }
+          });
+
+          // 7 H-beam rafters & vertical steel posts along diagonal edge (柱位 ①–⑦, H型鋼 200x100 per A-4(1))
+          const postXs = [43.35, 45.75, 50.25, 54.75, 59.25, 63.75, 65.85];
+          postXs.forEach((px) => {
+            const pz = zSouthAtX(px) - 0.16;
+            const lzEnd = (pz - zNorth) / cosS;
+            addBox(tCanopy, 0.12, 0.20, lzEnd + 0.12, px - xStart, -0.22, lzEnd * 0.5, MAT.steelDark, false);
+            // Vertical H-column on 3F terrace diagonal edge + concrete plinth base (依 A-2(2))
+            const topY = yAtZ(pz) - 0.20;
+            const colH = topY - ELEV.F3;
+            addBox(roofGroup, 0.16, colH, 0.14, gx(px), ELEV.F3 + colH * 0.5, gz(pz), MAT.steelDark);
+            addBox(roofGroup, 0.34, 0.38, 0.34, gx(px), ELEV.F3 + 0.19, gz(pz), MAT.concreteBase, false);
+          });
+          // Diagonal south fascia steel beam connecting post tops
+          {
+            const ax = 42.85 - xStart, az = (15.80 - zNorth) / cosS;
+            const bx = 66.31 - xStart, bz = (12.10 - zNorth) / cosS;
+            const dLen = Math.hypot(bx - ax, bz - az);
+            const dBeam = addBox(tCanopy, dLen, 0.20, 0.14, (ax + bx) * 0.5, -0.20, (az + bz) * 0.5, MAT.steelDark, false);
+            dBeam.rotation.y = -Math.atan2(bz - az, bx - ax);
+            // Diagonal south maintenance walkway (維修步道, 依 A-1(3))
+            const walkS = addBox(tCanopy, dLen - 0.6, 0.04, 0.36, (ax + bx) * 0.5, 0.03, (az + bz) * 0.5 - 0.24, MAT.steelSilver, false);
+            walkS.rotation.y = -Math.atan2(bz - az, bx - ax);
+          }
+          // West edge maintenance walkway (維修步道 90cm 寬端, 依 A-1(3))
+          addBox(tCanopy, 0.38, 0.04, 4.65, 0.28, 0.03, 2.42, MAT.steelSilver, false);
+
+          // 32 Stepped Solar PV Panels (TSEC TS60-AMH-370 H1: Row0=13, Row1=10, Row2=6, Row3=3, 依 A-1(3))
+          const rowCounts = [13, 10, 6, 3];
+          const lx0 = 0.55, colStep = 1.76, lz0 = 0.08, rowStep = 1.04;
+          rowCounts.forEach((cnt, r) => {
+            for (let c = 0; c < cnt; c++) {
+              const cx = lx0 + c * colStep + 0.85;
+              const cz = lz0 + r * rowStep + 0.49;
+              addBox(tCanopy, 1.71, 0.06, 0.99, cx, 0.06, cz, MAT.solarPanel, false);
+            }
+          });
+          roofGroup.add(tCanopy);
+        }
       }
 
       // =========================================================================
@@ -2885,6 +2969,140 @@
           kbox(kitchenRoofGroup, 8.88, 8.93, 2.02, 2.53, ry, ry + 0.04, MAT.steelSilver, false);
         }
 
+        // ── 12b. 太陽能光電設施（屋頂型第2期，112.01 A-1(2)/A-2/A-3(3)，共 287 片 / 106.19 KW）──
+        //      (A) 2F 機房頂露臺光電棚架（28 片 = 7×4，方型鋼 125×100，北高 PRFL+145cm 往南單坡，切 2F 剖切時自動隱藏！）
+        {
+          const k2Solar = new THREE.Group();
+          k2Solar.userData = { isKitchen2FRoof: true };
+          const s2Ang = Math.atan2(0.83, 4.35); // PRFL+1.45m (9.35) -> south 8.52m
+          const tan2 = Math.tan(s2Ang), cos2 = Math.cos(s2Ang);
+          const y2AtZ = (lz) => (yP + 1.45) - (lz - 0.05) * tan2;
+          // 8 支方型鋼短柱（2 排 × 4 列，依 A-3(3) 柱位坐落於 2F 機房頂 +7.90）
+          [9.5, 13.3, 16.9, 20.4].forEach((px) => {
+            [0.35, 3.35].forEach((pz) => {
+              const topY = y2AtZ(pz) - 0.14;
+              kbox(k2Solar, px - 0.06, px + 0.06, pz - 0.05, pz + 0.05, yP, topY, MAT.steelDark);
+              kbox(k2Solar, px - 0.12, px + 0.12, pz - 0.12, pz + 0.12, yP, yP + 0.10, MAT.concreteBase, false);
+            });
+          });
+          const k2Plane = new THREE.Group();
+          const [k2Ox, k2Oz] = K(9.0, 0.05);
+          k2Plane.position.set(k2Ox, yP + 1.45, k2Oz);
+          k2Plane.rotation.x = s2Ang;
+          [0.5, 4.3, 7.9, 11.4].forEach((lx) => addBox(k2Plane, 0.10, 0.13, 4.40, lx, -0.13, 2.20, MAT.steelDark, false));
+          [0.30, 1.35, 2.40, 3.45, 4.20].forEach((lz) => addBox(k2Plane, 12.15, 0.08, 0.06, 6.05, -0.05, lz, MAT.steelSilver, false));
+          for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 7; c++) {
+              addBox(k2Plane, 1.68, 0.06, 1.00, 0.85 + c * 1.73, 0.04, 0.55 + r * 1.05, MAT.solarPanel, false);
+            }
+          }
+          k2Solar.add(k2Plane);
+          kitchenRoofGroup.add(k2Solar);
+        }
+        //      (B) 中央廚房主屋頂雙斜人字型 H 型鋼光電棚架（259 片，H型鋼 300×150、C型鋼 150×65，含維修步道，切 1F/2F 剖切自動隱藏！）
+        {
+          const kMainSolar = new THREE.Group();
+          kMainSolar.userData = { isKitchenSolarMain: true };
+          const lzRidge = 11.75, yRidge = 9.35; // 脊線東西向，RFL+4.45m (9.35m)
+          const tanG = 0.125, gSlope = Math.atan(tanG), cosG = Math.cos(gSlope); // 7.13°：北簷 +8.45 (RFL+355)、南延伸簷 +7.89 (RFL+299)
+          const yMainAtZ = (lz) => yRidge - Math.abs(lz - lzRidge) * tanG;
+          const roofBaseY = (lx, lz) => {
+            if (lz > 19.0 && lx >= 8.8 && lx <= 21.8) return 4.45;     // A04/A01 粉紅與白色入口頂板
+            if (lx >= 21.0 && lz <= 11.15) return 5.48;                // 東側蜜桃橘量體屋頂
+            if (lx >= 21.0 && lz >= 13.4) return 6.02;                 // 106 黃色食育教室女兒牆／屋頂
+            return yR + 0.10;                                          // 主屋頂 +4.90
+          };
+          const addKitchenCol = (lx, lz, braceDirZ) => {
+            const by = roofBaseY(lx, lz);
+            const ty = yMainAtZ(lz) - 0.22;
+            if (ty <= by + 0.3) return;
+            kbox(kMainSolar, lx - 0.08, lx + 0.08, lz - 0.12, lz + 0.12, by, ty, MAT.steelDark);
+            kbox(kMainSolar, lx - 0.18, lx + 0.18, lz - 0.18, lz + 0.18, by, by + 0.14, MAT.concreteBase, false);
+            // 45° 斜撐角鐵（對照 A-2 立面柱頂斜撐）
+            if (braceDirZ) {
+              const bLen = 1.35;
+              const [bx, bz] = K(lx, lz + braceDirZ * 0.50);
+              const br = addBox(kMainSolar, 0.09, 0.09, bLen, bx, ty - 0.50, bz, MAT.steelDark, false);
+              br.rotation.x = braceDirZ * (Math.PI / 4);
+            }
+          };
+          // 依 A-3(3) 柱位線 ①–⑧ 配置主鋼柱（柱位 ③ 對齊 A04 進貨平台上緣與 251/262/273 光電板西界）
+          const frameXs = [0.45, 3.85, 10.55, 13.55, 16.90, 20.30, 24.30, 28.20];
+          frameXs.forEach((lx, idx) => {
+            if (idx <= 6) addKitchenCol(lx, 4.75, 1);                  // 北側主柱列（①–⑦）
+            if (idx <= 5) addKitchenCol(lx, 18.65, -1);                // 南側主屋頂柱列（①–⑥）
+            if (idx === 2 || idx === 3) addKitchenCol(lx, 22.65, -1);  // A04 粉紅進貨平台南柱（③–④）
+            if (idx === 6) {
+              addKitchenCol(lx, 13.85, 1);
+              addKitchenCol(lx, 22.80, -1);                            // 106 黃色食育教室西中柱（⑦）
+            }
+            if (idx === 7) {
+              addKitchenCol(lx, 13.85, 1);
+              addKitchenCol(lx, 18.65, -1);
+              addKitchenCol(lx, 22.80, -1);                            // 106 黃色食育教室東柱（⑧）
+            }
+          });
+
+          const colX = (c) => 0.15 + c * 1.71 + (c >= 8 ? 0.26 : 0);   // 17 欄（第 8 欄前留 26cm 南北維修步道）
+          const [rOx, rOz] = K(0, lzRidge);
+
+          // (B1) 北坡（7 列 × 15 欄 = 105 片，編號 29–133，依 A-1(2)）
+          const kNorth = new THREE.Group();
+          kNorth.position.set(rOx, yRidge, rOz);
+          kNorth.rotation.x = -gSlope;
+          // 北坡 H 型鋼主梁（柱位 ①–⑦）與 C 型鋼檁條
+          frameXs.slice(0, 7).forEach((lx) => addBox(kNorth, 0.15, 0.24, 7.50, lx, -0.22, -3.75, MAT.steelDark, false));
+          [0.6, 1.9, 3.2, 4.5, 5.8, 7.1].forEach((d) => addBox(kNorth, 26.2, 0.10, 0.08, 13.1, -0.07, -d, MAT.steelSilver, false));
+          // 維修步道（脊頂＋北坡中段＋南北中央走道）
+          addBox(kNorth, 26.1, 0.04, 0.26, 13.1, 0.03, -0.02, MAT.steelSilver, false);
+          addBox(kNorth, 26.1, 0.04, 0.25, 13.1, 0.03, -4.32, MAT.steelSilver, false);
+          addBox(kNorth, 0.26, 0.04, 7.45, 13.94, 0.03, -3.75, MAT.steelSilver, false);
+          for (let r = 0; r < 7; r++) {
+            const cz = -(0.16 + r * 1.01 + (r >= 4 ? 0.25 : 0) + 0.49);
+            for (let c = 0; c < 15; c++) {
+              addBox(kNorth, 1.66, 0.06, 0.97, colX(c) + 0.83, 0.05, cz, MAT.solarPanel, false);
+            }
+          }
+          kMainSolar.add(kNorth);
+
+          // (B2) 南坡（11 列共 154 片，編號 134–287，避開 107 弧梯與西南空地，延伸覆蓋 A04/A01/106，依 A-1(2)）
+          const kSouth = new THREE.Group();
+          kSouth.position.set(rOx, yRidge, rOz);
+          kSouth.rotation.x = gSlope;
+          // 南坡 H 型鋼主梁（依各柱位跨距：①② 7.5m、③–⑦ 11.7m、⑧ 由 106 北緣起 9.9m）
+          frameXs.forEach((lx, idx) => {
+            if (idx <= 1) addBox(kSouth, 0.15, 0.24, 7.50, lx, -0.22, 3.75, MAT.steelDark, false);
+            else if (idx <= 6) addBox(kSouth, 0.15, 0.24, 11.75, lx, -0.22, 5.875, MAT.steelDark, false);
+            else addBox(kSouth, 0.15, 0.24, 10.00, lx, -0.22, 6.75, MAT.steelDark, false);
+          });
+          // 南坡 C 型鋼檁條（依寬度分區收邊）
+          [0.6, 1.9, 3.2, 4.5, 5.8, 7.1].forEach((d) => {
+            const x0 = 0.05, x1 = d < 1.1 ? 26.2 : 29.6;
+            addBox(kSouth, x1 - x0, 0.10, 0.08, (x0 + x1) * 0.5, -0.07, d, MAT.steelSilver, false);
+          });
+          [8.4, 9.7, 11.0].forEach((d) => {
+            const x0 = d > 10.6 ? 22.3 : 10.3, x1 = 29.6;
+            addBox(kSouth, x1 - x0, 0.10, 0.08, (x0 + x1) * 0.5, -0.07, d, MAT.steelSilver, false);
+          });
+          // 南坡維修步道（中段東西向 ×2 ＋ 中央南北向）
+          addBox(kSouth, 29.4, 0.04, 0.25, 14.8, 0.03, 4.32, MAT.steelSilver, false);
+          addBox(kSouth, 19.2, 0.04, 0.25, 19.9, 0.03, 7.60, MAT.steelSilver, false);
+          addBox(kSouth, 0.26, 0.04, 10.85, 13.94, 0.03, 5.45, MAT.steelSilver, false);
+          const southRows = [
+            [0, 14], [0, 16], [0, 16], [0, 16],
+            [0, 16], [0, 16], [0, 16],
+            [6, 16], [6, 16], [6, 16], [13, 16]
+          ];
+          southRows.forEach(([c0, c1], r) => {
+            const cz = 0.16 + r * 1.01 + (r >= 4 ? 0.25 : 0) + (r >= 7 ? 0.25 : 0) + 0.49;
+            for (let c = c0; c <= c1; c++) {
+              addBox(kSouth, 1.66, 0.06, 0.97, colX(c) + 0.83, 0.05, cz, MAT.solarPanel, false);
+            }
+          });
+          kMainSolar.add(kSouth);
+          kitchenRoofGroup.add(kMainSolar);
+        }
+
         // ── 13. 地面 5T 不鏽鋼水塔 ×3（A08，⑥–⑦×Ⓐ–Ⓑ，附混凝土基座，照片 04107.jpg）──
         kbox(kitchenBaseGroup, 21.2, 25.0, 0.0, 4.2, 0, 0.25, MAT.concreteBase);
         [[22.2, 1.0], [24.0, 1.0], [23.1, 3.0]].forEach(([lx, lz]) => {
@@ -2989,19 +3207,19 @@
           { floor: '3F', name: '2-4 理化實驗室', shortName: '2-4 理化實驗室', x: 21.5, z: 3.9, w: 10.8, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '理化實驗室（至軸線④，西側有儲藏室與黑板牆，原設計生物理化實驗教室）。' },
           { floor: '3F', name: '2-3 生科教室', shortName: '2-3 生科教室', x: 31.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '生活科技教室（軸線④–⑤，原設計音樂教室）。' },
           { floor: '3F', name: '2-2 資訊教室', shortName: '2-2 資訊教室', x: 40.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '資訊教室（軸線⑤–⑥）。' },
-          { floor: '3F', name: '2-1 藝術教室', shortName: '2-1 藝術教室', x: 49.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '藝術教室（軸線⑥–⑦，原設計美術教室），南側為三樓露台。' },
+          { floor: '3F', name: '2-1 藝術教室', shortName: '2-1 藝術教室', x: 49.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '藝術教室（軸線⑥–⑦，原設計美術教室），南側為三樓斜向大露台（含二期太陽能光電棚架 32 片 / 11.84 KW）。' },
           { floor: '3F', name: '1-6 普通教室（202班）', shortName: '1-6 教室(202)', x: 58.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '八年級 202 班（軸線⑦–⑧）。' },
           { floor: '3F', name: '1-5 普通教室（201班）', shortName: '1-5 教室(201)', x: 67.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F3, area: 68, meta: W, desc: '八年級 201 班（軸線⑧–⑨）。' },
           { floor: '3F', name: '20-6 廁所（東側）', shortName: '20-6 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F3, area: 52, isRestroom: true, meta: W, desc: '溪埔國中廁所整修工程（細部設計圖 2026.01 第四版，超聖工程顧問）。入口為台農 17 號「金鑽鳳梨」意象牆；配置與 1F 相同：男廁小便斗 3（含無障礙 1）、坐式 1、蹲式 1；女廁坐式 1、蹲式 4；無障礙廁所 1。', images: [{ src: 'campus-3d-assets/restroom/d05-3f-pineapple.jpg', cap: 'D-05 3F廁所鳳梨水果意象設計' }, { src: 'campus-3d-assets/restroom/b02-1f3f-plan.jpg', cap: 'B-02 A梯1F及3F廁所平面配置與地板計畫' }] },
           // ── 中央廚房（111.11 完工・保固 5 年）──
-          { floor: '1F', building: 'kitchen', name: '21-1 中央廚房', shortName: '21-1 中央廚房', x: -34, z: 0, w: 16.0, d: 12.0, y: ELEV.F1, area: 485, meta: '111.11 完工・保固 5 年', desc: '聯合供餐中央廚房，供應本校及興田、姑山、水寮、大樹國小約 1,500 人午餐。地上一層（局部二層機房），樓板抬高 +1.20 m 與教學大樓一樓走廊同高。', images: [{ src: 'campus-3d-assets/kitchen/04188.jpg', cap: '現況照片：東南側入口與坡道（蜜桃橘、珊瑚粉紅量體）' }, { src: 'campus-3d-assets/kitchen/04107.jpg', cap: '現況照片：北側外觀與不鏽鋼水塔、上屋頂樓梯' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：食育教室外廊（珊瑚粉紅框，面向操場）' }, { src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04008.jpg', cap: '現況照片：走道緩衝區' }, { src: 'campus-3d-assets/kitchen/04052.jpg', cap: '現況照片：出餐／取餐區' }, { src: 'campus-3d-assets/kitchen/04063.jpg', cap: '現況照片：入口洗手台與泡鞋池' }, { src: 'campus-3d-assets/kitchen/04103.jpg', cap: '現況照片：瓦斯間入口' }, { src: 'campus-3d-assets/kitchen/04097.jpg', cap: '現況照片：鍋爐與軟水設備' }, { src: 'campus-3d-assets/kitchen/04133.jpg', cap: '現況照片：主校舍西端與風雨走廊' }] },
+          { floor: '1F', building: 'kitchen', name: '21-1 中央廚房', shortName: '21-1 中央廚房', x: -34, z: 0, w: 16.0, d: 12.0, y: ELEV.F1, area: 485, meta: '111.11 完工・112.01 增設二期太陽能屋頂', desc: '聯合供餐中央廚房，供應本校及興田、姑山、水寮、大樹國小約 1,500 人午餐。地上一層（局部二層機房），樓板抬高 +1.20 m 與教學大樓一樓走廊同高；屋頂設有第二期太陽能光電棚架（287 片 / 106.19 KW，含主屋頂雙斜棚架 259 片及 2F 機房頂 28 片）。', images: [{ src: 'campus-3d-assets/kitchen/04188.jpg', cap: '現況照片：東南側入口與坡道（蜜桃橘、珊瑚粉紅量體）' }, { src: 'campus-3d-assets/kitchen/04107.jpg', cap: '現況照片：北側外觀與不鏽鋼水塔、上屋頂樓梯' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：食育教室外廊（珊瑚粉紅框，面向操場）' }, { src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04008.jpg', cap: '現況照片：走道緩衝區' }, { src: 'campus-3d-assets/kitchen/04052.jpg', cap: '現況照片：出餐／取餐區' }, { src: 'campus-3d-assets/kitchen/04063.jpg', cap: '現況照片：入口洗手台與泡鞋池' }, { src: 'campus-3d-assets/kitchen/04103.jpg', cap: '現況照片：瓦斯間入口' }, { src: 'campus-3d-assets/kitchen/04097.jpg', cap: '現況照片：鍋爐與軟水設備' }, { src: 'campus-3d-assets/kitchen/04133.jpg', cap: '現況照片：主校舍西端與風雨走廊' }] },
           { floor: '1F', building: 'kitchen', name: '10-8 營養師辦公室', shortName: '10-8 營養師', x: -29.5, z: 7.5, w: 3.0, d: 4.5, y: ELEV.F1, area: 15, meta: '111.11 完工・保固 5 年', desc: '營養師辦公室（規劃面積約 15.45 m²）。' },
           { floor: '1F', building: 'kitchen', name: '20-7 廁所（中央廚房）', shortName: '20-7 廁所', x: -26, z: 7.5, w: 3.6, d: 4.5, y: ELEV.F1, area: 18, isRestroom: true, meta: '111.11 完工・保固 5 年', desc: '廚房衛生區：淋浴間、座式馬桶、無障礙廁所（規劃約 18.30 m²）。' },
           { floor: '1F', building: 'kitchen', name: '2-7 食育教室', shortName: '2-7 食育教室', x: -20, z: 7.5, w: 7.6, d: 6.0, y: ELEV.F1, area: 57, meta: '111.11 完工・保固 5 年', desc: '午餐教育教室（規劃約 57.2 m²），外廊作為餐食教育區，連接風雨走廊。', images: [{ src: 'campus-3d-assets/kitchen/yellow-south.jpg', cap: '現況照片：食育教室南面（面向操場）' }, { src: 'campus-3d-assets/kitchen/yellow-track.jpg', cap: '現況照片：由操場看中央廚房南側' }, { src: 'campus-3d-assets/kitchen/yellow-se.jpg', cap: '現況照片：食育教室東南角與風雨走廊' }, { src: 'campus-3d-assets/kitchen/veranda-west.jpg', cap: '現況照片：外廊內部往西（洗手台、通往 A01 走廊）' }, { src: 'campus-3d-assets/kitchen/veranda-entry.jpg', cap: '現況照片：由 A01 走廊進入外廊' }, { src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：粉紅進貨平台內部往南' }] },
           { floor: '1F', building: 'kitchen', name: '107 廚工更衣・休息室', shortName: '107 更衣室', x: -18.2, z: 3.2, w: 3.6, d: 2.3, y: ELEV.F1, area: 12, meta: '111.11 完工・保固 5 年', desc: '白色弧形量體 1F（+1.20m，依 A2-1），由 102 走道緩衝區經 D2 門進入，設 W9 四格橫窗與更衣置物櫃。' },
           { floor: '1F', building: 'kitchen', name: '配電室（電力機房・A05 戶外梯下）', shortName: '配電室（梯下）', x: -15.8, z: 6.2, w: 1.8, d: 3.0, y: 0.40, area: 6, meta: '111.11 完工・保固 5 年', desc: '位於 2-7 食育教室東側 A05 戶外樓梯下方空間（地坪 +0.40m，依 A2-1 / A3-2 / 04107.jpg「電力機房」），由東側地面 D4 門直接出入維護受電盤與主配電箱。' },
           { floor: '1F', building: 'kitchen', name: '風雨走廊', shortName: '風雨走廊', x: -7.6, z: 9.35, w: 15.0, d: 3.0, y: ELEV.F1, area: 58, meta: '111.11 完工', desc: '連接中央廚房與主校舍一樓西側走廊（+1.20 m），南側階梯與主校舍西側階梯連續相接。' },
-          { floor: '2F', building: 'kitchen', name: '消防機房（中央廚房 2F）', shortName: '廚房2F 消防機房', x: -30, z: -6.5, w: 12.0, d: 5.0, y: 4.9, area: 60, meta: '111.11 完工・保固 5 年', desc: '中央廚房局部二層機房（約 60 m²），由西向東分為消防機房（消防泵浦組 HD）、RO 機房（8T+1T 不鏽鋼水塔）與儲藏室（2T 水塔×2），南向設 SD3/D3 檢修門與 W15 百葉（依 A2-2 二層平面圖）。' },
+          { floor: '2F', building: 'kitchen', name: '消防機房（中央廚房 2F）', shortName: '廚房2F 消防機房', x: -30, z: -6.5, w: 12.0, d: 5.0, y: 4.9, area: 60, meta: '111.11 完工・112.01 頂設太陽能板', desc: '中央廚房局部二層機房（約 60 m²），由西向東分為消防機房（消防泵浦組 HD）、RO 機房（8T+1T 不鏽鋼水塔）與儲藏室（2T 水塔×2），南向設 SD3/D3 檢修門與 W15 百葉，屋頂設二期太陽能光電板 28 片（7×4）。' },
           // ── 戶外設施 ──
           { floor: 'GF', building: 'site', name: '操場（200 m 跑道）', shortName: '操場', x: SITE.track.cx, z: SITE.track.cz, w: 30, d: 16, y: 0, area: 3200, meta: '跑道 99 年度工程重新施作', desc: '200 m 跑道＋南側直線跑道。' },
           { floor: 'GF', building: 'site', name: '司令台', shortName: '司令台', x: SITE.stage.cx, z: SITE.stage.cz, w: SITE.stage.w, d: SITE.stage.d, y: 0.6, area: 40, meta: '78.7 建置（21 年以上）', desc: '操場南側司令台。' },
@@ -3009,7 +3227,7 @@
           { floor: 'GF', building: 'site', name: '籃球場', shortName: '籃球場', x: SITE.courtOpen.cx, z: SITE.courtOpen.cz, w: SITE.courtOpen.w, d: SITE.courtOpen.d, y: 0.1, area: 416, meta: '103.4 建置・保固 10 年', desc: '校地南側室外籃球場（紫色球場面）。' },
           { floor: 'GF', building: 'site', name: '風雨球場', shortName: '風雨球場', x: SITE.courtCovered.cx, z: SITE.courtCovered.cz, w: SITE.courtCovered.w, d: SITE.courtCovered.d, y: 0.1, area: 416, meta: '103.4 建置・保固 10 年', desc: '有頂蓋風雨球場，屋頂設太陽能板（依衛星圖）。' },
           { floor: 'GF', building: 'site', name: '噴水池・中央廣場', shortName: '噴水池', x: SITE.pond.cx, z: SITE.pond.cz, w: 8, d: 8, y: 0.3, area: 380, meta: '', desc: '穿堂東南側圓形廣場與水池，連接東側大門。' },
-          { floor: 'GF', building: 'site', name: '14-1 警衛室', shortName: '14-1 警衛室', x: 115.5, z: 38.6, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '東側大門（溪埔路）北側警衛室，與備勤室、體育器材室、檔案室同一棟，屋頂設太陽能板棚架（依街景與衛星圖）。' },
+          { floor: 'GF', building: 'site', name: '14-1 警衛室', shortName: '14-1 警衛室', x: 115.5, z: 38.6, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・112.01 二期太陽能 17.76 KW', desc: '東側大門（溪埔路）北側警衛室，與備勤室、體育器材室、檔案室同一棟，屋頂設第二期雙斜（8.53°）太陽能光電棚架（48 片 / 17.76 KW，依 A-1(4)/A-2(3)）。' },
           { floor: 'GF', building: 'site', name: '22-1 備勤室', shortName: '22-1 備勤室', x: 115.5, z: 35.1, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '警衛室旁備勤室。' },
           { floor: 'GF', building: 'site', name: '4-1 體育器材室', shortName: '4-1 體育器材室', x: 115.5, z: 31.6, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '體育器材室。' },
           { floor: 'GF', building: 'site', name: '17-1 檔案室', shortName: '17-1 檔案室', x: 115.5, z: 28.6, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '檔案室。' },
@@ -3229,12 +3447,54 @@
             const furnMat = (i === 0 || i === 1) ? MAT.steelSilver : MAT.woodLight;
             addBox(campusSiteGroup, 1.2, (i < 2 ? 1.85 : 0.78), 2.2, gx(AX.x1 - 1.1), yFl + (i < 2 ? 0.925 : 0.39), gz((rz0 + rz1) / 2), furnMat, false);
           }
-          // 屋頂板＋屋頂太陽能棚架（1F 剖切時可自動掀開檢視 4 間室內配置）
+          // 屋頂板＋屋頂太陽能棚架（二期守衛室 48 片 / 17.76 KW，8.53° 雙斜棚架＋8 支斜撐方鋼柱＋中央維修步道，依 A-1(4)/A-2(3)）
           const axRoofGrp = new THREE.Group();
           axRoofGrp.userData = { isSiteRoofPart: true };
           addBox(axRoofGrp, aw + 0.4, 0.3, ad + 0.4, gx(acx), 3.45, gz(acz), MAT.wallFrameGray);
-          [[AX.x0 + 0.5, AX.z0 + 0.5], [AX.x1 - 0.5, AX.z0 + 0.5], [AX.x0 + 0.5, AX.z1 - 0.5], [AX.x1 - 0.5, AX.z1 - 0.5]].forEach(([px, pz]) => addBox(axRoofGrp, 0.14, 2.0, 0.14, gx(px), 4.6, gz(pz), MAT.steelDark));
-          addBox(axRoofGrp, aw + 1.6, 0.1, ad + 1.0, gx(acx), 5.65, gz(acz), MAT.solarPanel, false);
+          {
+            const axSolar = new THREE.Group();
+            axSolar.userData = { isSiteSolarCanopy: true };
+            const yRF = 3.60, yRidge = yRF + 2.80; // RF+280cm (6.40m)，簷高 RF+233.2cm
+            const aSlope = 8.53 * Math.PI / 180, tanA = Math.tan(aSlope);
+            const yAtDx = (dx) => yRidge - Math.abs(dx) * tanA;
+            const colZs = [acz - 6.25, acz - 2.25, acz + 2.25, acz + 6.25];
+            // 8 支方型鋼柱（2 列 × 4 排，跨距 410cm，附混凝土基座與對稱 45° V 型斜撐，依 A-2(3)）
+            colZs.forEach((pz) => {
+              [-2.05, 2.05].forEach((dx) => {
+                const topY = yAtDx(dx) - 0.16;
+                const colH = topY - yRF;
+                addBox(axSolar, 0.125, colH, 0.10, gx(acx + dx), yRF + colH * 0.5, gz(pz), MAT.steelDark);
+                addBox(axSolar, 0.28, 0.18, 0.28, gx(acx + dx), yRF + 0.09, gz(pz), MAT.concreteBase, false);
+                // 對稱雙向 45° 柱頂斜撐（向脊線與向屋簷各一支，完全對照 A-2(3) 立面！）
+                [-1, 1].forEach((dir) => {
+                  const br = addBox(axSolar, 1.05, 0.07, 0.07, gx(acx + dx + dir * 0.42), topY - 0.42, gz(pz), MAT.steelDark, false);
+                  br.rotation.z = dir * (Math.PI / 4);
+                });
+              });
+            });
+            // 西坡（24 片 = 8×3，向西傾 8.53°）與東坡（24 片 = 8×3，向東傾 8.53°）
+            [[-1, aSlope], [1, -aSlope]].forEach(([side, rotZ]) => {
+              const wing = new THREE.Group();
+              wing.position.set(gx(acx), yRidge, gz(acz));
+              wing.rotation.z = rotZ;
+              // 4 支主斜梁（方型鋼 125×100）＋ 3 支南北向 C 型鋼檁條（125×50）
+              [-6.25, -2.25, 2.25, 6.25].forEach((lz) => addBox(wing, 3.35, 0.13, 0.10, side * 1.675, -0.14, lz, MAT.steelDark, false));
+              [0.65, 1.75, 2.85].forEach((d) => addBox(wing, 0.06, 0.09, 14.10, side * d, -0.05, 0, MAT.steelSilver, false));
+              // 24 片單晶太陽能板（TSEC TS60-AMH-370 H1：南北 8 列 × 東西 3 排）
+              for (let r = 0; r < 8; r++) {
+                const lz = -6.16 + r * 1.76;
+                for (let c = 0; c < 3; c++) {
+                  const lx = side * (0.14 + c * 1.04 + 0.51);
+                  addBox(wing, 1.00, 0.06, 1.71, lx, 0.04, lz, MAT.solarPanel, false);
+                }
+              }
+              axSolar.add(wing);
+            });
+            // 中央南北向脊頂維修步道（寬 26.2cm）＋ 北端東西向維修步道（寬 22cm，依 A-1(4)）
+            addBox(axSolar, 0.26, 0.04, 14.15, gx(acx), yRidge + 0.03, gz(acz), MAT.steelSilver, false);
+            addBox(axSolar, 6.50, 0.04, 0.22, gx(acx), yRidge - 0.18, gz(acz - 7.12), MAT.steelSilver, false);
+            axRoofGrp.add(axSolar);
+          }
           campusSiteGroup.add(axRoofGrp);
         }
         // 校名牆（大門南側）
@@ -3416,10 +3676,16 @@
           if (obj.userData && obj.userData.isKitchen2FRoof) {
             obj.visible = (f !== '2F');
           }
+          if (obj.userData && obj.userData.isKitchenSolarMain) {
+            obj.visible = (f === 'all' && state.showRoof);
+          }
         });
         campusSiteGroup.traverse((obj) => {
           if (obj.userData && obj.userData.isSiteRoofPart) {
             obj.visible = (f !== '1F');
+          }
+          if (obj.userData && obj.userData.isSiteSolarCanopy) {
+            obj.visible = (f !== '1F' && state.showRoof);
           }
         });
       }
