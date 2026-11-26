@@ -536,16 +536,17 @@
         { a: [80.0, 98.4], b: [45.0, 98.7], style: 'brick_slat', hedge: true },
         { a: [45.0, 98.7], b: [18.6, 98.4], style: 'brick_slat', hedge: true },
         // 南側門（公用儲藏室東側）：紅磚廣場鋪面＋深咖啡磚柱＋米黃直柵雙開大門＋校名金字與布條
-        { a: [18.6, 98.4], b: [10.8, 97.3], style: 'gate_south' },
-        // 南側（溪埔路1巷1弄西段）：沿公用儲藏室及操場南直道延伸至西南廚房車道
-        { a: [10.8, 97.3], b: [-12.0, 89.6], style: 'brick_slat' },
-        { a: [-12.0, 89.6], b: [-36.0, 81.6], style: 'brick_slat' },
-        { a: [-36.0, 81.6], b: [-60.0, 73.5], style: 'brick_slat' },
+        { a: [18.6, 98.4], b: [10.8, 98.1], style: 'gate_south' },
+        // 南側（溪埔路1巷1弄西段）：依空拍圖實地路緣與圍牆線，完全繞行 17-2 公用儲藏室南側並沿道路接至西南廚房車道門
+        { a: [10.8, 98.1], b: [0.0, 97.0], style: 'brick_slat' },
+        { a: [0.0, 97.0], b: [-12.0, 93.9], style: 'brick_slat' },
+        { a: [-12.0, 93.9], b: [-36.0, 85.8], style: 'brick_slat' },
+        { a: [-36.0, 85.8], b: [-60.0, 76.3], style: 'brick_slat' },
         // 西南側廚房送餐車道門：銀色不鏽鋼電動伸縮大門＋西側短段直柵
-        { a: [-60.0, 73.5], b: [-67.2, 70.9], style: 'gate_sw' },
-        { a: [-67.2, 70.9], b: [-70.0, 69.8], style: 'brick_slat' },
+        { a: [-60.0, 76.3], b: [-67.2, 73.3], style: 'gate_sw' },
+        { a: [-67.2, 73.3], b: [-70.0, 72.1], style: 'brick_slat' },
         // 西側農園邊界：鍍鋅鋼管＋菱形鐵絲網圍籬
-        { a: [-70.0, 69.8], b: [-61.5, 50.0], style: 'wire_mesh' },
+        { a: [-70.0, 72.1], b: [-61.5, 50.0], style: 'wire_mesh' },
         { a: [-61.5, 50.0], b: [-56.5, 20.0], style: 'wire_mesh' },
         { a: [-56.5, 20.0], b: [-53.5, 0.0], style: 'wire_mesh' },
         { a: [-53.5, 0.0], b: [-51.5, -20.5], style: 'wire_mesh' }
@@ -557,13 +558,14 @@
         track: { cx: 10.5, cz: 46.5, straightHalf: 25.2, outerR: 23.3, innerR: 15.5 },
         // 南側 100m 直線跑道（與 200m 跑道南直道 z=62.0..69.8 無縫共面銜接，總長 108m 含起終點緩衝）
         sprint: { x0: -50.0, x1: 58.0, z0: 62.0, z1: 69.8, cx: 4.0, cz: 65.9, len: 108.0, w: 7.8 },
-        stage: { cx: 6.3, cz: 74.7, w: 11.0, d: 7.0 },
-        storage172: { cx: 0.4, cz: 85.5, w: 14.0, d: 14.5 },
-        containers: { cx: 26.0, cz: 80.0 },
+        // 司令台與 17-2 公用儲藏室（依空拍實位對齊：司令台 x=3.6..14.6, z=72.8..79.4；17-2 紅屋頂 x=-3.4..10.8, z=80.5..95.5）
+        stage: { cx: 9.1, cz: 76.1, w: 11.0, d: 6.6 },
+        storage172: { cx: 3.7, cz: 88.0, w: 13.6, d: 14.0 },
+        containers: { cx: 28.35, cz: 82.15 },
         // 戶外紫藍籃球場（空拍精測：球場白線 x=49.5..72.0, z=74.2..89.4，中線 x=61.3，中心 z=81.8）
         courtOpen: { cx: 60.3, cz: 81.8, w: 24.4, d: 16.4, playCx: 61.3, x0: 49.5, x1: 72.0, z0: 74.2, z1: 89.4 },
-        // 風雨球場（空拍精測：屋頂 x=72.1..100.3, z=70.7..90.3）
-        courtCovered: { cx: 86.2, cz: 80.5, w: 26.2, d: 18.0 },
+        // 風雨球場（空拍精測：屋頂 x=72.1..100.3, z=70.7..91.5；地面鋪面與西鄰紫藍籃球場完全一致）
+        courtCovered: { cx: 86.2, cz: 81.1, w: 28.4, d: 21.0 },
         // 梅花形五瓣噴水池與圓形廣場（空拍精測中心 75.0, 46.1，圓形廣場半徑 8.0m）
         pond: { cx: 75.0, cz: 46.1, plazaR: 8.0, waterR: 3.0 },
         entryPlaza: { x0: 81.0, x1: 125.2, z0: 38.2, z1: 54.0 },
@@ -573,12 +575,12 @@
         bikeShed: [[9.0, 73.0]],
         bikeShedZ: -9.8,
         northShed: { x0: -8.0, x1: -0.8, z0: -11.5, z1: -5.9 },
-        kitchenRoad: { from: [-64.0, 72.2], to: [-48.5, -16.0], w: 5.5 },
+        kitchenRoad: { from: [-63.8, 74.8], to: [-48.5, -16.0], w: 5.5 },
         gates: {
           main: [122.75, 45.3],
           ne: [124.2, -4.4],
-          south: [14.7, 97.85],
-          southwest: [-63.6, 72.2]
+          south: [14.7, 98.25],
+          southwest: [-63.6, 74.8]
         }
       };
       // 中央廚房（110 年統包工程 A2 一層平面圖）：軸線①×Ⓐ 的校園座標；①–⑦ = 0/4/9/14/17/21/25 m，Ⓐ–Ⓔ = 0/4.5/12/19/23 m
@@ -4275,23 +4277,36 @@
           s2RoofGrp.add(roof);
           campusSiteGroup.add(s2RoofGrp);
         }
-        // 紫色貨櫃（南側側門東邊，依街景）
-        [[0, 0], [7.0, 0.4]].forEach(([dx, dz]) => addBox(campusSiteGroup, 6.0, 2.6, 2.4, gx(SITE.containers.cx + dx), 1.3, gz(SITE.containers.cz + dz), MAT.containerPurple));
-
-        // 戶外紫藍籃球場＋風雨球場（依空拍圖精確校準邊線、中線、禁區、三分弧線與籃框！）
-        const CO = SITE.courtOpen, CC = SITE.courtCovered;
-        addBox(campusSiteGroup, CO.w, 0.06, CO.d, gx(CO.cx), 0.03, gz(CO.cz), MAT.courtPurple, false, true);
+        // 兩座紫色貨櫃屋（依空拍圖實地屋頂定位＋街景實景 L 形擺法：東座南北向坐落空拍屋頂 (28.35, 82.15)，西座東西向緊接北端 (24.7, 77.7)）
         {
-          // 東西兩側橄欖黃綠油漆禁區
-          const keyMat = makeMat(0x88996e, { roughness: 0.9, transparent: true, opacity: 0.55 });
-          sitePavingMaterials.push(keyMat);
-          const bx0 = CO.x0, bx1 = CO.x1, bz0 = CO.z0, bz1 = CO.z1, pcx = CO.playCx, pcz = CO.cz;
-          addBox(campusSiteGroup, 5.7, 0.015, 4.6, gx(bx0 + 2.85), 0.068, gz(pcz), keyMat, false, true);
-          addBox(campusSiteGroup, bx1 - 67.4, 0.015, 4.6, gx((67.4 + bx1) / 2), 0.068, gz(pcz), keyMat, false, true);
+          const contRoofMat = makeMat(0x8c6854, { roughness: 0.88 });
+          // 貨櫃 1（東側・南北向 2.44×6.06m，對準空拍鏽褐色貨櫃屋頂，西側設鋁窗與側門，南端設雙開貨櫃門鎖桿）
+          const c1x = SITE.containers.cx, c1z = SITE.containers.cz;
+          addBox(campusSiteGroup, 2.44, 2.52, 6.06, gx(c1x), 1.26, gz(c1z), MAT.containerPurple);
+          addBox(campusSiteGroup, 2.48, 0.08, 6.10, gx(c1x), 2.56, gz(c1z), contRoofMat, false);
+          // 西側面（面向南側門）：鋁窗＋白色側門框
+          addBox(campusSiteGroup, 0.08, 0.92, 1.35, gx(c1x - 1.24), 1.56, gz(c1z - 1.45), MAT.alFrame, false);
+          addBox(campusSiteGroup, 0.04, 0.82, 1.25, gx(c1x - 1.26), 1.56, gz(c1z - 1.45), MAT.glass, false);
+          addBox(campusSiteGroup, 0.08, 1.98, 0.95, gx(c1x - 1.24), 1.00, gz(c1z + 0.10), MAT.wallFrameGray, false);
+          // 南端雙開貨櫃門鎖桿
+          [-0.45, -0.15, 0.15, 0.45].forEach((dx) => addBox(campusSiteGroup, 0.04, 2.30, 0.05, gx(c1x + dx), 1.26, gz(c1z + 3.05), MAT.steelSilver, false));
 
-          const bMat = new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.88 });
+          // 貨櫃 2（西側・東西向 6.06×2.44m，緊鄰貨櫃 1 北端呈 L 形擺設，西端設鋁窗，依 2026 街景實景）
+          const c2x = 24.7, c2z = 77.7;
+          addBox(campusSiteGroup, 6.06, 2.52, 2.44, gx(c2x), 1.26, gz(c2z), MAT.containerPurple);
+          addBox(campusSiteGroup, 6.10, 0.08, 2.48, gx(c2x), 2.56, gz(c2z), contRoofMat, false);
+          addBox(campusSiteGroup, 0.08, 0.92, 1.25, gx(c2x - 3.05), 1.56, gz(c2z), MAT.alFrame, false);
+          addBox(campusSiteGroup, 0.04, 0.82, 1.15, gx(c2x - 3.07), 1.56, gz(c2z), MAT.glass, false);
+        }
+
+        // 戶外紫藍籃球場＋風雨球場（兩座球場皆採相同紫藍色壓克力球場面、橄欖綠油漆禁區、完整白色標線與東西籃球架！）
+        const CO = SITE.courtOpen, CC = SITE.courtCovered;
+        const addBasketballMarkings = (bx0, bx1, bz0, bz1, pcx, pcz, keyW, yFloor, keyMat, lineY, eastPad = 0.5) => {
+          addBox(campusSiteGroup, keyW, 0.014, 4.6, gx(bx0 + keyW / 2), yFloor, gz(pcz), keyMat, false, true);
+          addBox(campusSiteGroup, keyW, 0.014, 4.6, gx(bx1 - keyW / 2), yFloor, gz(pcz), keyMat, false, true);
+          const bMat = new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.90 });
           const addCL = (coords) => {
-            const pts = coords.map(([px, pz]) => new THREE.Vector3(gx(px), 0.088, gz(pz)));
+            const pts = coords.map(([px, pz]) => new THREE.Vector3(gx(px), lineY, gz(pz)));
             campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), bMat));
           };
           const addArc = (cx, cz, r, a0, a1, segs = 28) => {
@@ -4302,37 +4317,56 @@
             }
             addCL(pts);
           };
-          // 球場四週白線與中線 (x=61.3)
+          // 球場四週白線、中線、中圈 (r=1.8m)
           addCL([[bx0, bz0], [bx1, bz0], [bx1, bz1], [bx0, bz1], [bx0, bz0]]);
           addCL([[pcx, bz0], [pcx, bz1]]);
-          // 中圈 (r=1.8m)
           addArc(pcx, pcz, 1.8, 0, Math.PI * 2, 32);
           // 西側禁區 + 罰球圈 + 三分弧線
-          addCL([[bx0, pcz - 2.3], [55.2, pcz - 2.3], [55.2, pcz + 2.3], [bx0, pcz + 2.3]]);
-          addArc(55.2, pcz, 1.75, -Math.PI / 2, Math.PI / 2, 20);
-          addCL([[bx0, pcz - 6.2], [50.8, pcz - 6.2]]);
-          addCL([[bx0, pcz + 6.2], [50.8, pcz + 6.2]]);
-          addArc(50.8, pcz, 6.2, -Math.PI / 2, Math.PI / 2, 28);
+          addCL([[bx0, pcz - 2.3], [bx0 + keyW, pcz - 2.3], [bx0 + keyW, pcz + 2.3], [bx0, pcz + 2.3]]);
+          addArc(bx0 + keyW, pcz, 1.75, -Math.PI / 2, Math.PI / 2, 20);
+          addCL([[bx0, pcz - 6.2], [bx0 + 1.3, pcz - 6.2]]);
+          addCL([[bx0, pcz + 6.2], [bx0 + 1.3, pcz + 6.2]]);
+          addArc(bx0 + 1.3, pcz, 6.2, -Math.PI / 2, Math.PI / 2, 28);
           // 東側禁區 + 罰球圈 + 三分弧線
-          addCL([[bx1, pcz - 2.3], [67.4, pcz - 2.3], [67.4, pcz + 2.3], [bx1, pcz + 2.3]]);
-          addArc(67.4, pcz, 1.75, Math.PI / 2, Math.PI * 1.5, 20);
-          addCL([[bx1, pcz - 6.2], [71.8, pcz - 6.2]]);
-          addCL([[bx1, pcz + 6.2], [71.8, pcz + 6.2]]);
-          addArc(71.8, pcz, 6.2, Math.PI / 2, Math.PI * 1.5, 28);
-          // 東西兩座籃球架（示意）
-          [[bx0 - 0.5, 1], [bx1 + 0.1, -1]].forEach(([hx, dir]) => {
+          addCL([[bx1, pcz - 2.3], [bx1 - keyW, pcz - 2.3], [bx1 - keyW, pcz + 2.3], [bx1, pcz + 2.3]]);
+          addArc(bx1 - keyW, pcz, 1.75, Math.PI / 2, Math.PI * 1.5, 20);
+          addCL([[bx1, pcz - 6.2], [bx1 - 1.3, pcz - 6.2]]);
+          addCL([[bx1, pcz + 6.2], [bx1 - 1.3, pcz + 6.2]]);
+          addArc(bx1 - 1.3, pcz, 6.2, Math.PI / 2, Math.PI * 1.5, 28);
+          // 東西兩座籃球架
+          [[bx0 - 0.5, 1], [bx1 + eastPad, -1]].forEach(([hx, dir]) => {
             addBox(campusSiteGroup, 0.16, 3.2, 0.16, gx(hx), 1.6, gz(pcz), MAT.steelDark, false);
             addBox(campusSiteGroup, 1.2, 0.12, 0.12, gx(hx + dir * 0.6), 3.15, gz(pcz), MAT.steelDark, false);
             addBox(campusSiteGroup, 0.08, 1.05, 1.8, gx(hx + dir * 1.2), 3.25, gz(pcz), MAT.ckWhite, false);
           });
+        };
+
+        // 1) 戶外紫藍籃球場（與衛星底圖柔和融合）
+        addBox(campusSiteGroup, CO.w, 0.06, CO.d, gx(CO.cx), 0.03, gz(CO.cz), MAT.courtPurple, false, true);
+        {
+          const openKeyMat = makeMat(0x88996e, { roughness: 0.9, transparent: true, opacity: 0.55 });
+          sitePavingMaterials.push(openKeyMat);
+          addBasketballMarkings(CO.x0, CO.x1, CO.z0, CO.z1, CO.playCx, CO.cz, 5.7, 0.068, openKeyMat, 0.088, 0.12);
         }
-        addBox(campusSiteGroup, CC.w, 0.08, CC.d, gx(CC.cx), 0.04, gz(CC.cz), MAT.courtBlue, false, true);
-        [CC.cx - CC.w / 2 + 0.5, CC.cx, CC.cx + CC.w / 2 - 0.5].forEach((cx) => {
-          [CC.cz - CC.d / 2 - 0.5, CC.cz + CC.d / 2 + 0.5].forEach((cz) => addBox(campusSiteGroup, 0.45, 8.5, 0.45, gx(cx), 4.25, gz(cz), MAT.steelDark));
+
+        // 2) 風雨球場（完全不透明之實地紫藍色籃球場鋪面＋水泥周邊收邊，避免衛星屋頂影像透射至球場地面！）
+        {
+          const ccBorderMat = makeMat(0xb9b6ae, { roughness: 0.88 });
+          const ccPurpleMat = makeMat(0x636c99, { roughness: 0.78 });
+          const ccKeyMat = makeMat(0x88996e, { roughness: 0.84 });
+          // 水泥外框地坪完全覆蓋風雨球場棚頂投影範圍
+          addBox(campusSiteGroup, CC.w, 0.07, CC.d, gx(CC.cx), 0.035, gz(CC.cz), ccBorderMat, false, true);
+          // 紫藍色壓克力籃球場地坪（與西鄰戶外籃球場同色系、同規格）
+          addBox(campusSiteGroup, 24.8, 0.03, 17.0, gx(CC.cx), 0.075, gz(CC.cz), ccPurpleMat, false, true);
+          addBasketballMarkings(CC.cx - 11.25, CC.cx + 11.25, CC.cz - 7.6, CC.cz + 7.6, CC.cx, CC.cz, 5.5, 0.095, ccKeyMat, 0.112);
+        }
+        // 風雨球場鋼構立柱、白色屋頂與 6 排太陽能光電板
+        [CC.cx - CC.w / 2 + 1.0, CC.cx, CC.cx + CC.w / 2 - 1.0].forEach((cx) => {
+          [CC.cz - CC.d / 2 + 0.8, CC.cz + CC.d / 2 - 0.8].forEach((cz) => addBox(campusSiteGroup, 0.45, 8.5, 0.45, gx(cx), 4.25, gz(cz), MAT.steelDark));
         });
-        addBox(campusSiteGroup, CC.w + 2.0, 0.45, CC.d + 1.6, gx(CC.cx), 8.6, gz(CC.cz), MAT.ckWhite);
+        addBox(campusSiteGroup, CC.w, 0.45, CC.d, gx(CC.cx), 8.6, gz(CC.cz), MAT.ckWhite);
         for (let r = 0; r < 6; r++) {
-          addBox(campusSiteGroup, CC.w - 2.0, 0.08, 2.1, gx(CC.cx), 8.9, gz(CC.cz - CC.d / 2 + 1.5 + r * 3.0), MAT.solarPanel, false);
+          addBox(campusSiteGroup, CC.w - 3.6, 0.08, 2.1, gx(CC.cx), 8.9, gz(CC.cz - CC.d / 2 + 2.4 + r * 3.15), MAT.solarPanel, false);
         }
 
         // 中央圓形廣場＋五瓣梅花形噴水池＋大門連鎖磚廣場與穿堂弧形通道（依空拍圖精確對位於 75.0, 46.1！）
@@ -4522,9 +4556,9 @@
         road.rotation.y = Math.atan2(kdx, kdz);
         addBox(campusSiteGroup, 14.0, 0.055, 11.5, gx(-47.0), 0.028, gz(-14.5), MAT.asphalt, false, true); // 西北側送餐迴車廣場
 
-        // 樹木（沿地界與廣場周邊，避開跑道、球場與主入口通道）
+        // 樹木（沿地界與廣場周邊，避開跑道、球場、貨櫃與主入口通道）
         const treeCoords = [
-          [-49, -14], [-46, 22], [-48, 42], [-56, 58], [-20, 76], [-35, 84], [20, 90], [35, 75],
+          [-49, -14], [-46, 22], [-48, 42], [-56, 58], [-22, 82], [-36, 78], [23, 73], [37, 81],
           [43, 74], [66, 65], [95, 62], [103, 18], [88, 30], [85.5, 8], [92, -3], [40, -11.5], [-12.5, -11.0], [116, 62], [116, 85]
         ];
         treeCoords.forEach(([tx, tz], i) => {
@@ -4877,7 +4911,7 @@
         { id: 'sv_annex_front', name: '東側警衛室・附屬建物前', x: gx(111.5), z: gz(31.5), floor: 0, yaw: -Math.PI * 0.5 },
         { id: 'sv_ne_gate', name: '東北側停車場車道門（溪埔路街景）', x: gx(133.5), z: gz(-4.4), floor: 0, yaw: Math.PI * 0.5 },
         { id: 'sv_south_gate', name: '南側門實景（溪埔路1巷1弄）', x: gx(14.5), z: gz(103.5), floor: 0, yaw: 0 },
-        { id: 'sv_sw_gate', name: '西南廚房送餐車道門（街景視角）', x: gx(-65.8), z: gz(79.0), floor: 0, yaw: -0.35 },
+        { id: 'sv_sw_gate', name: '西南廚房送餐車道門（街景視角）', x: gx(-65.8), z: gz(81.5), floor: 0, yaw: -0.35 },
         { id: 'sv_pond', name: '噴水池中央廣場', x: gx(82.0), z: gz(47.0), floor: 0, yaw: Math.PI * 0.38 },
         { id: 'sv_1f_genroom', name: '1F 發電機室／消防泵浦室前', x: gx(77.7), z: gz(17.8), floor: 0, yaw: 0 },
         { id: 'sv_breezeway', name: '1F 主穿堂中央', x: gx(58.5), z: gz(5.0), floor: 1, yaw: 0 },
