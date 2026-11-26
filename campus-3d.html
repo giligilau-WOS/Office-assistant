@@ -505,19 +505,54 @@
       const ELEV = { GL: 0.0, F1: 1.20, F2: 5.00, F3: 8.80, RF: 12.60 };
       const FLOOR_H = 3.80;
 
-      // 校園配置（依 Google Maps 正射空拍圖與中央廚房現況配置圖校正，原點＝主校舍軸線①×D，+X 東、+Z 南）
+      // 校園配置（依 Google Maps 正射空拍圖、中央廚房配置圖與 Google 街景外圍實景照片校正，原點＝主校舍軸線①×D，+X 東、+Z 南）
+      const PERIMETER_SEGS = [
+        // 北側農園邊界：鍍鋅鐵絲網圍籬
+        { a: [-51.5, -20.5], b: [-45.0, -20.5], style: 'wire_mesh' },
+        { a: [-45.0, -20.5], b: [-41.0, -14.5], style: 'wire_mesh' },
+        { a: [-41.0, -14.5], b: [-10.0, -14.5], style: 'wire_mesh' },
+        { a: [-10.0, -14.5], b: [45.0, -12.5], style: 'wire_mesh' },
+        { a: [45.0, -12.5], b: [124.2, -9.8], style: 'wire_mesh' },
+        // 東北側（溪埔路北段）：斜格欄＋東北側停車場車道門（銀白斜交桁架雙推拉門）
+        { a: [124.2, -9.8], b: [124.2, -7.2], style: 'diag_slat' },
+        { a: [124.2, -7.2], b: [124.2, -1.6], style: 'gate_ne' },
+        // 東側（溪埔路中北段）：紅磚深灰方柱＋米黃直柵＋矮綠籬 ＋ 公布欄櫥窗
+        { a: [124.2, -1.6], b: [123.6, 21.5], style: 'brick_slat', hedge: true },
+        { a: [123.6, 21.5], b: [122.4, 25.0], style: 'bulletin', hedge: true },
+        // 東大門北側警衛室雕塑牆（薄荷綠＋清水灰鋸齒尖峰與圓形浮雕＋警衛室櫃檯與教學卓越獎橫招）
+        { a: [122.4, 25.0], b: [122.6, 40.8], style: 'guardhouse_east' },
+        // 東大門（溪埔路 1 號）：不鏽鋼電動伸縮大門＋前庭灰色連鎖磚廣場＋圓石車阻
+        { a: [122.6, 40.8], b: [122.9, 49.8], style: 'gate_main' },
+        // 大門南側校名牆（深咖啡紅磚斜坡牆＋金色「高雄市立溪埔國民中學」）＋ 公布欄櫥窗
+        { a: [122.9, 49.8], b: [123.0, 60.4], style: 'name_wall' },
+        { a: [123.0, 60.4], b: [123.0, 64.2], style: 'bulletin', hedge: true },
+        // 東側（溪埔路南段）與東南轉角倒角（含外緣矮綠籬與轉角兩支石柱車阻）
+        { a: [123.0, 64.2], b: [122.6, 90.0], style: 'brick_slat', hedge: true },
+        { a: [122.6, 90.0], b: [121.2, 94.0], style: 'brick_slat', hedge: true },
+        { a: [121.2, 94.0], b: [118.0, 96.6], style: 'brick_slat', hedge: true },
+        { a: [118.0, 96.6], b: [113.5, 97.6], style: 'brick_slat', hedge: true },
+        // 南側（溪埔路1巷1弄東段）：磚柱米黃直柵＋外緣綠籬
+        { a: [113.5, 97.6], b: [80.0, 98.4], style: 'brick_slat', hedge: true },
+        { a: [80.0, 98.4], b: [45.0, 98.7], style: 'brick_slat', hedge: true },
+        { a: [45.0, 98.7], b: [18.6, 98.4], style: 'brick_slat', hedge: true },
+        // 南側門（公用儲藏室東側）：紅磚廣場鋪面＋深咖啡磚柱＋米黃直柵雙開大門＋校名金字與布條
+        { a: [18.6, 98.4], b: [10.8, 97.3], style: 'gate_south' },
+        // 南側（溪埔路1巷1弄西段）：沿公用儲藏室及操場南直道延伸至西南廚房車道
+        { a: [10.8, 97.3], b: [-12.0, 89.6], style: 'brick_slat' },
+        { a: [-12.0, 89.6], b: [-36.0, 81.6], style: 'brick_slat' },
+        { a: [-36.0, 81.6], b: [-60.0, 73.5], style: 'brick_slat' },
+        // 西南側廚房送餐車道門：銀色不鏽鋼電動伸縮大門＋西側短段直柵
+        { a: [-60.0, 73.5], b: [-67.2, 70.9], style: 'gate_sw' },
+        { a: [-67.2, 70.9], b: [-70.0, 69.8], style: 'brick_slat' },
+        // 西側農園邊界：鍍鋅鋼管＋菱形鐵絲網圍籬
+        { a: [-70.0, 69.8], b: [-61.5, 50.0], style: 'wire_mesh' },
+        { a: [-61.5, 50.0], b: [-56.5, 20.0], style: 'wire_mesh' },
+        { a: [-56.5, 20.0], b: [-53.5, 0.0], style: 'wire_mesh' },
+        { a: [-53.5, 0.0], b: [-51.5, -20.5], style: 'wire_mesh' }
+      ];
       const SITE = {
-        // 圍牆邊線（順時針，精準對齊空拍圖北界、東側溪埔路、南側溪埔路1巷1弄與西側廚房送餐車道外緣）
-        boundary: [
-          [-51.0, -21.5], [-41.0, -21.5], [-41.0, -14.5], [-10.0, -14.5],
-          [45.0, -12.5], [121.0, -9.5], [122.0, 42.0], [122.0, 53.0],
-          [121.5, 92.5], [116.5, 95.5], [95.0, 96.5], [60.0, 97.5],
-          [20.0, 97.0], [16.5, 96.6], [9.5, 96.0], [0.0, 95.2],
-          [-20.0, 89.8], [-40.0, 82.8], [-60.0, 74.5], [-68.0, 70.5],
-          [-61.5, 50.0], [-56.5, 20.0], [-53.5, 0.0]
-        ],
-        // 圍牆大門／側門缺口（對應 boundary 頂點區段索引：6=東大門、13=南側門、18=西南廚房車道門）
-        gateGaps: new Set([6, 13, 18]),
+        perimeterSegs: PERIMETER_SEGS,
+        boundary: PERIMETER_SEGS.map((s) => s.a),
         // 200m 六跑道標準橢圓跑道（空拍精測：北緣 z=23.2、南緣 z=69.8、西彎 x=-38.0、東彎 x=59.0）
         track: { cx: 10.5, cz: 46.5, straightHalf: 25.2, outerR: 23.3, innerR: 15.5 },
         // 南側 100m 直線跑道（與 200m 跑道南直道 z=62.0..69.8 無縫共面銜接，總長 108m 含起終點緩衝）
@@ -531,17 +566,19 @@
         courtCovered: { cx: 86.2, cz: 80.5, w: 26.2, d: 18.0 },
         // 梅花形五瓣噴水池與圓形廣場（空拍精測中心 75.0, 46.1，圓形廣場半徑 8.0m）
         pond: { cx: 75.0, cz: 46.1, plazaR: 8.0, waterR: 3.0 },
-        entryPlaza: { x0: 81.0, x1: 122.0, z0: 38.2, z1: 54.0 },
-        annex: { x0: 112.0, x1: 119.0, z0: 27.0, z1: 41.0 },
+        entryPlaza: { x0: 81.0, x1: 125.2, z0: 38.2, z1: 54.0 },
+        // 東側警衛室＋備勤室／體育器材室／檔案室（依空拍屋頂精確對位）
+        annex: { x0: 114.5, x1: 121.0, z0: 23.8, z1: 37.8 },
         parkingNE: { x0: 99.0, x1: 111.0, z0: 0.0, z1: 37.0 },
         bikeShed: [[9.0, 73.0]],
         bikeShedZ: -9.8,
         northShed: { x0: -8.0, x1: -0.8, z0: -11.5, z1: -5.9 },
-        kitchenRoad: { from: [-63.0, 68.5], to: [-48.5, -16.0], w: 5.5 },
+        kitchenRoad: { from: [-64.0, 72.2], to: [-48.5, -16.0], w: 5.5 },
         gates: {
-          main: [122.0, 47.5],
-          south: [13.0, 96.3],
-          southwest: [-64.5, 69.0]
+          main: [122.75, 45.3],
+          ne: [124.2, -4.4],
+          south: [14.7, 97.85],
+          southwest: [-63.6, 72.2]
         }
       };
       // 中央廚房（110 年統包工程 A2 一層平面圖）：軸線①×Ⓐ 的校園座標；①–⑦ = 0/4/9/14/17/21/25 m，Ⓐ–Ⓔ = 0/4.5/12/19/23 m
@@ -903,6 +940,59 @@
         return tex;
       }
 
+      // 校園圍牆磚面與菱形鐵絲網紋理 ＋ 實景招牌文字貼圖
+      function makeBrickWallTexture(baseHex = '#62403c', mortarHex = '#442b29', repeatX = 6, repeatY = 3) {
+        const c = document.createElement('canvas');
+        c.width = 256; c.height = 128;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = mortarHex; ctx.fillRect(0, 0, 256, 128);
+        const rows = 8, cols = 4, rh = 128 / rows, bw = 256 / cols;
+        for (let r = 0; r < rows; r++) {
+          const off = (r % 2) * (bw * 0.5);
+          for (let i = -1; i <= cols; i++) {
+            const shade = ((r * 7 + i * 13) & 3) * 4 - 6;
+            ctx.fillStyle = baseHex;
+            ctx.fillRect(i * bw + off + 2, r * rh + 2, bw - 4, rh - 4);
+            if (shade > 0) {
+              ctx.fillStyle = `rgba(255,235,220,${shade * 0.012})`;
+              ctx.fillRect(i * bw + off + 2, r * rh + 2, bw - 4, rh - 4);
+            }
+          }
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(repeatX, repeatY);
+        return tex;
+      }
+
+      function makeChainLinkTexture() {
+        const c = document.createElement('canvas');
+        c.width = 64; c.height = 64;
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, 64, 64);
+        ctx.strokeStyle = 'rgba(205, 214, 224, 0.88)';
+        ctx.lineWidth = 2.6;
+        for (let o = -64; o <= 128; o += 16) {
+          ctx.beginPath(); ctx.moveTo(o, 0); ctx.lineTo(o + 64, 64); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(o + 64, 0); ctx.lineTo(o, 64); ctx.stroke();
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(22, 4);
+        return tex;
+      }
+
+      function makeSignTexture(wPx, hPx, drawFn) {
+        const c = document.createElement('canvas');
+        c.width = wPx; c.height = hPx;
+        drawFn(c.getContext('2d'), wPx, hPx);
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+      }
+
       // =========================================================================
       // 4. SHARED ARCHITECTURAL MATERIALS & X-RAY SUPPORT
       // =========================================================================
@@ -975,7 +1065,7 @@
         ckTerracotta: makeMat(0xea8682, { roughness: 0.82, xrayable: true }),  // 珊瑚粉紅量體（依現況照片）
         ckSand: makeMat(0xedb48a, { roughness: 0.82, xrayable: true }),        // 蜜桃橘量體（依現況照片）
         ckSage: makeMat(0xdedacb, { roughness: 0.82, xrayable: true }),        // 2F 機房淺米灰（依現況照片）
-        // Campus Site（依 Google Maps 衛星圖實地校色）
+        // Campus Site & Street View Gates/Perimeter（依 Google Maps 衛星圖與外圍街景實景照片）
         grass: makeMat(0x4f6c47, { roughness: 0.95 }),
         lawnInfield: makeMat(0x5a7751, { roughness: 0.93 }),
         trackRed: makeMat(0x8c4840, { roughness: 0.86 }),
@@ -986,7 +1076,16 @@
         water: makeMat(0x2e6f84, { roughness: 0.16, metalness: 0.2, transparent: true, opacity: 0.88 }),
         bark: makeMat(0x5b4432, { roughness: 0.92 }),
         foliage1: makeMat(0x375d31, { roughness: 0.88 }),
-        foliage2: makeMat(0x49733b, { roughness: 0.88 })
+        foliage2: makeMat(0x49733b, { roughness: 0.88 }),
+        brickNameWall: makeMat(0xffffff, { map: makeBrickWallTexture('#64413c', '#452b29', 8, 3), roughness: 0.88 }),
+        brickPier: makeMat(0xffffff, { map: makeBrickWallTexture('#5d3d39', '#3f2826', 2, 3), roughness: 0.88 }),
+        brickApron: makeMat(0x8e6b62, { roughness: 0.90 }),
+        fenceSlat: makeMat(0xb78f5c, { roughness: 0.72 }),
+        gateCream: makeMat(0xebe3c8, { roughness: 0.45, metalness: 0.25 }),
+        chainLink: makeMat(0xdbe4ee, { map: makeChainLinkTexture(), roughness: 0.55, metalness: 0.45, transparent: true, alphaTest: 0.12, side: THREE.DoubleSide }),
+        guardAqua: makeMat(0x92beb8, { roughness: 0.82 }),
+        guardConc: makeMat(0xa4a8a5, { roughness: 0.86 }),
+        hedgeGreen: makeMat(0x3f6832, { roughness: 0.92 })
       };
 
       // =========================================================================
@@ -3582,12 +3681,15 @@
           { floor: 'GF', building: 'site', name: '籃球場', shortName: '籃球場', x: SITE.courtOpen.cx, z: SITE.courtOpen.cz, w: SITE.courtOpen.w, d: SITE.courtOpen.d, y: 0.1, area: 416, meta: '103.4 建置・保固 10 年', desc: '校地南側室外籃球場（紫色球場面）。' },
           { floor: 'GF', building: 'site', name: '風雨球場', shortName: '風雨球場', x: SITE.courtCovered.cx, z: SITE.courtCovered.cz, w: SITE.courtCovered.w, d: SITE.courtCovered.d, y: 0.1, area: 416, meta: '103.4 建置・保固 10 年', desc: '有頂蓋風雨球場，屋頂設太陽能板（依衛星圖）。' },
           { floor: 'GF', building: 'site', name: '噴水池・中央廣場', shortName: '噴水池', x: SITE.pond.cx, z: SITE.pond.cz, w: 8, d: 8, y: 0.3, area: 380, meta: '', desc: '穿堂東南側圓形廣場與水池，連接東側大門。' },
-          { floor: 'GF', building: 'site', name: '14-1 警衛室', shortName: '14-1 警衛室', x: 115.5, z: 38.6, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・112.01 二期太陽能 17.76 KW', desc: '東側大門（溪埔路）北側警衛室，與備勤室、體育器材室、檔案室同一棟，屋頂設第二期雙斜（8.53°）太陽能光電棚架（48 片 / 17.76 KW，依 A-1(4)/A-2(3)）。' },
-          { floor: 'GF', building: 'site', name: '22-1 備勤室', shortName: '22-1 備勤室', x: 115.5, z: 35.1, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '警衛室旁備勤室。' },
-          { floor: 'GF', building: 'site', name: '4-1 體育器材室', shortName: '4-1 體育器材室', x: 115.5, z: 31.6, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '體育器材室。' },
-          { floor: 'GF', building: 'site', name: '17-1 檔案室', shortName: '17-1 檔案室', x: 115.5, z: 28.6, w: 5, d: 5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '檔案室。' },
+          { floor: 'GF', building: 'site', name: '14-1 警衛室', shortName: '14-1 警衛室', x: 117.8, z: 36.0, w: 5, d: 4.5, y: 0.2, area: 25, meta: '103.4 建置・112.01 二期太陽能 17.76 KW', desc: '東側大門（溪埔路）北側警衛室，東面具薄荷綠／清水灰鋸齒造型雕塑牆與圓形浮雕，與備勤室、體育器材室、檔案室同一棟，屋頂設第二期雙斜（8.53°）太陽能光電棚架（48 片 / 17.76 KW，依 A-1(4)/A-2(3)）。' },
+          { floor: 'GF', building: 'site', name: '22-1 備勤室', shortName: '22-1 備勤室', x: 117.8, z: 32.5, w: 5, d: 3.5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '警衛室旁備勤室。' },
+          { floor: 'GF', building: 'site', name: '4-1 體育器材室', shortName: '4-1 體育器材室', x: 117.8, z: 29.0, w: 5, d: 3.5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '體育器材室。' },
+          { floor: 'GF', building: 'site', name: '17-1 檔案室', shortName: '17-1 檔案室', x: 117.8, z: 25.5, w: 5, d: 3.5, y: 0.2, area: 25, meta: '103.4 建置・保固 10 年', desc: '檔案室。' },
           { floor: 'GF', building: 'site', name: '學生、教職員車棚', shortName: '車棚', x: 41, z: SITE.bikeShedZ, w: 30, d: 4, y: 0.2, area: 290, meta: '103.10 建置・保固 10 年', desc: '主校舍北側車棚（依衛星圖，約軸線②至⑨北側）。' },
-          { floor: 'GF', building: 'site', name: '大門', shortName: '大門', x: SITE.gates.main[0] - 2, z: SITE.gates.main[1], w: 3, d: 8, y: 0.2, area: 0, meta: '', desc: '東側大門（溪埔路 1 號），電動伸縮門，南側為校名牆（依街景）。' }
+          { floor: 'GF', building: 'site', name: '東大門（正門・溪埔路 1 號）', shortName: '大門', x: SITE.gates.main[0] - 0.5, z: SITE.gates.main[1], w: 4, d: 9, y: 0.2, area: 0, meta: '不鏽鋼電動伸縮大門', desc: '東側正門（溪埔路 1 號），設不鏽鋼電動伸縮大門、南側深咖啡紅磚斜坡校名牆（「高雄市立溪埔國民中學」）、北側警衛室雕塑牆與前庭石柱車阻（依街景實景）。' },
+          { floor: 'GF', building: 'site', name: '南側門（溪埔路1巷1弄）', shortName: '南側門', x: SITE.gates.south[0], z: SITE.gates.south[1], w: 7.5, d: 3, y: 0.2, area: 0, meta: '米黃直柵雙開鋼製大門', desc: '17-2 公用儲藏室東側出入口（面向溪埔路1巷1弄），具紅磚連鎖磚車道鋪面、深咖啡磚柱與米黃色直柵雙開大門（含金色「高雄市立溪埔國民中學」橫牌）。' },
+          { floor: 'GF', building: 'site', name: '東北側車道門（停車場出入口）', shortName: '東北側門', x: SITE.gates.ne[0] - 0.5, z: SITE.gates.ne[1], w: 3, d: 5.5, y: 0.2, area: 0, meta: '銀白斜交桁架雙推拉門', desc: '教職員停車場北側車道出入口（溪埔路北段），採紅磚深灰門柱搭配銀白色幾何斜交桁架推拉門。' },
+          { floor: 'GF', building: 'site', name: '西南廚房車道門（送餐專用）', shortName: '西南車道門', x: SITE.gates.southwest[0], z: SITE.gates.southwest[1], w: 6.5, d: 3, y: 0.2, area: 0, meta: '不鏽鋼電動伸縮大門', desc: '中央廚房西側送餐車道南端出入口（接溪埔路1巷1弄），採銀色不鏽鋼電動伸縮門，西側銜接農園鍍鋅鐵絲網圍籬。' }
         ];
         rooms.push({ floor: 'ALL', building: 'main', name: '主校舍', shortName: '主校舍', x: 41.3, z: 5.4, w: 82.7, d: 10.85, y: ELEV.RF, labelH: 2.2, area: 2700, meta: '102.8 完工・保固 10 年', desc: '三層 RC 校舍，1F–3F 共 27 個空間（教室、行政、專科教室與東西兩側廁所），屋頂設太陽能板。' });
         rooms.forEach((r) => { enrichRoom(r); registerRoom(r.building === 'site' ? Object.assign({ group: campusSiteGroup, labelH: 1.6 }, r) : r); });
@@ -3684,14 +3786,337 @@
           campusSiteGroup.add(satOverlayMesh);
         }
 
-        // 圍牆／邊界牆（依空拍圖實地邊線校準，高約 1.5 m，並於東大門、南側門與西南車道門留出通行開口）
-        const fenceMat = makeMat(0x9a6b4a, { roughness: 0.9, transparent: true, opacity: 0.62 });
-        for (let k = 0; k < SITE.boundary.length; k++) {
-          if (SITE.gateGaps && SITE.gateGaps.has(k)) continue;
-          const [ax, az] = SITE.boundary[k], [bx, bz] = SITE.boundary[(k + 1) % SITE.boundary.length];
-          const len = Math.hypot(bx - ax, bz - az);
-          const f = addBox(campusSiteGroup, 0.14, 1.5, len, gx((ax + bx) / 2), 0.75, gz((az + bz) / 2), fenceMat, false, false);
-          f.rotation.y = Math.atan2(bx - ax, bz - az);
+        // 外圍圍牆與各門口實景建構（依 Google 街景 7 張實景照片：溪埔路紅磚方柱米黃直柵＋綠籬＋公布欄、北西農園鐵絲網、警衛室雕塑牆＋東大門／東北側門／南側門／西南車道門）
+        {
+          const pierMatrices = [], capMatrices = [], picketMatrices = [], postMatrices = [];
+          const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), s4 = new THREE.Vector3(), p4 = new THREE.Vector3();
+          const upAxis = new THREE.Vector3(0, 1, 0);
+          const pushInst = (arr, wx, wy, wz, ry = 0) => {
+            q4.setFromAxisAngle(upAxis, ry);
+            s4.set(1, 1, 1);
+            p4.set(wx, wy, wz);
+            arr.push(new THREE.Matrix4().compose(p4, q4, s4));
+          };
+          const makeSegGroup = (ax, az, bx, bz) => {
+            const g = new THREE.Group();
+            g.position.set(gx(ax), 0, gz(az));
+            g.rotation.y = Math.atan2(-(bz - az), bx - ax);
+            campusSiteGroup.add(g);
+            return { g, len: Math.hypot(bx - ax, bz - az), ang: g.rotation.y };
+          };
+          // 建立局部物件座標轉換到世界座標（給 InstancedMesh 批次高效繪製！）
+          const addLocalInst = (arr, segObj, lx, ly, lz, extraRy = 0) => {
+            const c = Math.cos(segObj.ang), s = Math.sin(segObj.ang);
+            const wx = gx(segObj.ax) + lx * c + lz * s;
+            const wz = gz(segObj.az) - lx * s + lz * c;
+            pushInst(arr, wx, ly, wz, segObj.ang + extraRy);
+          };
+
+          // 不鏽鋼電動伸縮大門輔助函式（東大門＋西南送餐車道門）
+          const buildScissorGate = (grp, x0, x1, h = 1.55) => {
+            const span = Math.abs(x1 - x0), sx = Math.min(x0, x1), bays = Math.max(4, Math.round(span / 0.55)), bw = span / bays;
+            addBox(grp, span, 0.05, 0.22, sx + span / 2, 0.14, 0, MAT.steelSilver, false);
+            addBox(grp, span, 0.05, 0.22, sx + span / 2, h, 0, MAT.steelSilver, false);
+            for (let i = 0; i <= bays; i++) {
+              const px = sx + i * bw;
+              addBox(grp, 0.05, h, 0.24, px, h / 2, 0, MAT.steelSilver, false);
+              if (i < bays) {
+                const diagLen = Math.hypot(bw, h - 0.28);
+                const ang = Math.atan2(h - 0.28, bw);
+                [-ang, ang].forEach((rz, zi) => {
+                  const bar = addBox(grp, diagLen, 0.03, 0.03, px + bw / 2, 0.14 + (h - 0.28) / 2, zi === 0 ? -0.08 : 0.08, MAT.steelSilver, false);
+                  bar.rotation.z = rz;
+                  bar.userData.nonBlocking = true;
+                });
+              }
+            }
+            grp.traverse((o) => { if (o.isMesh) o.userData.nonBlocking = true; });
+          };
+
+          // 南側門雙開米黃直柵大門（依照片 4）
+          const buildCreamDoubleGate = (grp, x0, x1, h = 1.82) => {
+            const span = x1 - x0;
+            // 上、中、下橫樑
+            [0.14, 1.05, 1.48, h].forEach((ry) => {
+              const b = addBox(grp, span, 0.06, 0.08, (x0 + x1) / 2, ry, 0, MAT.gateCream, false);
+              b.userData.nonBlocking = true;
+            });
+            // 密集直柵細桿
+            const cnt = Math.max(12, Math.floor(span / 0.16));
+            for (let i = 0; i <= cnt; i++) {
+              const px = x0 + (i / cnt) * span;
+              const isMid = Math.abs(i - cnt / 2) < 0.6;
+              const p = addBox(grp, isMid ? 0.07 : 0.04, h - 0.12, 0.06, px, h / 2, 0, MAT.gateCream, false);
+              p.userData.nonBlocking = true;
+            }
+            // 上緣金色校名板（「高雄市立溪埔國民中學」）＋ 中下藍白歡迎布條
+            const hdrTex = makeSignTexture(512, 96, (ctx, w, h2) => {
+              ctx.fillStyle = '#c9a646'; ctx.fillRect(0, 0, w, h2);
+              ctx.strokeStyle = '#6b4e16'; ctx.lineWidth = 4; ctx.strokeRect(3, 3, w - 6, h2 - 6);
+              ctx.fillStyle = '#3e2712'; ctx.font = 'bold 42px "Noto Sans TC", sans-serif';
+              ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+              ctx.fillText('高雄市立溪埔國民中學', w / 2, h2 / 2);
+            });
+            const hdrMat = new THREE.MeshStandardMaterial({ map: hdrTex, roughness: 0.45, metalness: 0.35, side: THREE.DoubleSide });
+            const hdr = new THREE.Mesh(new THREE.BoxGeometry(Math.min(5.2, span * 0.72), 0.34, 0.09), hdrMat);
+            hdr.position.set((x0 + x1) / 2, 1.38, 0);
+            hdr.userData.nonBlocking = true;
+            grp.add(hdr);
+
+            const bnrTex = makeSignTexture(512, 140, (ctx, w, h2) => {
+              ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, w, h2);
+              ctx.fillStyle = '#0284c7'; ctx.fillRect(0, 0, w, 34);
+              ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px "Noto Sans TC", sans-serif';
+              ctx.textAlign = 'center'; ctx.fillText('WELCOME TO XIPU JUNIOR HIGH SCHOOL', w / 2, 24);
+              ctx.fillStyle = '#0f172a'; ctx.font = 'bold 34px "Noto Sans TC", sans-serif';
+              ctx.fillText('高雄市立溪埔國民中學・歡迎蒞臨', w / 2, 88);
+              ctx.fillStyle = '#38bdf8'; ctx.fillRect(0, h2 - 12, w, 12);
+            });
+            const bnrMat = new THREE.MeshStandardMaterial({ map: bnrTex, roughness: 0.7, side: THREE.DoubleSide });
+            const bnr = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(3.8, span * 0.52), 0.78), bnrMat);
+            bnr.position.set((x0 + x1) / 2, 0.62, -0.055);
+            bnr.rotation.y = Math.PI;
+            bnr.userData.nonBlocking = true;
+            grp.add(bnr);
+          };
+
+          // 東北側停車場銀白斜交桁架雙推拉門（依照片 7）
+          const buildTrussSlideGate = (grp, x0, x1, h = 1.48) => {
+            const span = x1 - x0;
+            [0.14, h].forEach((ry) => {
+              const rail = addBox(grp, span, 0.07, 0.08, (x0 + x1) / 2, ry, 0, MAT.steelSilver, false);
+              rail.userData.nonBlocking = true;
+            });
+            const panels = 5, pw = span / panels;
+            for (let i = 0; i <= panels; i++) {
+              const v = addBox(grp, 0.06, h - 0.10, 0.07, x0 + i * pw, h / 2, 0, MAT.steelSilver, false);
+              v.userData.nonBlocking = true;
+              if (i < panels) {
+                const diag = Math.hypot(pw, h - 0.22);
+                const ang = Math.atan2(h - 0.22, pw);
+                [-ang, ang].forEach((rz) => {
+                  const dBar = addBox(grp, diag, 0.05, 0.04, x0 + (i + 0.5) * pw, (h + 0.14) / 2, 0, MAT.steelSilver, false);
+                  dBar.rotation.z = rz; dBar.userData.nonBlocking = true;
+                });
+              }
+            }
+          };
+
+          SITE.perimeterSegs.forEach((seg) => {
+            const [ax, az] = seg.a, [bx, bz] = seg.b;
+            const { g, len, ang } = makeSegGroup(ax, az, bx, bz);
+            const segObj = { ax, az, ang };
+
+            if (seg.style === 'wire_mesh') {
+              // 鍍鋅菱形鐵絲網圍籬＋鋼管立柱（照片 5 左側與北農園邊界）
+              const meshMat = MAT.chainLink.clone();
+              meshMat.map = MAT.chainLink.map.clone();
+              meshMat.map.repeat.set(Math.max(2, Math.round(len * 0.9)), 3.2);
+              meshMat.map.needsUpdate = true;
+              const panel = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.72), meshMat);
+              panel.position.set(len / 2, 0.90, 0);
+              panel.userData.nonBlocking = true;
+              g.add(panel);
+              addBox(g, len, 0.05, 0.05, len / 2, 1.76, 0, MAT.steelSilver, false);
+              const posts = Math.max(1, Math.round(len / 3.5));
+              for (let i = 0; i <= posts; i++) {
+                addLocalInst(postMatrices, segObj, (i / posts) * len, 0.90, 0);
+              }
+            } else if (seg.style === 'diag_slat') {
+              // 東北側門北翼斜格欄圍籬（照片 7 右側）
+              addBox(g, len, 0.34, 0.24, len / 2, 0.17, 0, MAT.brickPier, false);
+              addBox(g, len, 0.05, 0.08, len / 2, 1.62, 0, MAT.fenceSlat, false);
+              const cnt = Math.max(4, Math.floor(len / 0.32));
+              for (let i = 0; i < cnt; i++) {
+                const lx = ((i + 0.5) / cnt) * len;
+                addLocalInst(picketMatrices, segObj, lx, 1.02, 0);
+                const db = addBox(g, 1.48, 0.045, 0.04, lx, 1.02, 0, MAT.fenceSlat, false);
+                db.rotation.z = (i % 2 === 0 ? 1 : -1) * 0.34;
+                db.userData.nonBlocking = true;
+              }
+              addLocalInst(pierMatrices, segObj, len, 0.92, 0);
+              addLocalInst(capMatrices, segObj, len, 1.88, 0);
+            } else if (seg.style === 'brick_slat' || seg.style === 'bulletin') {
+              // 紅磚深灰方柱＋矮磚台基＋米黃色直柵（照片 1、3、4、6、7）
+              addBox(g, len, 0.40, 0.24, len / 2, 0.20, 0, MAT.brickPier);
+              addBox(g, len, 0.04, 0.05, len / 2, 1.64, 0, MAT.fenceSlat, false);
+              addBox(g, len, 0.04, 0.05, len / 2, 0.50, 0, MAT.fenceSlat, false);
+              const bays = Math.max(1, Math.round(len / 4.2));
+              const bayLen = len / bays;
+              for (let b = 0; b <= bays; b++) {
+                addLocalInst(pierMatrices, segObj, b * bayLen, 0.92, 0);
+                addLocalInst(capMatrices, segObj, b * bayLen, 1.88, 0);
+                if (b < bays) {
+                  const x0 = b * bayLen + 0.30, x1 = (b + 1) * bayLen - 0.30;
+                  if (seg.style === 'bulletin' && (b === 0)) {
+                    // 學校公佈欄櫥窗（照片 1 右／照片 3 左）
+                    addBox(g, x1 - x0, 1.15, 0.22, (x0 + x1) / 2, 1.05, 0, MAT.steelDark, false);
+                    addBox(g, (x1 - x0) - 0.24, 0.88, 0.05, (x0 + x1) / 2, 1.05, -0.11, MAT.bulletinCork, false);
+                    const glassFace = addBox(g, (x1 - x0) - 0.24, 0.88, 0.02, (x0 + x1) / 2, 1.05, -0.14, MAT.glass, false);
+                    glassFace.userData.nonBlocking = true;
+                  } else {
+                    for (let px = x0 + 0.14; px <= x1 - 0.10; px += 0.22) {
+                      addLocalInst(picketMatrices, segObj, px, 1.05, 0);
+                    }
+                  }
+                  if (seg.hedge) {
+                    const hg = addBox(g, bayLen - 0.65, 0.68, 0.56, (b + 0.5) * bayLen, 0.34, -0.58, MAT.hedgeGreen, false);
+                    hg.userData.nonBlocking = true;
+                  }
+                }
+              }
+            } else if (seg.style === 'name_wall') {
+              // 東大門南側：深咖啡紅磚斜坡校名牆（北高 2.45m 斜坡往南降為 1.70m ＋ 壓頂＋金色「高雄市立溪埔國民中學」，依照片 2 & 3）
+              const nwShape = new THREE.Shape();
+              nwShape.moveTo(0, 0); nwShape.lineTo(len, 0);
+              nwShape.lineTo(len, 1.72); nwShape.lineTo(0, 2.48); nwShape.closePath();
+              const nwGeo = new THREE.ExtrudeGeometry(nwShape, { depth: 0.42, bevelEnabled: false });
+              const nwMesh = new THREE.Mesh(nwGeo, MAT.brickNameWall);
+              nwMesh.position.set(0, 0, -0.21);
+              nwMesh.castShadow = true; nwMesh.receiveShadow = true;
+              g.add(nwMesh);
+              // 基座與頂部清水灰斜坡壓頂收邊
+              addBox(g, len + 0.08, 0.26, 0.48, len / 2, 0.13, 0, MAT.concreteBase, false);
+              const slopeLen = Math.hypot(len, 2.48 - 1.72);
+              const cap = addBox(g, slopeLen + 0.18, 0.11, 0.50, len / 2, (2.48 + 1.72) / 2 + 0.03, 0, MAT.concreteBase, false);
+              cap.rotation.z = Math.atan2(1.72 - 2.48, len);
+              // 南端方柱與北端接門柱
+              addBox(g, 0.65, 2.58, 0.65, 0.15, 1.29, 0, MAT.wallFrameGray);
+              addBox(g, 0.55, 1.85, 0.55, len - 0.2, 0.925, 0, MAT.brickPier);
+              // 正面朝向溪埔路金色立體字校名牌（「高雄市立溪埔國民中學」）
+              const signTex = makeSignTexture(1024, 192, (ctx, w, h2) => {
+                ctx.clearRect(0, 0, w, h2);
+                ctx.fillStyle = '#e8c458';
+                ctx.font = 'bold 66px "Noto Serif TC", "Noto Sans TC", serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0,0,0,0.65)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 3;
+                ctx.fillText('高 雄 市 立 溪 埔 國 民 中 學', w / 2, h2 * 0.44);
+                ctx.font = 'bold 24px "Inter", sans-serif';
+                ctx.fillText('KAOHSIUNG MUNICIPAL XIPU JUNIOR HIGH SCHOOL', w / 2, h2 * 0.80);
+              });
+              const signMat = new THREE.MeshStandardMaterial({ map: signTex, transparent: true, metalness: 0.45, roughness: 0.35, depthWrite: false });
+              const signPlane = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 1.35), signMat);
+              signPlane.position.set(len * 0.48, 1.32, -0.24);
+              signPlane.rotation.y = Math.PI;
+              signPlane.userData.nonBlocking = true;
+              g.add(signPlane);
+              // 校名牆前方 3 支石柱車阻（照片 1–3）
+              [1.8, 3.8, 5.8].forEach((bx) => {
+                const bol = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.15, 0.72, 12), MAT.wallFrameGray);
+                bol.position.set(bx, 0.36, -1.75); bol.castShadow = true; bol.userData.nonBlocking = true; g.add(bol);
+              });
+            } else if (seg.style === 'guardhouse_east') {
+              // 東大門北側警衛室雕塑牆：北段薄荷綠＋清水灰鋸齒尖峰＋立體圓形浮雕；南段警衛室東面接待櫃檯窗與彩色校招（照片 1–3）
+              const peaks = [
+                { x0: 0.0, x1: 2.3, h0: 1.9, h1: 3.15, mat: MAT.guardAqua, disc: null },
+                { x0: 2.3, x1: 5.5, h0: 3.15, h1: 2.55, mat: MAT.guardConc, disc: [3.7, 2.35, 0.38] },
+                { x0: 5.5, x1: 8.4, h0: 2.55, h1: 3.65, mat: MAT.guardAqua, disc: [6.5, 2.75, 0.36] },
+                { x0: 8.4, x1: 11.2, h0: 3.65, h1: 2.85, mat: MAT.guardConc, disc: [9.8, 3.05, 0.42] }
+              ];
+              peaks.forEach((pk) => {
+                const sp = new THREE.Shape();
+                sp.moveTo(pk.x0, 0); sp.lineTo(pk.x1, 0);
+                sp.lineTo(pk.x1, pk.h1); sp.lineTo((pk.x0 + pk.x1) * 0.52, Math.max(pk.h0, pk.h1) + 0.32);
+                sp.lineTo(pk.x0, pk.h0); sp.closePath();
+                const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sp, { depth: 0.32, bevelEnabled: false }), pk.mat);
+                m.position.set(0, 0, -0.16); m.castShadow = true; m.receiveShadow = true;
+                g.add(m);
+                if (pk.disc) {
+                  const [dx, dy, dr] = pk.disc;
+                  const dc = new THREE.Mesh(new THREE.CylinderGeometry(dr, dr, 0.14, 24), MAT.guardConc);
+                  dc.rotation.x = Math.PI / 2; dc.position.set(dx, dy, -0.22); dc.castShadow = true; g.add(dc);
+                }
+              });
+              // 小方景窗＋下方低台座與 3 支石柱車阻（照片 1 右下）
+              const sw = addBox(g, 0.72, 0.72, 0.38, 7.6, 1.35, 0, MAT.glass, false); sw.userData.nonBlocking = true;
+              addBox(g, 10.6, 0.55, 0.55, 5.5, 0.275, -0.55, MAT.guardConc, false);
+              // 南段警衛室東出入口接待量體（突至大門北側與 annex 接軌）
+              addBox(g, 4.8, 3.15, 2.6, 13.4, 1.575, 1.15, MAT.guardAqua);
+              addBox(g, 5.1, 0.22, 2.9, 13.4, 3.25, 1.15, MAT.wallFrameGray);
+              // 警衛室東面櫃檯雙鋁窗
+              addBox(g, 1.85, 1.08, 0.14, 12.1, 1.48, -0.14, MAT.glass, false);
+              addBox(g, 1.85, 1.08, 0.14, 14.3, 1.48, -0.14, MAT.glass, false);
+              addBox(g, 4.10, 0.10, 0.26, 13.2, 0.90, -0.22, MAT.wallFrameGray, false);
+              // 彩色橫招：「高雄市立溪埔國中・榮獲 教育部教學卓越獎」（照片 1 & 2）
+              const ghTex = makeSignTexture(768, 160, (ctx, w, h2) => {
+                const gr = ctx.createLinearGradient(0, 0, w, 0);
+                gr.addColorStop(0, '#e0f2fe'); gr.addColorStop(0.5, '#f0f9ff'); gr.addColorStop(1, '#dbeafe');
+                ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h2);
+                ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 5; ctx.strokeRect(3, 3, w - 6, h2 - 6);
+                ctx.fillStyle = '#0369a1'; ctx.beginPath(); ctx.arc(62, h2 / 2, 34, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fef08a'; ctx.font = 'bold 28px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center'; ctx.fillText('溪埔', 62, h2 / 2 + 10);
+                ctx.fillStyle = '#0f172a'; ctx.font = 'bold 38px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'left'; ctx.fillText('高雄市大樹區溪埔國民中學', 118, 62);
+                ctx.fillStyle = '#0369a1'; ctx.font = 'bold 30px "Noto Sans TC", sans-serif';
+                ctx.fillText('多元創新・榮獲 教育部教學卓越獎', 118, 118);
+              });
+              const ghSign = new THREE.Mesh(
+                new THREE.BoxGeometry(5.1, 0.96, 0.12),
+                [MAT.steelSilver, MAT.steelSilver, MAT.steelSilver, MAT.steelSilver,
+                 new THREE.MeshStandardMaterial({ map: ghTex, roughness: 0.4 }),
+                 new THREE.MeshStandardMaterial({ map: ghTex, roughness: 0.4 })]
+              );
+              ghSign.position.set(13.3, 2.70, -0.26);
+              ghSign.rotation.y = Math.PI;
+              ghSign.userData.nonBlocking = true;
+              g.add(ghSign);
+              [9.8, 11.2, 12.6].forEach((bx) => {
+                const bol = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.15, 0.72, 12), MAT.wallFrameGray);
+                bol.position.set(bx, 0.36, -1.65); bol.castShadow = true; bol.userData.nonBlocking = true; g.add(bol);
+              });
+            } else if (seg.style === 'gate_main') {
+              // 東大門（正門）：北石柱＋不鏽鋼電動伸縮門（約開啟 55% 供車輛行人進出，照片 1–3）＋大門人車前庭連鎖磚鋪面
+              addBox(g, 0.78, 2.15, 0.78, 0.20, 1.075, 0, MAT.wallFrameGray);
+              addBox(g, len + 1.2, 0.055, 6.2, len / 2, 0.028, -1.2, MAT.plazaTile, false, true);
+              buildScissorGate(g, 0.65, len * 0.48, 1.56);
+            } else if (seg.style === 'gate_ne') {
+              // 東北側停車場車道門（照片 7）：兩側紅磚深灰門柱＋銀白斜交桁架雙推拉門＋柏油車道＋交通錐
+              addBox(g, len + 0.8, 0.05, 5.2, len / 2, 0.025, 0.4, MAT.asphalt, false, true);
+              addBox(g, 0.64, 1.88, 0.64, 0.20, 0.94, 0, MAT.brickPier);
+              addBox(g, 0.64, 1.88, 0.64, len - 0.20, 0.94, 0, MAT.brickPier);
+              addBox(g, 0.72, 0.12, 0.72, 0.20, 1.94, 0, MAT.concreteBase, false);
+              addBox(g, 0.72, 0.12, 0.72, len - 0.20, 1.94, 0, MAT.concreteBase, false);
+              buildTrussSlideGate(g, 0.56, len - 0.56, 1.46);
+            } else if (seg.style === 'gate_south') {
+              // 南側門（照片 4）：紅磚連鎖磚車道鋪面＋兩側深咖啡磚門柱＋米黃色直柵雙開大門
+              addBox(g, len + 1.2, 0.055, 5.4, len / 2, 0.028, 0.3, MAT.brickApron, false, true);
+              addBox(g, 0.62, 2.12, 0.62, 0.20, 1.06, 0, MAT.brickPier);
+              addBox(g, 0.62, 2.12, 0.62, len - 0.20, 1.06, 0, MAT.brickPier);
+              addBox(g, 0.70, 0.10, 0.70, 0.20, 2.17, 0, MAT.concreteBase, false);
+              addBox(g, 0.70, 0.10, 0.70, len - 0.20, 2.17, 0, MAT.concreteBase, false);
+              buildCreamDoubleGate(g, 0.54, len - 0.54, 1.82);
+            } else if (seg.style === 'gate_sw') {
+              // 西南側廚房送餐車道門（照片 5）：柏油車道出入口＋電控不鏽鋼柱箱＋銀色電動伸縮門（東側敞開供送餐車通行）
+              addBox(g, len + 1.0, 0.055, 5.2, len / 2, 0.028, 0.2, MAT.asphalt, false, true);
+              addBox(g, 0.52, 1.80, 0.52, 0.18, 0.90, 0, MAT.brickPier);
+              addBox(g, 0.45, 1.70, 0.45, len - 0.20, 0.85, 0, MAT.steelSilver);
+              buildScissorGate(g, len * 0.46, len - 0.45, 1.50);
+            }
+          });
+
+          // SE 街角人行道灰色連鎖磚三角切角＋兩支轉角石柱車阻（照片 6「4 溪埔路」）
+          addFlatPoly(campusSiteGroup, [[122.6, 90.0], [124.2, 95.8], [118.2, 98.4], [113.5, 97.6], [118.0, 96.6], [121.2, 94.0]], 0.0, 0.032, MAT.plazaTile);
+          [[122.4, 95.8], [119.6, 97.5]].forEach(([bx, bz]) => {
+            const b = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.16, 0.72, 12), MAT.wallFrameGray);
+            b.position.set(gx(bx), 0.36, gz(bz)); b.castShadow = true; b.userData.nonBlocking = true;
+            campusSiteGroup.add(b);
+          });
+
+          // 批次產生 InstancedMesh 圍牆方柱／柱頂蓋／米黃直柵／鍍鋅鐵絲網鋼柱（僅 4 個 Draw Call，效能極佳！）
+          const spawnInst = (geo, mat, mats) => {
+            if (!mats.length) return;
+            const im = new THREE.InstancedMesh(geo, mat, mats.length);
+            mats.forEach((m, idx) => im.setMatrixAt(idx, m));
+            im.instanceMatrix.needsUpdate = true;
+            im.castShadow = true; im.receiveShadow = true;
+            im.userData.nonBlocking = true;
+            campusSiteGroup.add(im);
+          };
+          spawnInst(new THREE.BoxGeometry(0.44, 1.84, 0.44), MAT.brickPier, pierMatrices);
+          spawnInst(new THREE.BoxGeometry(0.50, 0.09, 0.50), MAT.concreteBase, capMatrices);
+          spawnInst(new THREE.BoxGeometry(0.055, 1.32, 0.045), MAT.fenceSlat, picketMatrices);
+          spawnInst(new THREE.CylinderGeometry(0.04, 0.04, 1.80, 7), MAT.steelSilver, postMatrices);
         }
 
         // 200 m 標準六跑道橢圓操場 ＋ 南側 100 m 直線延伸跑道（依空拍圖精確對位，共面無重疊）
@@ -4048,8 +4473,6 @@
           }
           campusSiteGroup.add(axRoofGrp);
         }
-        // 校名牆（大門南側）
-        addBox(campusSiteGroup, 0.5, 1.8, 9.0, gx(SITE.gates.main[0] - 0.6), 0.9, gz(SITE.gates.main[1] + 9.0), makeMat(0x8a6f63, { roughness: 0.9 }));
         // 主校舍西北側小型附屬建物（中空實開南向維護雙門＋採光窗）
         const NS = SITE.northShed;
         {
@@ -4099,22 +4522,10 @@
         road.rotation.y = Math.atan2(kdx, kdz);
         addBox(campusSiteGroup, 14.0, 0.055, 11.5, gx(-47.0), 0.028, gz(-14.5), MAT.asphalt, false, true); // 西北側送餐迴車廣場
 
-        // 校門（門柱示意）
-        Object.entries(SITE.gates).forEach(([k, [gxr, gzr]]) => {
-          const half = k === 'main' ? 5.0 : 3.0;
-          if (k === 'south') {
-            addBox(campusSiteGroup, 0.5, 2.0, 0.5, gx(gxr - half), 1.0, gz(gzr), makeMat(0x6b4a3a));
-            addBox(campusSiteGroup, 0.5, 2.0, 0.5, gx(gxr + half), 1.0, gz(gzr), makeMat(0x6b4a3a));
-          } else {
-            addBox(campusSiteGroup, 0.8, 2.2, 0.8, gx(gxr), 1.1, gz(gzr - half), MAT.wallFrameGray);
-            addBox(campusSiteGroup, 0.8, 2.2, 0.8, gx(gxr), 1.1, gz(gzr + half), MAT.wallFrameGray);
-          }
-        });
-
         // 樹木（沿地界與廣場周邊，避開跑道、球場與主入口通道）
         const treeCoords = [
           [-49, -14], [-46, 22], [-48, 42], [-56, 58], [-20, 76], [-35, 84], [20, 90], [35, 75],
-          [43, 74], [66, 65], [95, 62], [100, 38], [88, 30], [85.5, 8], [92, -3], [40, -11.5], [-12.5, -11.0], [116, 62], [116, 85]
+          [43, 74], [66, 65], [95, 62], [103, 18], [88, 30], [85.5, 8], [92, -3], [40, -11.5], [-12.5, -11.0], [116, 62], [116, 85]
         ];
         treeCoords.forEach(([tx, tz], i) => {
           const g = new THREE.Group();
@@ -4461,8 +4872,12 @@
       // =========================================================================
       const SV_EYE_HEIGHT = 1.65;
       const STREET_VIEW_SPOTS = [
-        { id: 'sv_gate', name: '東側大門・14-1 警衛室前', x: gx(110.0), z: gz(47.5), floor: 0, yaw: Math.PI * 0.5 },
-        { id: 'sv_annex_front', name: '東側警衛室・附屬建物前', x: gx(109.0), z: gz(34.5), floor: 0, yaw: -Math.PI * 0.5 },
+        { id: 'sv_gate', name: '東側大門內（警衛室西側廣場）', x: gx(110.0), z: gz(47.5), floor: 0, yaw: Math.PI * 0.5 },
+        { id: 'sv_gate_ext', name: '東大門實景（溪埔路 1 號街景視角）', x: gx(137.5), z: gz(46.5), floor: 0, yaw: Math.PI * 0.5 },
+        { id: 'sv_annex_front', name: '東側警衛室・附屬建物前', x: gx(111.5), z: gz(31.5), floor: 0, yaw: -Math.PI * 0.5 },
+        { id: 'sv_ne_gate', name: '東北側停車場車道門（溪埔路街景）', x: gx(133.5), z: gz(-4.4), floor: 0, yaw: Math.PI * 0.5 },
+        { id: 'sv_south_gate', name: '南側門實景（溪埔路1巷1弄）', x: gx(14.5), z: gz(103.5), floor: 0, yaw: 0 },
+        { id: 'sv_sw_gate', name: '西南廚房送餐車道門（街景視角）', x: gx(-65.8), z: gz(79.0), floor: 0, yaw: -0.35 },
         { id: 'sv_pond', name: '噴水池中央廣場', x: gx(82.0), z: gz(47.0), floor: 0, yaw: Math.PI * 0.38 },
         { id: 'sv_1f_genroom', name: '1F 發電機室／消防泵浦室前', x: gx(77.7), z: gz(17.8), floor: 0, yaw: 0 },
         { id: 'sv_breezeway', name: '1F 主穿堂中央', x: gx(58.5), z: gz(5.0), floor: 1, yaw: 0 },
@@ -5090,8 +5505,8 @@
           e.stopImmediatePropagation();
           if (Math.abs(e.deltaY) > 0.5) {
             const step = THREE.MathUtils.clamp(-e.deltaY * 0.032, -2.2, 2.2);
-            const nx = THREE.MathUtils.clamp(state.svTargetPos.x - Math.sin(state.svTargetYaw) * step, -105, 86);
-            const nz = THREE.MathUtils.clamp(state.svTargetPos.z - Math.cos(state.svTargetYaw) * step, -35, 92);
+            const nx = THREE.MathUtils.clamp(state.svTargetPos.x - Math.sin(state.svTargetYaw) * step, -108, 106);
+            const nz = THREE.MathUtils.clamp(state.svTargetPos.z - Math.cos(state.svTargetYaw) * step, -35, 95);
             walkStreetViewTo(nx, nz, null);
             updateStreetViewLocationText();
           }
@@ -5279,8 +5694,8 @@
               updateModeButtonsUI();
               updateStreetViewLocationText(res.spot.name);
             } else if (res && res.point) {
-              const cx = THREE.MathUtils.clamp(res.point.x, -105, 86);
-              const cz = THREE.MathUtils.clamp(res.point.z, -35, 92);
+              const cx = THREE.MathUtils.clamp(res.point.x, -108, 106);
+              const cz = THREE.MathUtils.clamp(res.point.z, -35, 95);
               walkStreetViewTo(cx, cz, res.point.y);
               updateStreetViewLocationText();
             }
@@ -5354,7 +5769,7 @@
       // =========================================================================
       const minimapCanvas = document.getElementById('minimap-canvas');
       const mmCtx = minimapCanvas.getContext('2d');
-      const MM_BOUNDS = { minX: gx(-76), maxX: gx(124), minZ: gz(-14), maxZ: gz(101) };
+      const MM_BOUNDS = { minX: gx(-76), maxX: gx(142), minZ: gz(-22), maxZ: gz(107) };
 
       // HiDPI 畫布＋等比例縮放（§3.1）；靜態底圖畫在離屏畫布（§5.3）
       let mmW = 228, mmH = 156, mmDpr = 1, mmScale = 1, mmOx = 0, mmOy = 0;
@@ -5595,7 +6010,7 @@
 
         if (state.navMode === 'street' || state.pegmanDropMode) {
           let nearest = null;
-          let minD = 5.5;
+          let minD = 9.0;
           STREET_VIEW_SPOTS.forEach((sp) => {
             const d = Math.hypot(sp.x - wx, sp.z - wz);
             if (d < minD) { minD = d; nearest = sp; }
@@ -5607,6 +6022,15 @@
             if (nearest && isClick) {
               state.svFloor = nearest.floor;
               state.svTargetPos.set(nearest.x, getWalkableFloorY(nearest.x, nearest.z, state.svFloor) + SV_EYE_HEIGHT, nearest.z);
+              if (nearest.yaw !== undefined && nearest.yaw !== null) {
+                state.svTargetYaw = nearest.yaw;
+                state.svTargetPitch = 0;
+              }
+              if (state.svPos.distanceTo(state.svTargetPos) > 12.0) {
+                state.svPos.copy(state.svTargetPos);
+                state.svYaw = state.svTargetYaw;
+                state.svPitch = state.svTargetPitch;
+              }
               updateModeButtonsUI();
               updateStreetViewLocationText(nearest.name);
             } else {
@@ -6076,8 +6500,8 @@
             const fz = -Math.cos(state.svYaw);
             const rx = Math.cos(state.svYaw);
             const rz = -Math.sin(state.svYaw);
-            const nx = THREE.MathUtils.clamp(state.svTargetPos.x + (fx * mf + rx * mr) * speed, -105, 86);
-            const nz = THREE.MathUtils.clamp(state.svTargetPos.z + (fz * mf + rz * mr) * speed, -35, 92);
+            const nx = THREE.MathUtils.clamp(state.svTargetPos.x + (fx * mf + rx * mr) * speed, -108, 112);
+            const nz = THREE.MathUtils.clamp(state.svTargetPos.z + (fz * mf + rz * mr) * speed, -35, 95);
             walkStreetViewTo(nx, nz, null);
             updateStreetViewLocationText();
           }
