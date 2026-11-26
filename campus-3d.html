@@ -202,8 +202,8 @@
       </div>
       <button id="sv-help-btn" class="w-7 h-7 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-[12px] font-bold" title="顯示操作說明" hidden>?</button>
       <div id="sv-hints" class="text-[11px] text-slate-300 leading-snug hidden sm:block">
-        <div><strong class="text-amber-300">拖曳畫面</strong> 360° 環顧四周</div>
-        <div><strong class="text-sky-300">點擊地面 / 藍點 / 小地圖</strong> 立即移動</div>
+        <div><strong class="text-amber-300">拖曳畫面</strong> 360° 環顧・<strong class="text-emerald-300">走樓梯</strong>直達各樓層</div>
+        <div><strong class="text-sky-300">點擊地面 / 樓梯 / 藍點 / 小地圖</strong> 立即移動</div>
         <div class="text-[11px] text-slate-400">鍵盤 WASD / 方向鍵步行・Shift 加速</div>
       </div>
     </div>
@@ -471,7 +471,7 @@
       // 校園配置（依中央廚房統包工程「現況全區配置圖」1/600 量測，原點＝主校舍軸線①×D，+X 東、+Z 南）
       const SITE = {
         // 依 Google 衛星圖（比例尺 20 m）與現況全區配置圖校正；原點＝主校舍軸線①×D，+X 東、+Z 南
-        boundary: [[-48, -23], [-9, -23], [-9, -12.5], [123.5, -12.5], [123.5, 100], [110, 100], [8, 94], [-50, 78], [-69, 68], [-56, 53]],
+        boundary: [[-61, -23], [-9, -23], [-9, -12.5], [123.5, -12.5], [123.5, 100], [110, 100], [8, 94], [-52, 78], [-72, 68], [-64, 53]],
         track: { cx: 8.9, cz: 43.8, straightHalf: 25.7, outerR: 21.7, innerR: 14.4 },
         sprint: { cx: 1.0, cz: 66.5, len: 104.0, w: 8.0 },
         stage: { cx: 6.3, cz: 74.7, w: 11.0, d: 7.0 },
@@ -487,11 +487,11 @@
         bikeShed: [[9.0, 73.0]],
         bikeShedZ: -9.8,
         northShed: { x0: -8.0, x1: -0.8, z0: -11.5, z1: -5.9 },
-        kitchenRoad: { from: [-64.0, 66.0], to: [-51.0, -6.0], w: 6.0 },
+        kitchenRoad: { from: [-59.5, 65.5], to: [-52.5, -10.0], w: 5.5 },
         gates: {
           main: [123.5, 47.5],
           south: [13.0, 95.5],
-          southwest: [-66.0, 69.0]
+          southwest: [-68.0, 68.5]
         }
       };
       // 中央廚房（110 年統包工程 A2 一層平面圖）：軸線①×Ⓐ 的校園座標；①–⑦ = 0/4/9/14/17/21/25 m，Ⓐ–Ⓔ = 0/4.5/12/19/23 m
@@ -875,6 +875,8 @@
         restPurpleIcon: makeMat(0x886cc6, { roughness: 0.5 }),
         restBlueMosaic: makeMat(0xffffff, { map: makeMosaicGradientTexture(0x2563eb), roughness: 0.45 }),
         restLavMosaic: makeMat(0xffffff, { map: makeMosaicGradientTexture(0x886cc6), roughness: 0.45 }),
+        mirror: makeMat(0xe2f1fb, { roughness: 0.14, metalness: 0.22, emissive: 0x7dd3fc, emissiveIntensity: 0.24 }),
+        chrome: makeMat(0xe2e8f0, { roughness: 0.15, metalness: 0.92 }),
         wetlandWall: makeMat(0xffffff, { map: makeWetlandMosaicTexture(), roughness: 0.55, side: THREE.DoubleSide }),
         ent1F: makeMat(0xffffff, { map: makeEntranceFeatureTexture('1F'), roughness: 0.6 }),
         ent2F: makeMat(0xffffff, { map: makeEntranceFeatureTexture('2F'), roughness: 0.6 }),
@@ -1357,14 +1359,42 @@
         const entTexMat = floorNum === 1 ? MAT.ent1F : (floorNum === 2 ? MAT.ent2F : MAT.ent3F);
         addBox(parent, 2.42, 3.55, 0.16, gx(77.76), yBase + 1.78, gz(7.82), entTexMat);
 
-        // 5. East Mech Room (機械室，中空＋西向 D8 檢修門＋管線／電熱設備，X=77.8~79.0, Z=3.1~5.5，依 A1-1~A1-3)
-        addBox(parent, 1.20, 3.55, 0.14, gx(78.40), yBase + 1.78, gz(3.15), MAT.wallInt); // 北牆
-        addBox(parent, 0.14, 3.55, 0.70, gx(77.82), yBase + 1.78, gz(3.50), MAT.wallInt); // 西牆北段
-        addBox(parent, 0.14, 3.55, 0.75, gx(77.82), yBase + 1.78, gz(5.12), MAT.wallInt); // 西牆南段
-        addInteriorDoorZ(parent, 77.82, yBase, 3.55, 4.30, 0.88, 2.10, MAT.steelDark, -1, MAT.wallInt); // D8 檢修門
-        // 機械室內管線立管與配電／熱水設備
-        addBox(parent, 0.45, 1.45, 0.65, gx(78.55), yBase + 0.725, gz(3.80), MAT.steelSilver, false);
-        addBox(parent, 0.14, 3.20, 0.14, gx(78.70), yBase + 1.60, gz(4.85), MAT.steelDark, false);
+        // 5. East Mech Room (機械室：依 B-02 僅 1F/3F 保留，2F 依 B-13 / D-01 已整併拓寬空間，避免與 2F 濕地馬賽克入口牆碰撞！)
+        if (!is2F) {
+          addBox(parent, 1.20, 3.55, 0.14, gx(78.40), yBase + 1.78, gz(3.15), MAT.wallInt); // 北牆
+          addBox(parent, 0.14, 3.55, 0.70, gx(77.82), yBase + 1.78, gz(3.50), MAT.wallInt); // 西牆北段
+          addBox(parent, 0.14, 3.55, 0.75, gx(77.82), yBase + 1.78, gz(5.12), MAT.wallInt); // 西牆南段
+          addInteriorDoorZ(parent, 77.82, yBase, 3.55, 4.30, 0.88, 2.10, MAT.steelDark, -1, MAT.wallInt); // D8 檢修門
+          // 機械室內管線立管與配電／熱水設備
+          addBox(parent, 0.45, 1.45, 0.65, gx(78.55), yBase + 0.725, gz(3.80), MAT.steelSilver, false);
+          addBox(parent, 0.14, 3.20, 0.14, gx(78.70), yBase + 1.60, gz(4.85), MAT.steelDark, false);
+        }
+
+        // Helper: Sculpted recessed trough washbasin (馬槽式洗手台) + chrome faucets + black-framed reflective mirror (依 D-06 / D-07)
+        const addBasinAndMirror = (cx, zWall, faceDirZ, w, faucets = 1, mirrorH = 0.78) => {
+          const d = 0.48, zCtr = zWall + faceDirZ * (d * 0.5 + 0.02);
+          // Basin recessed cavity: bottom + 4 raised porcelain rim walls + under-counter apron
+          addBox(parent, w, 0.06, d, gx(cx), yBase + 0.70, gz(zCtr), MAT.porcelain, false);
+          addBox(parent, w, 0.16, 0.06, gx(cx), yBase + 0.78, gz(zCtr + faceDirZ * (d * 0.5 - 0.03)), MAT.porcelain, false);
+          addBox(parent, w, 0.16, 0.06, gx(cx), yBase + 0.78, gz(zCtr - faceDirZ * (d * 0.5 - 0.03)), MAT.porcelain, false);
+          addBox(parent, 0.06, 0.16, d, gx(cx - w * 0.5 + 0.03), yBase + 0.78, gz(zCtr), MAT.porcelain, false);
+          addBox(parent, 0.06, 0.16, d, gx(cx + w * 0.5 - 0.03), yBase + 0.78, gz(zCtr), MAT.porcelain, false);
+          // Chrome drain + chrome faucets
+          for (let f = 0; f < faucets; f++) {
+            const fx = faucets === 1 ? cx : cx + (f === 0 ? -w * 0.25 : w * 0.25);
+            const fzBase = zWall + faceDirZ * 0.07;
+            addBox(parent, 0.04, 0.16, 0.04, gx(fx), yBase + 0.90, gz(fzBase), MAT.chrome, false);
+            addBox(parent, 0.035, 0.035, 0.14, gx(fx), yBase + 0.97, gz(fzBase + faceDirZ * 0.06), MAT.chrome, false);
+            addBox(parent, 0.06, 0.02, 0.06, gx(fx), yBase + 0.735, gz(zCtr), MAT.chrome, false);
+          }
+          // Black-framed reflective mirror (明鏡)
+          const mz = zWall + faceDirZ * 0.025, my = yBase + 1.12 + mirrorH * 0.5, mw = w - 0.06;
+          addBox(parent, mw, mirrorH, 0.02, gx(cx), my, gz(mz), MAT.mirror, false);
+          addBox(parent, mw + 0.06, 0.03, 0.04, gx(cx), my + mirrorH * 0.5 + 0.015, gz(mz), MAT.steelDark, false);
+          addBox(parent, mw + 0.06, 0.03, 0.04, gx(cx), my - mirrorH * 0.5 - 0.015, gz(mz), MAT.steelDark, false);
+          addBox(parent, 0.03, mirrorH + 0.06, 0.04, gx(cx - mw * 0.5 - 0.015), my, gz(mz), MAT.steelDark, false);
+          addBox(parent, 0.03, mirrorH + 0.06, 0.04, gx(cx + mw * 0.5 + 0.015), my, gz(mz), MAT.steelDark, false);
+        };
 
         // 6. Upper Wall Paint Band (淡藍 for 1F/3F, 淡紫 for 2F)
         const upperMat = is2F ? MAT.restLavUpper : MAT.restBlueUpper;
@@ -1375,8 +1405,8 @@
           // =================================================================
           // 2F 性別友善廁所 (圖號 B-13 ~ B-20, D-01 ~ D-09)
           // =================================================================
-          // Entry Wetland Mosaic Feature Wall (330cm wide x 240cm tall, facing south entrance!)
-          addBox(parent, 3.30, 2.40, 0.16, gx(76.10), yBase + 1.20, gz(4.05), MAT.wetlandWall);
+          // Entry Wetland Mosaic Feature Wall (330cm wide x 240cm tall, X=75.00~78.30, Z=4.15 per B-13 & D-01 — zero collision!)
+          addBox(parent, 3.30, 2.40, 0.16, gx(76.65), yBase + 1.20, gz(4.15), MAT.wetlandWall);
 
           // West row: 1 Sit Toilet (north) + 3 Enclosed Urinal Cubicles (H=240cm + anti-peep top lip)
           addBox(parent, 1.15, 0.08, 3.20, gx(72.65), yBase + 0.04, gz(3.60), MAT.restFloorDark, false); // 50x50 dark tile urinal zone
@@ -1398,25 +1428,29 @@
             }
           });
 
-          // Center Island (north of Wetland wall, Z=3.0~4.0): Single vanity + 2 raised Squat Cubicles
-          addBox(parent, 0.85, 0.90, 0.65, gx(74.88), yBase + 0.45, gz(3.55), MAT.restLavMosaic);
-          addBox(parent, 0.55, 0.15, 0.45, gx(74.88), yBase + 0.85, gz(3.55), MAT.porcelain);
+          // Center Island (north of Wetland wall, Z=3.05~4.07): Sculpted vanity + mirror + 2 raised Squat Cubicles (B-13 / D-06)
+          addBox(parent, 0.88, 0.72, 0.18, gx(75.44), yBase + 0.36, gz(3.98), MAT.restLavMosaic);
+          addBasinAndMirror(75.44, 4.05, -1, 0.84, 1, 0.76);
           // 2 raised squat platforms (+18cm) & H=225cm cubicles
-          addBox(parent, 2.40, 0.18, 1.00, gx(76.55), yBase + 0.09, gz(3.50), MAT.restFloorWood);
-          [75.35, 76.55, 77.75].forEach((dx) => {
-            addBox(parent, 0.05, 2.25, 1.00, gx(dx), yBase + 1.22, gz(3.50), MAT.restCubicleWood);
-            addBox(parent, 0.22, 0.04, 1.00, gx(dx), yBase + 2.34, gz(3.50), MAT.restCubicleWood);
+          addBox(parent, 2.40, 0.18, 1.00, gx(77.08), yBase + 0.09, gz(3.56), MAT.restFloorWood);
+          [75.88, 77.08, 78.28].forEach((dx) => {
+            addBox(parent, 0.05, 2.25, 1.00, gx(dx), yBase + 1.22, gz(3.56), MAT.restCubicleWood);
+            addBox(parent, 0.22, 0.04, 1.00, gx(dx), yBase + 2.34, gz(3.56), MAT.restCubicleWood);
           });
-          [75.95, 77.15].forEach((cx) => {
-            addBox(parent, 1.12, 2.18, 0.04, gx(cx), yBase + 1.20, gz(3.00), MAT.restCubicleWood);
-            addBox(parent, 0.16, 0.16, 0.06, gx(cx), yBase + 1.68, gz(2.97), MAT.restPurpleIcon, false);
+          [76.48, 77.68].forEach((cx) => {
+            addBox(parent, 1.12, 2.18, 0.04, gx(cx), yBase + 1.20, gz(3.06), MAT.restCubicleWood);
+            addBox(parent, 0.16, 0.16, 0.06, gx(cx), yBase + 1.68, gz(3.03), MAT.restPurpleIcon, false);
           });
 
-          // North Pipe Shaft + 132cm Trough Sink & Mirror (X=74.6~75.9, Z=0.15~1.7)
+          // South Vestibule Single Vanity + Mirror + Mop Basin (along Accessible Restroom north wall Z=5.48 per B-13 / D-01)
+          addBox(parent, 0.90, 0.68, 0.44, gx(77.25), yBase + 0.34, gz(5.24), MAT.wallInt, false);
+          addBasinAndMirror(77.25, 5.47, -1, 0.90, 1, 0.74);
+          addBox(parent, 0.52, 0.36, 0.46, gx(78.15), yBase + 0.18, gz(5.24), MAT.porcelain, false); // 新設拖布盆
+
+          // North Pipe Shaft + 132cm Trough Sink & Black-Framed Mirror (X=74.6~75.9, Z=0.15~1.7 per D-06 & D-07)
           addBox(parent, 1.32, 3.55, 1.05, gx(75.26), yBase + 1.78, gz(0.68), MAT.wallInt);
           addBox(parent, 1.32, 1.00, 0.16, gx(75.26), yBase + 0.50, gz(1.28), MAT.restLavMosaic);
-          addBox(parent, 1.32, 0.22, 0.48, gx(75.26), yBase + 0.78, gz(1.56), MAT.porcelain);
-          addBox(parent, 1.24, 0.70, 0.04, gx(75.26), yBase + 1.48, gz(1.23), MAT.glass, false);
+          addBasinAndMirror(75.26, 1.36, 1, 1.32, 2, 0.80);
 
           // East row: 1 Squat (north) + 1 Sit (south) H=240cm cubicles
           addBox(parent, 1.20, 2.40, 0.05, gx(78.35), yBase + 1.20, gz(1.65), MAT.restCubicleWood);
@@ -1455,8 +1489,7 @@
           // Shared Center Blue Gradient Mosaic Wall + 140cm White Solid-Surface Trough Sink + Mop Basin
           addBox(parent, 2.20, 2.40, 0.16, gx(75.60), yBase + 1.20, gz(3.22), MAT.restBlueMosaic);
           addBox(parent, 2.20, 0.30, 0.05, gx(75.60), yBase + 2.55, gz(3.22), MAT.steelSilver, false); // Expanded mesh
-          addBox(parent, 1.40, 0.20, 0.50, gx(75.95), yBase + 0.72, gz(3.55), MAT.porcelain); // Trough sink
-          addBox(parent, 1.40, 0.70, 0.04, gx(75.95), yBase + 1.38, gz(3.32), MAT.glass, false); // Rounded mirror
+          addBasinAndMirror(75.95, 3.30, 1, 1.40, 2, 0.72); // Sculpted trough sink + faucets + framed mirror
           addBox(parent, 0.55, 0.36, 0.50, gx(74.85), yBase + 0.18, gz(3.55), MAT.porcelain); // Mop basin
 
           // Male side (east): 3 Urinals on west wall (dark tile floor) + 1 Sit & 1 Raised Squat on east wall
@@ -1530,8 +1563,8 @@
             addHollowPipeShaft(px, 1.28, px === 72 ? -1 : 1);
           }
         });
-        //    North rear balcony railings between pipe shafts
-        const northBayRanges = [[9.9, 17.3], [18.7, 26.3], [27.7, 35.3], [36.7, 44.3], [45.7, 53.3], [54.7, 62.3], [63.7, 71.3]];
+        //    North rear balcony railings between pipe shafts (tightly seated to shaft walls — zero gaps!)
+        const northBayRanges = [[9.88, 17.36], [18.64, 26.36], [27.64, 35.36], [36.64, 44.36], [45.64, 53.36], [54.64, 62.36], [63.64, 71.36]];
         northBayRanges.forEach(([nx0, nx1], idx) => {
           if (floorNum === 1 && idx === 5) return; // 1F breezeway opens to north landing & stairs
           if (floorNum === 2 && idx === 5) return; // 2F breezeway has angled projecting north balcony below
@@ -1545,17 +1578,31 @@
           addRailingSeg(targetGroup, 52.5, -1.835, 52.05, -2.50, yBase, 1.15);
         }
 
-        // Colored mosaic horizontal accent strip along floor line on all 4 facades (WF6 per A2-1 / A2-2)
-        addBox(targetGroup, 82.75, 0.14, 0.06, gx(41.35), yBase + 0.07, gz(10.87), MAT.mosaicStrip, false);
+        // Colored mosaic horizontal accent strip ONLY along exposed exterior slab fascia (WF6 per A2-1/A2-2 — never crossing walkable terrace/balcony floors!)
+        const addSouthStrip = (sx0, sx1) => addBox(targetGroup, sx1 - sx0, 0.14, 0.06, gx((sx0 + sx1) * 0.5), yBase - 0.06, gz(10.88), MAT.mosaicStrip, false);
+        if (floorNum === 1) {
+          addSouthStrip(0.0, 53.5);
+          addSouthStrip(64.5, 72.0);
+          addSouthStrip(79.05, 82.70);
+        } else if (floorNum === 2) {
+          addSouthStrip(6.95, 19.0);
+          addSouthStrip(42.8, 72.0);
+          addSouthStrip(79.05, 82.70);
+        } else {
+          // 3F：跳過 3F 斜向大露台 (42.3~66.5)、樓梯 A (72~76.4) 與樓梯旁露台 (76.4~79.05)，走廊地坪完全無藍線！
+          addSouthStrip(0.0, 42.3);
+          addSouthStrip(66.5, 72.0);
+          addSouthStrip(79.05, 82.70);
+        }
         if (floorNum === 1) {
           // 1F 北向飾帶避開穿堂開放通道（X=54~63m）
-          addBox(targetGroup, 54.0, 0.14, 0.06, gx(27.0), yBase + 0.07, gz(-0.02), MAT.mosaicStrip, false);
-          addBox(targetGroup, 16.05, 0.14, 0.06, gx(71.025), yBase + 0.07, gz(-0.02), MAT.mosaicStrip, false);
+          addBox(targetGroup, 54.0, 0.14, 0.06, gx(27.0), yBase - 0.06, gz(-0.02), MAT.mosaicStrip, false);
+          addBox(targetGroup, 16.05, 0.14, 0.06, gx(71.025), yBase - 0.06, gz(-0.02), MAT.mosaicStrip, false);
         } else {
-          addBox(targetGroup, 79.10, 0.14, 0.06, gx(39.525), yBase + 0.07, gz(-0.02), MAT.mosaicStrip, false);
+          addBox(targetGroup, 79.10, 0.14, 0.06, gx(39.525), yBase - 0.06, gz(-0.02), MAT.mosaicStrip, false);
         }
-        addBox(targetGroup, 0.06, 0.14, 10.90, gx(-0.02), yBase + 0.07, gz(5.425), MAT.mosaicStrip, false);
-        addBox(targetGroup, 0.06, 0.14, 7.90, gx(79.16), yBase + 0.07, gz(3.925), MAT.mosaicStrip, false);
+        addBox(targetGroup, 0.06, 0.14, 10.90, gx(-0.02), yBase - 0.06, gz(5.425), MAT.mosaicStrip, false);
+        addBox(targetGroup, 0.06, 0.14, 7.90, gx(79.16), yBase - 0.06, gz(3.925), MAT.mosaicStrip, false);
 
         // 2. Structural RC Columns along Grids ①–⑩ on Lines D, C, B (Grid ⑪ has no full structural column)
         GRID_X.forEach((rx, idx) => {
@@ -1568,20 +1615,21 @@
         // Grid ⑨' (X=76.40m) column on Line B supporting Stair A
         addBox(targetGroup, 0.55, FLOOR_H, 0.55, gx(76.40), yBase + FLOOR_H * 0.5, gz(GRID_Z.B), MAT.wallFrameGray);
 
-        // 3. Corridor Railing along South Edge (Grid B, Z = 10.85m, per A1-1~A1-3)
+        // 3. Corridor Railing along South Edge (Grid B, Z = 10.85m, per A1-1~A1-3 — audited for zero unintended gaps!)
         if (floorNum === 1) {
-          addRailingX(targetGroup, 4.8, 16.0, yBase, 10.82, 1.05); // 依 A1-1：軸線 ② 兩側設欄杆(2)
-          addRailingX(targetGroup, 42.6, 53.4, yBase, 10.82, 1.05);
-          addRailingX(targetGroup, 64.5, 70.4, yBase, 10.82, 1.05);
+          addRailingX(targetGroup, 4.60, 16.20, yBase, 10.82, 1.05); // 依 A1-1：軸線 ② 兩側設欄杆(2)
+          addRailingX(targetGroup, 42.40, 53.50, yBase, 10.82, 1.05);
+          addRailingX(targetGroup, 64.20, 70.60, yBase, 10.82, 1.05);
         } else if (floorNum === 2) {
-          addRailingX(targetGroup, 7.2, 19.0, yBase, 10.82, 1.10);
-          addRailingX(targetGroup, 43.2, 71.8, yBase, 10.82, 1.10);
-          addRailingX(targetGroup, 79.1, 82.5, yBase, 10.82, 1.10);
+          addRailingX(targetGroup, 6.95, 19.05, yBase, 10.82, 1.10);
+          addRailingX(targetGroup, 42.75, 72.00, yBase, 10.82, 1.10);
+          // 2F 東端陽台南側（⑩–⑪）依 A2-1 改為實體 RC 女兒牆而非金屬柵欄！
+          addBox(targetGroup, 3.65, 1.15, 0.20, gx(80.875), yBase + 0.575, gz(10.76), MAT.wallFrameGray);
         } else {
-          // 3F: open at 3F diagonal terrace (42.3~66.5) and Stair A (72~76.4)
-          addRailingX(targetGroup, 0.4, 42.3, yBase, 10.82, 1.10);
-          addRailingX(targetGroup, 66.5, 71.8, yBase, 10.82, 1.10);
-          addRailingX(targetGroup, 79.1, 82.5, yBase, 10.82, 1.10);
+          // 3F: open at 3F diagonal terrace (42.3~66.5) and Stair A (72~76.4); 東端陽台改為實體 RC 女兒牆！
+          addRailingX(targetGroup, 0.00, 42.35, yBase, 10.82, 1.10);
+          addRailingX(targetGroup, 66.45, 72.00, yBase, 10.82, 1.10);
+          addBox(targetGroup, 3.65, 1.15, 0.20, gx(80.875), yBase + 0.575, gz(10.76), MAT.wallFrameGray);
         }
 
         // 4. West Side Slanted Peach-Orange Feature Wall & West Balconies (依 A1-2, A1-8, A2-1, A3-8 & 現況照片 04133.jpg)
@@ -1589,6 +1637,8 @@
           // 2F 西側陽台 (X=-1.75~0, Z=7.85~13.75) ＋ 2F 斜向露台 (Z=10.85 至斜牆)
           addFlatPoly(targetGroup, [[-1.75, 7.85], [0.0, 7.85], [0.0, 10.85], [6.95, 10.85], [6.95, 12.40], [-1.75, 13.75]], yBase - 0.18, yBase, MAT.corridorFloor);
           addRailingZ(targetGroup, 7.85, 13.65, yBase, -1.70, 1.10);
+          addRailingX(targetGroup, -1.70, 0.05, yBase, 7.90, 1.10);   // 封齊西側陽台北緣缺口
+          addRailingZ(targetGroup, 10.82, 12.40, yBase, 6.95, 1.10);  // 封齊蜜桃斜牆東端回折缺口
           // 斜向 30cm RC 蜜桃橘造型牆（由 (-1.75, 13.75) 至 (6.95, 12.40)，夾角 8.82°，高 6.20m，中開大方孔）
           const wx0 = -1.75, wz0 = 13.75, wx1 = 6.95, wz1 = 12.40;
           const wLen = Math.hypot(wx1 - wx0, wz1 - wz0);
@@ -1614,9 +1664,10 @@
           const midX = (wx0 + wx1) * 0.5, midZ = (wz0 + wz1) * 0.5;
           addRailingSeg(targetGroup, midX - 1.45 * ux, midZ - 1.45 * uz - 0.25, midX + 1.95 * ux, midZ + 1.95 * uz - 0.25, yBase, 1.10);
 
-          // 2F 南側漸變陽台 (Grid ③–⑥: X=19~42.6, Z=10.85 漸寬至 13.0，依 A1-2)
-          addFlatPoly(targetGroup, [[19.0, 10.85], [42.6, 10.85], [42.8, 13.0], [19.0, 11.1]], yBase - 0.16, yBase, MAT.corridorFloor);
-          addRailingSeg(targetGroup, 19.0, 11.05, 42.75, 12.95, yBase, 1.10);
+          // 2F 南側漸變陽台 (Grid ③–⑥: X=19~42.6, Z=10.85 漸寬至 13.0，依 A1-2，補齊東端回折欄杆消除缺口！)
+          addFlatPoly(targetGroup, [[19.0, 10.85], [42.8, 10.85], [42.8, 13.0], [19.0, 11.1]], yBase - 0.16, yBase, MAT.corridorFloor);
+          addRailingSeg(targetGroup, 19.0, 11.05, 42.78, 12.96, yBase, 1.10);
+          addRailingSeg(targetGroup, 42.78, 12.96, 42.78, 10.82, yBase, 1.10);
         }
         if (floorNum === 3) {
           // 3F 西側懸挑灰色 RC 露台（X=-1.75~0, Z=7.85~10.85，依 A1-8 / A2-2 / 現況照片 04133.jpg 左上角）
@@ -1625,12 +1676,17 @@
           addBox(targetGroup, 1.75, 1.15, 0.18, gx(-0.875), yBase + 0.575, gz(7.94), MAT.wallFrameGray);
           addBox(targetGroup, 1.75, 1.15, 0.18, gx(-0.875), yBase + 0.575, gz(10.76), MAT.wallFrameGray);
 
-          // 3F 南側斜向景觀大露台（露台 +880，傾角 9°，依 A1-3 與 A2-1）
+          // 3F 南側斜向景觀大露台（露台 +880，傾角 9°，依 A1-3 / A2-1 / A3-6：邊緣為 18cm 厚 × 45cm 高低矮水泥矮牆＋上方 70cm 金屬欄杆(3)，不再有 95cm 過厚黑梁突出地坪！）
           addFlatPoly(targetGroup, [[42.3, 10.85], [66.5, 10.85], [66.31, 12.10], [42.85, 15.80]], yBase - 0.20, yBase, MAT.corridorFloor);
-          // 沿露台實際 9° 斜邊施作欄杆(3)（修復原本欄杆水平懸空 Bug）
-          addRailingSeg(targetGroup, 42.90, 15.68, 66.24, 12.00, yBase, 1.15);
-          addRailingSeg(targetGroup, 42.32, 10.88, 42.90, 15.68, yBase, 1.15);
-          addRailingSeg(targetGroup, 66.24, 12.00, 66.48, 10.88, yBase, 1.15);
+          const addLowWallAndRail = (ax, az, bx, bz) => {
+            const segLen = Math.hypot(bx - ax, bz - az);
+            const wall = addBox(targetGroup, segLen, 0.45, 0.18, gx((ax + bx) * 0.5), yBase + 0.225, gz((az + bz) * 0.5), MAT.wallFrameGray);
+            wall.rotation.y = -Math.atan2(bz - az, bx - ax);
+            addRailingSeg(targetGroup, ax, az, bx, bz, yBase + 0.45, 0.70);
+          };
+          addLowWallAndRail(42.90, 15.68, 66.24, 12.00);
+          addLowWallAndRail(42.32, 10.88, 42.90, 15.68);
+          addLowWallAndRail(66.24, 12.00, 66.48, 10.88);
         }
 
         // 5. Breezeway Dark Angled Portal Frame (WF5, 9° diagonal matching A1-1, A1-2, A1-3 & A2-1!)
@@ -1651,21 +1707,21 @@
             pier.rotation.y = pAng;
           });
           if (floorNum === 2) {
-            // Thick dark diagonal fascia beam spanning across top of 2F supporting 3F terrace edge
+            // Structural dark diagonal header beam tucked cleanly UNDER 3F terrace slab (top flush at 8.76m, 45cm deep per A3-6!)
             const bLen = 24.0;
             const bcx = p0x + 11.8 * pux;
             const bcz = p0z + 11.8 * puz;
-            const beam = addBox(targetGroup, bLen, 1.05, 0.95, gx(bcx), ELEV.F3 - 0.25, gz(bcz), MAT.wallFrameDark);
+            const beam = addBox(targetGroup, bLen, 0.72, 0.45, gx(bcx), ELEV.F3 - 0.40, gz(bcz), MAT.wallFrameDark);
             beam.rotation.y = pAng;
           }
         }
 
         // 6. West Toilet & Stair B Block (Grid ①–②, X=0~9m, Z=0~7.85m, per A1-8 & A2-2 West Elevation)
-        //    West exterior wall with 2 vertical W9 toilet window columns (North=Female, South=Male)
-        addBox(targetGroup, 0.20, FLOOR_H, 1.25, gx(0.10), yBase + FLOOR_H * 0.5, gz(0.625), MAT.wallExt);
-        addBox(targetGroup, 0.20, FLOOR_H, 1.45, gx(0.10), yBase + FLOOR_H * 0.5, gz(3.85), MAT.wallExt);
-        addBox(targetGroup, 0.20, FLOOR_H, 1.25, gx(0.10), yBase + FLOOR_H * 0.5, gz(7.225), MAT.wallExt);
-        [2.18, 5.60].forEach((wz) => {
+        //    West exterior wall with 2 vertical W9 toilet window columns — exact continuous Z intervals (zero vertical crack!)
+        addBox(targetGroup, 0.20, FLOOR_H, 1.25, gx(0.10), yBase + FLOOR_H * 0.5, gz(0.625), MAT.wallExt);  // Z=0.00~1.25
+        addBox(targetGroup, 0.20, FLOOR_H, 1.50, gx(0.10), yBase + FLOOR_H * 0.5, gz(3.90), MAT.wallExt);   // Z=3.15~4.65
+        addBox(targetGroup, 0.20, FLOOR_H, 1.30, gx(0.10), yBase + FLOOR_H * 0.5, gz(7.20), MAT.wallExt);   // Z=6.55~7.85
+        [2.20, 5.60].forEach((wz) => {
           addBox(targetGroup, 0.20, 1.20, 1.90, gx(0.10), yBase + 0.60, gz(wz), MAT.wallExt);
           addBox(targetGroup, 0.20, 1.00, 1.90, gx(0.10), yBase + 3.30, gz(wz), MAT.wallExt);
           addBox(targetGroup, 0.04, 1.60, 1.90, gx(0.10), yBase + 2.00, gz(wz), MAT.glass, false, false);
@@ -1779,12 +1835,8 @@
           addBox(targetGroup, 0.78, 0.56, 0.32, gx(mid + 0.90), yBase + 3.15, gz(-0.34), MAT.acUnit);
           addBox(targetGroup, 0.78, 0.56, 0.32, gx(mid + 1.80), yBase + 3.15, gz(-0.34), MAT.acUnit);
         };
-        const addCorridorBench = (rx0, rx1) => {
-          const len = Math.min(4.8, (rx1 - rx0) - 2.6);
-          if (len < 1.5) return;
-          const mid = (rx0 + rx1) * 0.5;
-          // 走廊長條座椅（深 40cm、高 45cm，貼教室南牆外，依 A3-2）
-          addBox(targetGroup, len, 0.44, 0.40, gx(mid), yBase + 0.22, gz(8.05), MAT.benchStone);
+        const addCorridorBench = () => {
+          // 依現況勘查：教室外走廊無突出長條座椅結構，維持走廊淨空寬敞
         };
         const addClassroomDesks = (xStart, xEnd, podiumAtWest = true) => {
           if (podiumAtWest) {
@@ -1968,13 +2020,13 @@
         addBox(targetGroup, 0.10, 1.06, 0.04, gx(79.05), yBase + 1.90, gz(6.65), MAT.alFrame, false, false);
         buildEastRenovatedRestroom(targetGroup, floorNum, yBase);
 
-        // 8b. East Corridor End Balcony & Architectural Frame (Grid ⑩–⑪, X=79.05~82.70m, Z=7.85~10.85m per A2-1)
+        // 8b. East Corridor End Balcony & Architectural Frame (Grid ⑩–⑪, X=79.05~82.70m, Z=7.85~10.85m per A2-1 — solid RC parapets 女兒牆!)
         addBox(targetGroup, 0.25, FLOOR_H, 0.55, gx(82.58), yBase + FLOOR_H * 0.5, gz(8.12), MAT.wallFrameGray);
         addBox(targetGroup, 0.25, FLOOR_H, 0.55, gx(82.58), yBase + FLOOR_H * 0.5, gz(10.58), MAT.wallFrameGray);
         addBox(targetGroup, 0.25, 0.55, 3.0, gx(82.58), yBase + FLOOR_H - 0.275, gz(9.35), MAT.wallFrameGray);
         if (floorNum >= 2) {
           addBox(targetGroup, 0.22, 1.15, 2.0, gx(82.58), yBase + 0.575, gz(9.35), MAT.wallFrameGray);
-          addRailingX(targetGroup, 79.1, 82.45, yBase, 7.92, 1.10);
+          addBox(targetGroup, 3.65, 1.15, 0.20, gx(80.875), yBase + 0.575, gz(7.95), MAT.wallFrameGray); // 北側實體女兒牆（非金屬柵欄）
         }
 
         // 9. East Stair A (Grid ⑨–⑨', X=72.0~76.4m, Z=10.85~18.20m) & 1F L-Shaped Generator/Pump Room (⑨–⑩, 依 A1-6 / A1-7 / A3-7 / A4-2 / A1-4)
@@ -2012,10 +2064,10 @@
           addBox(targetGroup, 0.18, 1.20, 5.8, gx(78.96), yBase + 0.60, gz(13.75), MAT.wallFrameGray);
           addBox(targetGroup, 2.65, 1.20, 0.18, gx(77.725), yBase + 0.60, gz(16.56), MAT.wallFrameGray);
         } else if (floorNum === 3) {
-          // 3F Small cantilevered balcony beside Stair A (露台 +880, X=76.4~79.05, Z=10.85~12.35 per A1-7)
+          // 3F Small cantilevered balcony beside Stair A (露台 +880, X=76.4~79.05, Z=10.85~12.35 — 依 A2-1 改為實體女兒牆，無圍欄！)
           addBox(targetGroup, 2.65, 0.18, 1.50, gx(77.725), yBase - 0.09, gz(11.60), MAT.corridorFloor);
-          addRailingX(targetGroup, 76.45, 79.0, yBase, 12.30, 1.10);
-          addRailingZ(targetGroup, 10.85, 12.30, yBase, 79.0, 1.10);
+          addBox(targetGroup, 2.65, 1.15, 0.18, gx(77.725), yBase + 0.575, gz(12.26), MAT.wallFrameGray);
+          addBox(targetGroup, 0.18, 1.15, 1.50, gx(78.96), yBase + 0.575, gz(11.60), MAT.wallFrameGray);
         }
 
         // Stair A Enclosure, Stepped Height (+10.90m south projection -> +13.80m main roof), & Solid Flights (依 A1-6 / A1-7 / A4-2 / A1-4 / A2-1!)
@@ -2510,29 +2562,20 @@
         //   廚房主體東牆南段（⑥ × z=14.2~19.0 隔開 104 廁所與 106 食育教室；z=9.1~14.2 開放連通 102 走道緩衝區！）
         kbox(kitchen1FGroup, 20.80, 21.02, 14.2, 19.0, 0, yR, MAT.ckWhite);
 
-        //   2b. 西南角蜜桃橘量體（①–② × Ⓒ–Ⓓ 餐食放置區，女兒牆頂 +6.00，依 04188.jpg & elevW，實開 W1/W14/D1×2/W6！）
-        //       南牆分上下帶（0..yR 開 W1、yR..6.00 女兒牆開 W14），避免兩窗水平區間重疊
+        //   2b. 西南角蜜桃橘量體（①–② × Ⓒ–Ⓓ 餐食放置區，依實勘頂樓保持開闊不築圍牆女兒牆，外緣以屋頂不鏽鋼欄杆收邊！）
         wallZWithOpenings(kitchen1FGroup, -0.02, 4.20, 18.93, 0.24, 0, yR, MAT.ckPeach, [
           { a: 0.65, b: 2.35, y0: y1 + 1.0, y1: y1 + 2.55, type: 'win', panes: 2 }   // 南面 W1 雙格窗
-        ]);
-        wallZWithOpenings(kitchen1FGroup, -0.02, 4.20, 18.93, 0.24, yR, 6.00, MAT.ckPeach, [
-          { a: 0.55, b: 1.05, y0: 5.15, y1: 5.65, type: 'win', panes: 1 }            // 南面 W14 小方窗（女兒牆）
         ]);
         kbox(kitchen1FGroup, 0.45, 2.55, 19.05, 19.50, y1 + 2.58, y1 + 2.74, MAT.ckPeach); // W1 雨遮
         //   西牆蜜桃橘北延伸段（z=9.75~12.0，高至 yR，實開北側雙開出餐門 D1）
         wallXWithOpenings(kitchen1FGroup, 0.08, 9.75, 12.0, 0.24, 0, yR, MAT.ckPeach, [
           { a: 10.05, b: 11.45, y0: y1, y1: y1 + 2.20, type: 'dblDoor', leafMat: MAT.ckWhite, hasGlass: true, openDir: 1 } // 北側 D1
         ]);
-        //   西牆蜜桃橘主段（z=12.0~19.05，分上下帶實開南側 D1 ＋ W6 四格橫窗 ＋ 女兒牆 W14 小方窗）
+        //   西牆蜜桃橘主段（z=12.0~19.05，高至 yR 保持屋頂開闊，實開南側 D1 ＋ W6 四格橫窗）
         wallXWithOpenings(kitchen1FGroup, 0.08, 12.0, 19.05, 0.24, 0, yR, MAT.ckPeach, [
           { a: 12.85, b: 14.25, y0: y1, y1: y1 + 2.20, type: 'dblDoor', leafMat: MAT.ckWhite, hasGlass: true, openDir: 1 }, // 南側 D1
           { a: 15.30, b: 17.90, y0: y1 + 1.15, y1: y1 + 1.85, type: 'win', panes: 4 }                                       // W6 四格橫窗
         ]);
-        wallXWithOpenings(kitchen1FGroup, 0.08, 12.0, 19.05, 0.24, yR, 6.00, MAT.ckPeach, [
-          { a: 15.80, b: 16.30, y0: 5.15, y1: 5.65, type: 'win', panes: 1 }                                                 // 西面高窗 W14（女兒牆）
-        ]);
-        kbox(kitchen1FGroup, 3.98, 4.22, 12.0, 19.05, yR - 0.1, 6.00, MAT.ckPeach);  // 東側女兒牆
-        kbox(kitchen1FGroup, -0.02, 4.20, 12.0, 12.24, yR - 0.1, 6.00, MAT.ckPeach); // 北側女兒牆
 
         //   2c. 東側蜜桃橘量體（⑥–⑦ × Ⓑ–Ⓒ 食品儲藏／收納／A07 東向凹入陽台與對外樓梯，頂 +5.50，依 A2-1 / A4-2 DD' & 04107.jpg）
         kbox(kitchen1FGroup, 21.0, 25.0, 4.45, 4.70, 0, 5.50, MAT.ckPeach);          // 北牆
@@ -2966,21 +3009,35 @@
           kbox(kitchenRoofGroup, 21.0, 25.0, 11.22, 13.15, yR - 0.12, yR + 0.12, MAT.slabFloor);
         }
 
-        // ── 10. 屋頂層 +4.90（放入 kitchenRoofGroup：切換 1F 剖切時自動隱藏露出完整廚房內裝！依 A2-2 開放屋頂平台無太陽能板）──
-        kbox(kitchenRoofGroup, 4, 21, 4.5, 19, yR - 0.12, yR + 0.12, MAT.slabFloor);
-        kbox(kitchenRoofGroup, 0, 4, 4.5, 12, yR - 0.12, yR + 0.12, MAT.slabFloor);
-        kbox(kitchenRoofGroup, 0.15, 4.05, 12.15, 18.85, yR - 0.12, yR + 0.12, MAT.slabFloor); // 西南蜜桃區屋頂板
+        // ── 10. 屋頂層 +4.90（開闊屋頂平台，切換 1F 剖切時自動隱藏露出完整廚房內裝）──
+        kbox(kitchenRoofGroup, 0, 21, 4.5, 19, yR - 0.12, yR + 0.12, MAT.slabFloor);
         kbox(kitchenRoofGroup, 21.05, 24.80, 4.68, 11.02, 5.30, 5.48, MAT.slabFloor);
         kbox(kitchenRoofGroup, 9, 21, 0, 4.5, yR - 0.12, yR + 0.12, MAT.slabFloor);
         // 屋頂周邊排水導溝（依 A2-2 二層平面圖）
-        kbox(kitchenRoofGroup, 4.3, 20.7, 18.45, 18.72, yR + 0.11, yR + 0.135, MAT.concreteBase, false);
+        kbox(kitchenRoofGroup, 0.3, 20.7, 18.45, 18.72, yR + 0.11, yR + 0.135, MAT.concreteBase, false);
         kbox(kitchenRoofGroup, 20.45, 20.72, 4.7, 18.7, yR + 0.11, yR + 0.135, MAT.concreteBase, false);
-        kbox(kitchenRoofGroup, 0.25, 0.52, 4.7, 11.8, yR + 0.11, yR + 0.135, MAT.concreteBase, false);
-        // 屋頂密排白色不鏽鋼欄杆（照片 04188.jpg & A2-2）
-        addWhitePicketX(kitchenRoofGroup, 4.2, 21.0, yR + 0.12, 18.95, 1.10);
-        addWhitePicketZ(kitchenRoofGroup, 4.5, 19.0, yR + 0.12, 20.95, 1.10);
-        addWhitePicketZ(kitchenRoofGroup, 4.5, 12.0, yR + 0.12, 0.08, 1.10);
-        addWhitePicketX(kitchenRoofGroup, 0.08, 4.0, yR + 0.12, 4.55, 1.10);
+        kbox(kitchenRoofGroup, 0.25, 0.52, 4.7, 18.7, yR + 0.11, yR + 0.135, MAT.concreteBase, false);
+        // 屋頂密排白色不鏽鋼欄杆＋東側北段女兒牆＋A05 樓梯開口＋西北側爬梯管制門（依 A2-2 & 實勘）
+        addWhitePicketX(kitchenRoofGroup, 0.08, 21.0, yR + 0.12, 18.95, 1.10);      // 南側全線欄杆（含開闊西南區）
+        addWhitePicketZ(kitchenRoofGroup, 4.5, 18.95, yR + 0.12, 0.08, 1.10);       // 西側全線欄杆（含開闊西南區）
+        addWhitePicketX(kitchenRoofGroup, 0.08, 7.95, yR + 0.12, 4.55, 1.10);       // 北側西段＋水塔區上方欄杆
+        // 西北側爬梯管控安全門（x=7.95~8.92, z=4.55，微開管制通往 +3.45 水塔平台爬梯！）
+        {
+          kbox(kitchenRoofGroup, 7.92, 7.98, 4.51, 4.59, yR + 0.12, yR + 1.24, MAT.ckWhite, false);
+          kbox(kitchenRoofGroup, 8.90, 8.96, 4.51, 4.59, yR + 0.12, yR + 1.24, MAT.ckWhite, false);
+          const [gxP, gzP] = K(7.96, 4.55);
+          const lGate = new THREE.Group();
+          lGate.position.set(gxP, yR + 0.12, gzP);
+          lGate.rotation.y = 0.28; // 管制門（鎖扣端對齊爬梯入口）
+          addBox(lGate, 0.92, 0.05, 0.04, 0.46, 1.08, 0, MAT.ckWhite, false);
+          addBox(lGate, 0.92, 0.05, 0.04, 0.46, 0.10, 0, MAT.ckWhite, false);
+          for (let p = 0; p <= 5; p++) addBox(lGate, 0.025, 1.08, 0.025, 0.04 + (p / 5) * 0.84, 0.56, 0, MAT.ckWhite, false);
+          kitchenRoofGroup.add(lGate);
+        }
+        // 東側邊界（x=20.95）：北段 (z=4.5~11.22) 為實體蜜桃橘女兒牆；中段 (z=11.22~13.15) 完全開放走下 A05 樓梯；南段 (z=13.15~19.0) 為白色不鏽鋼欄杆！
+        kbox(kitchenRoofGroup, 20.85, 21.10, 4.50, 11.22, yR, 6.02, MAT.ckPeach);   // 左側（北段）實體女兒牆
+        addWhitePicketZ(kitchenRoofGroup, 13.15, 19.0, yR + 0.12, 20.95, 1.10);     // 右側（南段）欄杆
+        addWhitePicketX(kitchenRoofGroup, 21.0, 25.0, yR + 0.12, 13.12, 1.10);      // A05 過渡踏板南緣欄杆
 
         // ── 11. 北側：115 鍋爐間／116 瓦斯間／A06 後勤過渡平台（②–③×Ⓐ–Ⓑ，中空實開西面 W3/SD3 與北面 D7/A06，依 A2-1 / 04097 / 04103）──
         wallZWithOpenings(kitchen1FGroup, 4, 9, 0.07, 0.22, 0, 3.45, MAT.ckPink, [
@@ -3670,7 +3727,7 @@
 
         // 樹木（沿地界與廣場周邊，示意）
         const treeCoords = [
-          [-49, -14], [-55, 20], [-58, 40], [-62, 58], [-20, 70], [-35, 85], [20, 90], [35, 75],
+          [-49, -14], [-46, 22], [-48, 42], [-62.5, 58], [-20, 70], [-35, 85], [20, 90], [35, 75],
           [40, 62], [70, 68], [95, 60], [100, 40], [88, 30], [85.5, 8], [92, -3], [40, -11.5], [-12.5, -11.0], [118, 60], [118, 85]
         ];
         treeCoords.forEach(([tx, tz], i) => {
@@ -4030,41 +4087,137 @@
         { id: 'sv_kitchen_111', name: '1F 中央廚房 111 烹飪區', x: gx(KIT.x + 13.0), z: gz(KIT.z + 9.5), floor: 1, yaw: 0 },
         { id: 'sv_kitchen_2f', name: '2F 中央廚房屋頂與機房前', x: gx(KIT.x + 15.0), z: gz(KIT.z + 7.5), floor: 2, yaw: 0 },
         { id: 'sv_kitchen_plaza', name: '中央廚房南側（粉紅門廊前）', x: gx(-33.5), z: gz(19.5), floor: 0, yaw: 0 },
+        { id: 'sv_1f_stair_a', name: '1F 東側無障礙樓梯 A（可步行上 2F）', x: gx(73.1), z: gz(11.6), floor: 1, yaw: Math.PI },
+        { id: 'sv_1f_stair_b', name: '1F 西側樓梯 B（可步行上 2F）', x: gx(8.0), z: gz(7.2), floor: 1, yaw: 0 },
         { id: 'sv_1f_restroom', name: '1F 東側 20-4 廁所入口', x: gx(75.6), z: gz(9.4), floor: 1, yaw: 0 },
         { id: 'sv_2f_corridor', name: '2F 走廊（導師室・校長室前）', x: gx(45.0), z: gz(9.4), floor: 2, yaw: -Math.PI * 0.45 },
+        { id: 'sv_2f_stair_a', name: '2F 東側無障礙樓梯 A（可上下 1F/3F）', x: gx(74.2), z: gz(11.6), floor: 2, yaw: Math.PI },
+        { id: 'sv_2f_stair_b', name: '2F 西側樓梯 B（可上下 1F/3F）', x: gx(7.0), z: gz(7.2), floor: 2, yaw: 0 },
         { id: 'sv_2f_restroom_ent', name: '2F 東側 20-5 廁所入口', x: gx(75.6), z: gz(9.4), floor: 2, yaw: 0 },
         { id: 'sv_2f_restroom_in', name: '2F 東側 20-5 廁所內部', x: gx(74.0), z: gz(4.8), floor: 2, yaw: 0 },
         { id: 'sv_3f_corridor', name: '3F 專科教室走廊・景觀露台', x: gx(54.0), z: gz(11.5), floor: 3, yaw: Math.PI * 0.7 },
+        { id: 'sv_3f_stair_a', name: '3F 東側無障礙樓梯 A（可步行下 2F）', x: gx(75.2), z: gz(11.6), floor: 3, yaw: Math.PI },
         { id: 'sv_3f_restroom', name: '3F 東側 20-6 廁所入口', x: gx(75.6), z: gz(9.4), floor: 3, yaw: 0 },
         { id: 'sv_track', name: '200m 操場・面向主校舍', x: gx(8.0), z: gz(48.0), floor: 0, yaw: 0 },
         { id: 'sv_courts', name: '籃球場・風雨球場之間', x: gx(67.5), z: gz(80.0), floor: 0, yaw: Math.PI * 0.5 }
       ];
 
-      function getWalkableFloorY(worldX, worldZ, svFloor = 0) {
+      function resolveStreetWalk(worldX, worldZ, curFloor = 0, prevFootY = null, clickedY = null) {
         const rx = worldX - OFFSET_X;
         const rz = worldZ - OFFSET_Z;
-        const inGenRoom = (rx >= 76.3 && rx <= 79.2 && rz >= 10.8 && rz <= 16.8) || (rx >= 72.1 && rx <= 76.4 && rz >= 12.6 && rz <= 18.2);
-        const inMain = rx >= -1.0 && rx <= 82.8 && rz >= -2.2 && rz <= 16.8;
-        const inWalkway = rx >= KIT.x + 29 && rx <= 0.5 && rz >= 7.8 && rz <= 10.9;
-        const inKitchenBoiler = rx >= KIT.x + 4.0 && rx <= KIT.x + 9.0 && rz >= KIT.z - 0.2 && rz <= KIT.z + 4.6;
-        const inKitchenPower = rx >= KIT.x + 28.4 && rx <= KIT.x + 30.6 && rz >= KIT.z + 13.4 && rz <= KIT.z + 17.2;
-        const inKitchen = rx >= KIT.x - 2.6 && rx <= KIT.x + 30.4 && rz >= KIT.z - 0.2 && rz <= KIT.z + 24.4;
+        const footY = prevFootY !== null ? prevFootY : (curFloor === 3 ? ELEV.F3 : curFloor === 2 ? ELEV.F2 : curFloor === 1 ? ELEV.F1 : 0.05);
 
-        if (inGenRoom && svFloor <= 1) return 0.45;
-        if (inMain) {
-          if (svFloor === 3) return ELEV.F3;
-          if (svFloor === 2) return ELEV.F2;
-          return ELEV.F1;
+        // 1) 東側無障礙樓梯 A 步行上下樓（1F↔2F↔3F；若位於梯下 +0.45m 發電機室則維持機房高程）
+        const inStairA = rx >= 72.15 && rx <= 76.25 && rz >= 12.60 && rz <= 18.10;
+        if (inStairA && (clickedY !== null ? clickedY >= 0.90 : footY >= 0.90)) {
+          let base = 1;
+          if (clickedY !== null) {
+            base = clickedY >= 4.85 ? 2 : 1;
+          } else if (footY < 3.45) {
+            base = 1;
+          } else if (footY > 6.45) {
+            base = 2;
+          } else {
+            // 位於 2F (+5.00) 梯口：往西段上 3F、往東段下 1F！
+            base = rx < 74.20 ? 2 : 1;
+          }
+          const y0 = base === 1 ? ELEV.F1 : ELEV.F2;
+          let y;
+          if (rz >= 16.25) y = y0 + 1.90;
+          else if (rx < 74.20) y = y0 + THREE.MathUtils.clamp((rz - 12.65) / 3.60, 0, 1) * 1.90;
+          else y = y0 + 1.90 + THREE.MathUtils.clamp((16.25 - rz) / 3.60, 0, 1) * 1.90;
+          const nextFloor = y >= 8.35 ? 3 : (y >= 4.55 ? 2 : 1);
+          return { y, floor: nextFloor, onStair: true };
         }
-        if ((inKitchenBoiler || inKitchenPower) && svFloor <= 1) return 0.40;
+
+        // 2) 西側樓梯 B 步行上下樓（1F↔2F↔3F；若位於西側 1F 儲藏室則維持 1F）
+        const inStairB = rx >= 5.15 && rx <= 8.95 && rz >= 0.20 && rz <= 6.12;
+        const inStairBStorage = curFloor <= 1 && footY < 2.20 && rx < 7.05 && rz > 2.50 && (clickedY === null || clickedY < 2.20);
+        if (inStairB && !inStairBStorage) {
+          let base = 1;
+          if (clickedY !== null) {
+            base = clickedY >= 4.85 ? 2 : 1;
+          } else if (footY < 3.45) {
+            base = 1;
+          } else if (footY > 6.45) {
+            base = 2;
+          } else {
+            // 位於 2F (+5.00) 梯口：往東段向北上 3F、往西段向北下 1F！
+            base = rx >= 7.05 ? 2 : 1;
+          }
+          const y0 = base === 1 ? ELEV.F1 : ELEV.F2;
+          let y;
+          if (rz <= 2.50) y = y0 + 1.90;
+          else if (rx >= 7.05) y = y0 + THREE.MathUtils.clamp((6.10 - rz) / 3.60, 0, 1) * 1.90;
+          else y = y0 + 1.90 + THREE.MathUtils.clamp((rz - 2.50) / 3.60, 0, 1) * 1.90;
+          const nextFloor = y >= 8.35 ? 3 : (y >= 4.55 ? 2 : 1);
+          return { y, floor: nextFloor, onStair: true };
+        }
+
+        // 3) 中央廚房 A05 戶外雙折樓梯（1F +1.20 ↔ 中段 +3.65 ↔ 2F 屋頂 +4.90）
+        const klx = rx - KIT.x, klz = rz - KIT.z;
+        const inA05Upper = klx >= 24.8 && klx <= 27.9 && klz >= 11.0 && klz <= 13.3;
+        const inA05Mid = klx >= 27.6 && klx <= 30.3 && klz >= 11.0 && klz <= 14.2;
+        const inA05Lower = klx >= 28.0 && klx <= 30.8 && klz >= 14.2 && klz <= 19.6;
+        if (inA05Upper && (clickedY !== null ? clickedY >= 2.8 : footY >= 2.5)) {
+          const u = THREE.MathUtils.clamp((27.68 - klx) / 2.68, 0, 1);
+          const y = 3.65 + u * (4.90 - 3.65);
+          return { y, floor: u > 0.75 ? 2 : 1, onStair: true };
+        }
+        if (inA05Mid && (clickedY !== null ? clickedY >= 2.6 : footY >= 2.2)) {
+          return { y: 3.65, floor: 1, onStair: true };
+        }
+        if (inA05Lower && (klz >= 17.4 || (clickedY !== null ? clickedY >= 0.95 : footY >= 0.95))) {
+          const u = THREE.MathUtils.clamp((19.35 - klz) / 5.15, 0, 1);
+          return { y: ELEV.F1 + u * (3.65 - ELEV.F1), floor: 1, onStair: true };
+        }
+
+        // 4) 建築與戶外一般平面（走到戶外自動歸零樓層，避免再踏進 1F 時誤跳到 2F！）
+        const inGenRoom = (rx >= 76.3 && rx <= 79.2 && rz >= 10.8 && rz <= 16.8) || (rx >= 72.1 && rx <= 76.4 && rz >= 12.6 && rz <= 18.2);
+        const inMain = rx >= -1.8 && rx <= 82.8 && rz >= -2.5 && rz <= 16.8;
+        const inWalkway = rx >= KIT.x + 29 && rx <= 0.5 && rz >= 7.8 && rz <= 10.9;
+        const inKitchenBoiler = klx >= 4.0 && klx <= 9.0 && klz >= -0.2 && klz <= 4.6;
+        const inKitchenPower = klx >= 28.4 && klx <= 30.6 && klz >= 13.4 && klz <= 17.2;
+        const inKitchen = klx >= -2.6 && klx <= 30.4 && klz >= -0.2 && klz <= 24.4;
+
+        if (inGenRoom && curFloor <= 1) return { y: 0.45, floor: 1, onStair: false };
+        if (inMain) {
+          const fl = curFloor >= 3 ? 3 : (curFloor === 2 ? 2 : 1);
+          return { y: fl === 3 ? ELEV.F3 : (fl === 2 ? ELEV.F2 : ELEV.F1), floor: fl, onStair: false };
+        }
+        if ((inKitchenBoiler || inKitchenPower) && curFloor <= 1) return { y: 0.40, floor: 1, onStair: false };
         if (inKitchen) {
-          if (svFloor >= 2) return 4.90;
-          return ELEV.F1;
+          if (curFloor >= 2) return { y: 4.90, floor: 2, onStair: false };
+          return { y: ELEV.F1, floor: 1, onStair: false };
         }
         if (inWalkway) {
-          return ELEV.F1;
+          return { y: ELEV.F1, floor: 1, onStair: false };
         }
-        return 0.05;
+        // 戶外地面：樓層自動切回 0（地面/戶外），下次從地面走入任何 1F 入口皆自然進入 1F！
+        return { y: 0.05, floor: 0, onStair: false };
+      }
+
+      function inferFloorFromY(y) {
+        if (y < 0.75) return 0;
+        if (y < 3.45) return 1;
+        if (y < 7.20) return 2;
+        return 3;
+      }
+
+      function walkStreetViewTo(nx, nz, clickedY = null) {
+        const prevFootY = state.svTargetPos.y - SV_EYE_HEIGHT;
+        const baseFloor = clickedY !== null ? inferFloorFromY(clickedY) : state.svFloor;
+        const walk = resolveStreetWalk(nx, nz, baseFloor, prevFootY, clickedY);
+        state.svTargetPos.set(nx, walk.y + SV_EYE_HEIGHT, nz);
+        if (walk.floor !== state.svFloor) {
+          state.svFloor = walk.floor;
+          updateModeButtonsUI();
+        }
+        return walk;
+      }
+
+      function getWalkableFloorY(worldX, worldZ, svFloor = 0) {
+        return resolveStreetWalk(worldX, worldZ, svFloor, null, null).y;
       }
 
       // Street View Waypoint Discs & Blue Routes
@@ -4264,7 +4417,7 @@
         if (Math.hypot(state.svTargetPos.x - svLastCrumbPos.x, state.svTargetPos.z - svLastCrumbPos.z) > 1.5) updateStreetViewLocationText();
       }
 
-      function enterStreetViewAt(worldX, worldZ, floorNum = null, yawRad = null, customLabel = null) {
+      function enterStreetViewAt(worldX, worldZ, floorNum = null, yawRad = null, customLabel = null, surfaceY = null) {
         if (state.activeFloor !== 'all') setActiveFloor('all');
         if (state.targetExplode > 0.01) {
           state.targetExplode = 0;
@@ -4280,15 +4433,18 @@
 
         if (floorNum !== null) {
           state.svFloor = floorNum;
+        } else if (surfaceY !== null) {
+          state.svFloor = inferFloorFromY(surfaceY);
         } else {
           const rx = worldX - OFFSET_X;
           const rz = worldZ - OFFSET_Z;
           const inBldg = (rx >= -47.6 && rx <= 82.8 && rz >= -9.5 && rz <= 16.8);
-          state.svFloor = inBldg ? Math.max(1, state.svFloor) : 0;
+          state.svFloor = inBldg ? 1 : 0;
         }
 
-        const fy = getWalkableFloorY(worldX, worldZ, state.svFloor);
-        state.svTargetPos.set(worldX, fy + SV_EYE_HEIGHT, worldZ);
+        const walk = resolveStreetWalk(worldX, worldZ, state.svFloor, surfaceY, surfaceY);
+        state.svFloor = walk.floor;
+        state.svTargetPos.set(worldX, walk.y + SV_EYE_HEIGHT, worldZ);
         if (yawRad !== null) state.svTargetYaw = yawRad;
         state.svTargetPitch = 0;
 
@@ -4428,7 +4584,7 @@
             if (res && res.point) {
               const py = res.spot
                 ? getWalkableFloorY(res.spot.x, res.spot.z, res.spot.floor) + 0.09
-                : getWalkableFloorY(res.point.x, res.point.z, state.svFloor) + 0.07;
+                : resolveStreetWalk(res.point.x, res.point.z, inferFloorFromY(res.point.y), state.svTargetPos.y - SV_EYE_HEIGHT, res.point.y).y + 0.07;
               svReticle.position.set(res.spot ? res.spot.x : res.point.x, py, res.spot ? res.spot.z : res.point.z);
               svReticle.visible = true;
               renderer.domElement.style.cursor = 'pointer';
@@ -4465,8 +4621,7 @@
             } else if (res && res.point) {
               const cx = THREE.MathUtils.clamp(res.point.x, -105, 86);
               const cz = THREE.MathUtils.clamp(res.point.z, -35, 92);
-              const fy = getWalkableFloorY(cx, cz, state.svFloor);
-              state.svTargetPos.set(cx, fy + SV_EYE_HEIGHT, cz);
+              walkStreetViewTo(cx, cz, res.point.y);
               updateStreetViewLocationText();
             }
           }
@@ -4476,7 +4631,7 @@
         if (state.pegmanDropMode && moved <= 6) {
           const res = raycastWalkablePoint(e.clientX, e.clientY);
           if (res && res.spot) enterStreetViewAt(res.spot.x, res.spot.z, res.spot.floor, res.spot.yaw, res.spot.name);
-          else if (res && res.point) enterStreetViewAt(res.point.x, res.point.z, null, null, null);
+          else if (res && res.point) enterStreetViewAt(res.point.x, res.point.z, null, null, null, res.point.y);
           return;
         }
 
@@ -4795,7 +4950,7 @@
               updateModeButtonsUI();
               updateStreetViewLocationText(nearest.name);
             } else {
-              state.svTargetPos.set(wx, getWalkableFloorY(wx, wz, state.svFloor) + SV_EYE_HEIGHT, wz);
+              walkStreetViewTo(wx, wz, null);
               updateStreetViewLocationText();
             }
           }
@@ -4937,9 +5092,9 @@
 
       document.getElementById('earth-zoom-in').addEventListener('click', () => {
         if (state.navMode === 'street') {
-          const nx = state.svTargetPos.x - Math.sin(state.svYaw) * 4.0;
-          const nz = state.svTargetPos.z - Math.cos(state.svYaw) * 4.0;
-          state.svTargetPos.set(nx, getWalkableFloorY(nx, nz, state.svFloor) + SV_EYE_HEIGHT, nz);
+          const nx = state.svTargetPos.x - Math.sin(state.svTargetYaw) * 4.0;
+          const nz = state.svTargetPos.z - Math.cos(state.svTargetYaw) * 4.0;
+          walkStreetViewTo(nx, nz, null);
           updateStreetViewLocationText();
         } else {
           const d = camera.position.clone().sub(controls.target);
@@ -4951,9 +5106,9 @@
       });
       document.getElementById('earth-zoom-out').addEventListener('click', () => {
         if (state.navMode === 'street') {
-          const nx = state.svTargetPos.x + Math.sin(state.svYaw) * 4.0;
-          const nz = state.svTargetPos.z + Math.cos(state.svYaw) * 4.0;
-          state.svTargetPos.set(nx, getWalkableFloorY(nx, nz, state.svFloor) + SV_EYE_HEIGHT, nz);
+          const nx = state.svTargetPos.x + Math.sin(state.svTargetYaw) * 4.0;
+          const nz = state.svTargetPos.z + Math.cos(state.svTargetYaw) * 4.0;
+          walkStreetViewTo(nx, nz, null);
           updateStreetViewLocationText();
         } else {
           const d = camera.position.clone().sub(controls.target);
@@ -5232,7 +5387,7 @@
             const rz = -Math.sin(state.svYaw);
             const nx = THREE.MathUtils.clamp(state.svTargetPos.x + (fx * mf + rx * mr) * speed, -105, 86);
             const nz = THREE.MathUtils.clamp(state.svTargetPos.z + (fz * mf + rz * mr) * speed, -35, 92);
-            state.svTargetPos.set(nx, getWalkableFloorY(nx, nz, state.svFloor) + SV_EYE_HEIGHT, nz);
+            walkStreetViewTo(nx, nz, null);
             updateStreetViewLocationText();
           }
           state.svPos.lerp(state.svTargetPos, Math.min(1, dt * 8.5));
