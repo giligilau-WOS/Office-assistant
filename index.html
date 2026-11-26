@@ -1671,7 +1671,10 @@ function printSingleProjectPDF(projectId) {
 }
 
 function printAnnualGanttPDF() {
-  const projects = (appData.tables.Projects || []).filter(p => Number(p.fiscal_year) === Number(annualGanttYear) && p.status !== '廢標撤案');
+  // 列出當年有任何工作的標案（跨年度標案也納入），不再只看會計年度
+  const projects = typeof projectsActiveInRocYear === 'function'
+    ? projectsActiveInRocYear(annualGanttYear)
+    : (appData.tables.Projects || []).filter(p => Number(p.fiscal_year) === Number(annualGanttYear) && p.status !== '廢標撤案');
   const adYear = Number(annualGanttYear) + 1911;
   const monthLoad = Array.from({ length: 12 }, () => 0);
   projects.forEach(p => getProjectTasks(p.project_id).forEach(t => {
@@ -2411,6 +2414,7 @@ syncFromCloud(false);
 <script src="./maint-schedule-helper.js?v=2"></script>
 <script src="./project-timeline-presets.js?v=1"></script>
 <script src="./project-case-number.js?v=1"></script>
+<script src="./gantt-timeline.js?v=1"></script>
 <script src="./ui-declutter.js?v=4"></script>
 <script>
 (function(){
