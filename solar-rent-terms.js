@@ -46,6 +46,66 @@
     }
   };
 
+  // --------------------------------------------------------------------------
+  // 1b. 二期屋頂型租賃契約（111年度雄院民公吉字第1156號，111.11.17 公證）
+  //     標的：教室 11.84 ＋ 警衛室 17.76 ＋ 中央廚房 106.19 ＝ 135.79 kWp（B類，回饋 12%）
+  // --------------------------------------------------------------------------
+  const XIPU_PHASE2_PRESET = {
+    key: 'xipu-phase2',
+    match: c => String(c.contract_start || '').slice(0, 10) === '2022-11-17' && Math.abs((Number(c.capacity_kwp) || 0) - 135.79) < 0.005,
+    label: '二期屋頂型契約（111.11.17 公證）',
+    contractFields: {
+      billing_mode: 'TIERED_BASE_RENT', billing_cycle: '年結', annual_due_month_day: '12-17',
+      fit_rate: 4.497, feedback_rate: 0.12, base_annual_rent: 93612, min_annual_feedback: 93612
+    },
+    // 建立新契約時使用（本約尚未建檔時）
+    newContract: {
+      building_name: '教室、警衛室、中央廚房屋頂', phase_label: '二期', parent_contract_id: '', status: '併聯發電中',
+      buildings_json: JSON.stringify([
+        { name: '教室（11.84 kWp）', land_lot: '', permit_no: '', area: '', voltage: '' },
+        { name: '警衛室（17.76 kWp）', land_lot: '', permit_no: '', area: '', voltage: '' },
+        { name: '中央廚房（106.19 kWp）', land_lot: '', permit_no: '', area: '', voltage: '' }
+      ]),
+      lessee_vendor: '環球大宇宙太陽能工業有限公司／鄭玲玲／07-7338282',
+      vendor_name: '環球大宇宙太陽能工業有限公司', vendor_tax_id: '28929872', vendor_contact: '鄭玲玲', vendor_phone: '07-7338282',
+      vendor_email: '', vendor_address: '高雄市鳥松區美山路62-1號',
+      guarantor_name: '鉅光科技工業有限公司', guarantor_tax_id: '22073218', guarantor_rep: '吳家慶', guarantor_phone: '0980-889269',
+      taipower_meter_no: '', taipower_contract_no: '', shared_total_kwp: 135.79, capacity_kwp: 135.79, allocation_ratio: 100,
+      sales_mode: 'TAIPOWER_FIT', meter_cutoff_note: '',
+      contract_start: '2022-11-17', contract_end: '2032-10-16', term_months: 119, renewal_deadline: '2032-07-16',
+      notary_no: '111年度雄院民公吉字第1156號', drive_folder_url: '',
+      bond_method: '現金', deposit_amount: 187224, deposit_expiry: '', insurance_expiry: '', is_deleted: false
+    },
+    // 契約第五條第一款
+    schedule: [
+      ['2023-12-17', 93612], ['2024-12-17', 93612], ['2025-12-17', 93612], ['2026-12-17', 93612],
+      ['2027-12-17', 93612], ['2028-12-17', 93612], ['2029-12-17', 93612], ['2030-12-17', 93612],
+      ['2031-12-17', 93612], ['2032-11-17', 85811]
+    ],
+    terms: {
+      calc: { kwp: 135.79, kwh_per_kwp_day: 3.5, days: 365, fit_rate: 4.497, fit_label: '111年躉購費率，B類', feedback_pct: 12, result: 93612 },
+      min_guarantee: true,
+      pay_methods: '現金、票據',
+      pay_place: '溪埔國民中學總務處出納組（84048 高雄市大樹區溪埔路1號）；或至各銀行、郵局、農漁會等金融機構繳納',
+      bank_name: '合作金庫 大樹分行',
+      bank_account_name: '高雄市立溪埔國民中學',
+      bank_account_no: '',
+      notice_days: 30,
+      source: '二期屋頂型租賃契約（111年度雄院民公吉字第1156號）第三～六條',
+      notes: '保底：第三條第四款，參考年租金每年至少給付 93,612 元（第 10 期 11 個月至少 85,811 元），高於經營年租金時依第五條第二款 5% 級距計收。履約保證金 187,224 元（2 年經營年租金），繳納方式請依實際收執之票據或保證書更正。優先續租 2 次（第 1 次 9 年 11 個月）。'
+    }
+  };
+  XIPU_RENEWAL_PRESET.key = 'xipu-renewal';
+
+  const PRESETS = [XIPU_RENEWAL_PRESET, XIPU_PHASE2_PRESET];
+  const findPreset = c => PRESETS.find(pr => pr.match(c)) || null;
+  const fmtPresetFields = f => [
+    f.billing_mode === 'TIERED_BASE_RENT' ? '計費方式＝5% 級距制' : '', f.billing_cycle || '',
+    f.base_annual_rent ? `經營年租金 ${Number(f.base_annual_rent).toLocaleString('zh-TW')} 元` : '',
+    f.fit_rate ? `躉購費率 ${f.fit_rate}` : '', f.feedback_rate ? `回饋 ${Math.round(f.feedback_rate * 100)}%` : '',
+    f.annual_due_month_day ? `約定繳款日 ${f.annual_due_month_day}` : ''
+  ].filter(Boolean).join('、');
+
   const DEFAULT_TERMS = {
     pay_methods: '現金、票據', pay_place: '', bank_name: '', bank_account_name: '', bank_account_no: '',
     notice_days: 30, source: '', notes: ''
@@ -111,10 +171,14 @@
 
   const isPaid = r => !!r && (!!r.payment_date || (r.actual_feedback !== '' && r.actual_feedback !== null && r.actual_feedback !== undefined));
 
-  function installmentStatus(inst, rec, noticeDays) {
+  const isPriorSettled = (inst, t) => !!t && Number(t.prior_settled_through) >= inst.no;
+  const instPaid = (inst, rec, t) => isPaid(rec) || isPriorSettled(inst, t);
+
+  function installmentStatus(inst, rec, noticeDays, t) {
     const today = todayStr();
     const d = diffDays(today, inst.due_date);
     const stmtDl = addDays(inst.due_date, -(Number(noticeDays) || 30));
+    if (!isPaid(rec) && isPriorSettled(inst, t)) return { key: 'paid', cls: 'tag-green', text: '已繳（建檔前）', d, stmtDl };
     if (isPaid(rec)) return { key: 'paid', cls: 'tag-green', text: `已入帳${rec.payment_date ? ' ' + rec.payment_date.slice(5).replace('-', '/') : ''}`, d, stmtDl };
     if (d < 0) {
       const pen = calcOverduePenaltyV2(inst.amount, inst.due_date, today);
@@ -136,7 +200,7 @@
 
   function renderRentTermsPanelHTML(c) {
     const t = getRentTerms(c);
-    const preset = XIPU_RENEWAL_PRESET.match(c) ? XIPU_RENEWAL_PRESET : null;
+    const preset = findPreset(c);
     const sid = esc(c.solar_id);
 
     if (!t) {
@@ -160,7 +224,7 @@
     const total = t.schedule.reduce((s, i) => s + (Number(i.amount) || 0), 0);
     const rows = t.schedule.map(inst => {
       const rec = matchRecord(inst, recs);
-      const st = installmentStatus(inst, rec, t.notice_days);
+      const st = installmentStatus(inst, rec, t.notice_days, t);
       return `<tr>
         <td style="white-space:nowrap"><strong>第 ${inst.no} 期</strong>${inst.months < 12 ? `<div class="item-meta">${inst.months} 個月折算</div>` : ''}</td>
         <td style="white-space:nowrap">${inst.period_start ? `${rocShort(inst.period_start)} ～ ${rocShort(inst.period_end)}` : '-'}</td>
@@ -226,8 +290,23 @@
   window.openRentTermsModal = function(solarId, usePreset) {
     const c = appData.tables.Solar_Contracts.find(x => x.solar_id === solarId);
     if (!c) return;
-    const existing = getRentTerms(c);
-    const preset = usePreset && XIPU_RENEWAL_PRESET.match(c) ? XIPU_RENEWAL_PRESET : null;
+    openTermsModalFor(c, usePreset ? findPreset(c) : null, false);
+  };
+
+  // 依預設建立尚未建檔的新契約（例如二期屋頂型）
+  window.openCreatePresetContract = function(presetKey) {
+    const preset = PRESETS.find(pr => pr.key === presetKey && pr.newContract);
+    if (!preset) return;
+    const draft = {
+      ...preset.newContract, ...preset.contractFields,
+      solar_id: nextId('Solar_Contracts', 'solar_id', 'SOL', 3), updated_at: nowStr()
+    };
+    openTermsModalFor(draft, preset, true);
+  };
+
+  function openTermsModalFor(c, preset, isNew) {
+    const solarId = c.solar_id;
+    const existing = isNew ? null : getRentTerms(c);
     const contractForCalc = preset ? { ...c, ...preset.contractFields } : c;
     const schedule = preset ? presetSchedule(contractForCalc, preset)
       : (existing ? existing.schedule : generateRentSchedule(contractForCalc));
@@ -237,11 +316,14 @@
       fit_label: '', feedback_pct: Number((normFeedbackRate(c.feedback_rate) * 100).toFixed(2)),
       result: Number(c.base_annual_rent) || calcBaseAnnualRent(c.capacity_kwp, c.fit_rate, c.feedback_rate)
     } : null));
-    rtDraft = { solarId, schedule, calc, preset: !!preset };
+    const priorDue = schedule.filter(i => i.due_date < todayStr()).length;
+    rtDraft = { solarId, schedule, calc, preset, isNew, newContract: isNew ? c : null };
 
     const v = k => esc(base[k] ?? DEFAULT_TERMS[k] ?? '');
-    openModal(preset ? `📄 帶入${preset.label}條款` : '💰 年租金繳納條件', `
-      ${preset ? `<div class="gate-banner amber" style="margin-bottom:10px;font-size:13px">將同時更新本契約：計費方式＝5% 級距制、年結、經營年租金 175,095 元、躉購費率 4.8061、回饋 15%、約定繳款日 04-27。</div>` : ''}
+    const priorChecked = existing ? Number(existing.prior_settled_through) > 0 : true;
+    openModal(isNew ? `📄 新增${preset.label}` : preset ? `📄 帶入${preset.label}條款` : '💰 年租金繳納條件', `
+      ${isNew ? `<div class="gate-banner amber" style="margin-bottom:10px;font-size:13px">將新增契約 <strong>${esc(c.solar_id)}｜${esc(c.building_name)}（${esc(c.phase_label)}）</strong>：${c.capacity_kwp} kWp、租期 ${rocShort(c.contract_start)}～${rocShort(c.contract_end)}（${c.term_months} 個月）、公證 ${esc(c.notary_no)}、履約保證金 ${fmtMoney(c.deposit_amount)}；${esc(fmtPresetFields(preset.contractFields))}。台電電號、保險等其他資料可於建立後以「編輯契約主檔」補上。</div>`
+        : preset ? `<div class="gate-banner amber" style="margin-bottom:10px;font-size:13px">將同時更新本契約：${esc(fmtPresetFields(preset.contractFields))}。</div>` : ''}
       <div class="form-grid">
         <div class="field"><label>繳納方式</label><input id="rt-methods" type="text" value="${v('pay_methods')}"></div>
         <div class="field"><label>明細表須於期限前幾天送達</label><input id="rt-notice" type="number" min="0" value="${v('notice_days')}"></div>
@@ -254,10 +336,11 @@
       </div>
       <div style="font-weight:700;margin:10px 0 6px">📅 繳納時程（${schedule.length} 期）${preset ? '：依契約書第五條第一款' : existing ? '：沿用已儲存時程' : '：依契約起迄自動產生'}</div>
       ${previewTableHTML(schedule)}
+      ${priorDue > 0 ? `<label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="rt-prior" ${priorChecked ? 'checked' : ''} style="margin-top:3px"><span>已到期的前 <strong>${priorDue}</strong> 期（${rocShort(schedule[0].due_date)}～${rocShort(schedule[priorDue - 1].due_date)}）已繳清，標示為「已繳（建檔前）」，不列入逾期提醒</span></label>` : ''}
       ${existing && !preset ? `<button class="btn-xs" style="margin-top:6px" onclick="regenRentSchedule('${esc(solarId)}')">↺ 依目前契約起迄重新產生時程</button>` : ''}
-    `, `<button onclick="closeModal()">取消</button><button class="btn-primary" ${schedule.length ? '' : 'disabled'} onclick="saveRentTerms()">💾 儲存繳納條件</button>`);
+    `, `<button onclick="closeModal()">取消</button><button class="btn-primary" ${schedule.length ? '' : 'disabled'} onclick="saveRentTerms()">💾 ${isNew ? '建立契約與繳納條件' : '儲存繳納條件'}</button>`);
     if (preset) setTimeout(() => document.getElementById('rt-accno')?.focus(), 50);
-  };
+  }
 
   window.regenRentSchedule = function(solarId) {
     const c = appData.tables.Solar_Contracts.find(x => x.solar_id === solarId);
@@ -269,9 +352,11 @@
 
   window.saveRentTerms = async function() {
     if (!rtDraft || !rtDraft.schedule.length) return;
-    const c = appData.tables.Solar_Contracts.find(x => x.solar_id === rtDraft.solarId);
+    const c = rtDraft.isNew ? rtDraft.newContract : appData.tables.Solar_Contracts.find(x => x.solar_id === rtDraft.solarId);
     if (!c) return;
     const val = id => (document.getElementById(id)?.value || '').trim();
+    const priorEl = document.getElementById('rt-prior');
+    const priorDue = rtDraft.schedule.filter(i => i.due_date < todayStr()).length;
     const terms = {
       version: 1,
       calc: rtDraft.calc,
@@ -280,26 +365,67 @@
       bank_name: val('rt-bank'), bank_account_name: val('rt-accname'), bank_account_no: val('rt-accno'),
       notice_days: Number(val('rt-notice')) || 30,
       source: val('rt-source'), notes: val('rt-notes'),
+      min_guarantee: !!rtDraft.preset?.terms?.min_guarantee || !!getRentTerms(c)?.min_guarantee,
+      prior_settled_through: priorEl && priorEl.checked ? priorDue : 0,
       updated_at: nowStr()
     };
     const first = rtDraft.schedule[0];
     const rec = {
       ...c,
-      ...(rtDraft.preset ? XIPU_RENEWAL_PRESET.contractFields : {}),
+      ...(rtDraft.preset ? rtDraft.preset.contractFields : {}),
       annual_due_month_day: first ? first.due_date.slice(5) : (c.annual_due_month_day || ''),
       rent_terms_json: JSON.stringify(terms),
       updated_at: nowStr()
     };
     upsertLocal('Solar_Contracts', rec, 'solar_id');
+    const created = rtDraft.isNew;
     closeModal();
+    if (created) { solarV2SelectedId = rec.solar_id; solarV2DetailTab = 'billing'; }
     renderCurrentView();
     await pushToCloud({ action: 'batchUpsert', items: [{ table: 'Solar_Contracts', records: [rec] }] });
-    toast(`✅ 已更新年租金繳納條件（${terms.schedule.length} 期）`);
+    toast(created ? `✅ 已建立 ${rec.solar_id}｜${rec.building_name}（${terms.schedule.length} 期繳納時程）` : `✅ 已更新年租金繳納條件（${terms.schedule.length} 期）`);
   };
 
   // --------------------------------------------------------------------------
   // 5. 掛載：詳情頁、對帳期限推算、戰情室提醒
   // --------------------------------------------------------------------------
+  // 保底（第三條第四款）：級距結果低於該期約定金額時，以約定金額計收
+  const _prevCalcBill = calcSolarBillV2;
+  calcSolarBillV2 = function(rec, contract) {
+    const k = _prevCalcBill(rec, contract);
+    const t = getRentTerms(contract);
+    if (!t || !t.min_guarantee || k.mode !== 'TIERED_BASE_RENT') return k;
+    const inst = t.schedule.find(i => i.due_date === k.dueDate)
+      || t.schedule.find(i => String(rec.period_label || '').trim() === `第${i.no}期`);
+    const floor = inst ? Number(inst.amount) : (Number(contract.min_annual_feedback) || k.baseRent);
+    if (!floor || k.calculatedRent >= floor) return { ...k, floorAmount: floor, floorApplied: false };
+    const calculatedRent = floor;
+    const unpaid = k.hasActual ? (k.actualPaid < calculatedRent ? calculatedRent - k.actualPaid : 0) : calculatedRent;
+    const paidOnTime = k.hasActual && rec.payment_date && k.dueDate && diffDays(k.dueDate, rec.payment_date) <= 0 && unpaid === 0;
+    const penInfo = k.dueDate ? calcOverduePenaltyV2(paidOnTime ? 0 : unpaid, k.dueDate, rec.payment_date || todayStr()) : k.penInfo;
+    return {
+      ...k, calculatedRent, appliedTier: Math.max(k.appliedTier, 100), floorAmount: floor, floorApplied: true,
+      diffAmt: k.hasActual ? (k.actualPaid - calculatedRent) : 0, penInfo
+    };
+  };
+
+  // 太陽能總覽：本約尚未建檔時，顯示「新增二期屋頂型契約」按鈕
+  const _prevRenderView_rt = renderCurrentView;
+  renderCurrentView = function() {
+    _prevRenderView_rt();
+    if (typeof currentTab === 'undefined' || currentTab !== 'solar' || solarV2SelectedId) return;
+    const addBtn = Array.from(document.querySelectorAll('#main-view button')).find(b => (b.getAttribute('onclick') || '') === 'openSolarContractModal()');
+    if (!addBtn || document.getElementById('btn-create-phase2')) return;
+    PRESETS.filter(pr => pr.newContract && !(appData.tables.Solar_Contracts || []).some(c => pr.match(c))).forEach(pr => {
+      const b = document.createElement('button');
+      b.id = 'btn-create-phase2';
+      b.className = 'btn-sm';
+      b.textContent = `📄 新增${pr.label}`;
+      b.onclick = () => window.openCreatePresetContract(pr.key);
+      addBtn.insertAdjacentElement('beforebegin', b);
+    });
+  };
+
   const _prevBillingTab = renderSolarDetailBillingTabHTML;
   renderSolarDetailBillingTabHTML = function(c, recs) {
     return renderRentTermsPanelHTML(c) + _prevBillingTab(c, recs);
@@ -330,10 +456,10 @@
         // 以實際繳納時程取代「固定月日」推算的催繳提醒
         alerts = alerts.filter(a => !(a.badge === '太陽能催繳' && a.title === title));
         const recs = contractRecords(c);
-        const next = t.schedule.find(i => !isPaid(matchRecord(i, recs)));
+        const next = t.schedule.find(i => !instPaid(i, matchRecord(i, recs), t));
         if (!next) return;
         const rec = matchRecord(next, recs);
-        const st = installmentStatus(next, rec, t.notice_days);
+        const st = installmentStatus(next, rec, t.notice_days, t);
         const go = () => { solarV2SelectedId = c.solar_id; solarV2DetailTab = 'billing'; switchTab('solar'); };
         const amt = fmtMoney(next.amount);
         if (st.key === 'overdue' && !rec) {
@@ -366,6 +492,20 @@
     ok(gen[9].months === 11 && gen[9].period_end === '2036-02-26', '末期 11 個月、截至 125/2/26', `${gen[9].months}/${gen[9].period_end}`);
     ok(calcBaseAnnualRent(190.12, 4.8061, 0.15) === 175095, '190.12 × 3.5 × 365 × 4.8061 × 15% = 175,095', calcBaseAnnualRent(190.12, 4.8061, 0.15));
     ok(XIPU_RENEWAL_PRESET.match({ contract_start: '2026-03-27', capacity_kwp: 190.12 }) && !XIPU_RENEWAL_PRESET.match({ contract_start: '2016-04-27', capacity_kwp: 190.12 }), '續約條款只對應續約契約（不套到原約）', '');
+    const c2 = { contract_start: '2022-11-17', contract_end: '2032-10-16', base_annual_rent: 93612, capacity_kwp: 135.79 };
+    const gen2 = generateRentSchedule(c2);
+    ok(gen2.length === 10 && gen2.every((g, i) => g.due_date === XIPU_PHASE2_PRESET.schedule[i][0] && g.amount === XIPU_PHASE2_PRESET.schedule[i][1]),
+      '二期：10 期期限與金額與契約書相符（112～120/12/17 各 93,612、121/11/17 85,811）', gen2.map(g => g.due_date + ':' + g.amount).join(','));
+    ok(calcBaseAnnualRent(135.79, 4.497, 0.12) === 93612, '二期：135.79 × 3.5 × 365 × 4.497 × 12% = 93,612', calcBaseAnnualRent(135.79, 4.497, 0.12));
+    const tc = { ...c2, solar_id: '_T2', billing_mode: 'TIERED_BASE_RENT', feedback_rate: 0.12, fit_rate: 4.497,
+      rent_terms_json: JSON.stringify({ min_guarantee: true, schedule: generateRentSchedule(c2) }) };
+    const low = calcSolarBillV2({ period_label: '第4期', period_start: '2025-11-17', period_end: '2026-11-16', period_months: 12, taipower_revenue: 500000, due_date: '2026-12-17', applied_tier_percent: '' }, tc);
+    const high = calcSolarBillV2({ period_label: '第4期', period_start: '2025-11-17', period_end: '2026-11-16', period_months: 12, taipower_revenue: 900000, due_date: '2026-12-17', applied_tier_percent: '' }, tc);
+    const last = calcSolarBillV2({ period_label: '第10期', period_start: '2031-11-17', period_end: '2032-10-16', period_months: 11, taipower_revenue: 300000, due_date: '2032-11-17', applied_tier_percent: '' }, tc);
+    ok(low.calculatedRent === 93612 && low.floorApplied, '二期保底：參考年租金偏低時仍收 93,612', low.calculatedRent);
+    ok(high.calculatedRent === roundMoney(93612 * 1.2) && !high.floorApplied, '二期：參考年租金高於經營年租金時依級距加收（115%→120%）', `${high.suggestedTier}/${high.calculatedRent}`);
+    ok(last.calculatedRent === 85811, '二期第 10 期保底 85,811', last.calculatedRent);
+    ok(XIPU_PHASE2_PRESET.match(c2) && !XIPU_RENEWAL_PRESET.match(c2) && !XIPU_PHASE2_PRESET.match({ contract_start: '2026-03-27', capacity_kwp: 190.12 }), '一期續約與二期條款互不套用', '');
     return results;
   };
 
