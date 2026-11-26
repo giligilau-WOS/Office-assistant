@@ -188,6 +188,7 @@
         <button data-sv-floor="2" class="sv-floor-btn px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition">2F 走廊</button>
         <button data-sv-floor="3" class="sv-floor-btn px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition">3F 走廊</button>
       </div>
+      <button id="sv-pedestrian-btn" class="px-2 py-1 rounded-lg bg-emerald-500 text-slate-950 text-[11px] font-semibold transition" title="切換真實行人碰撞（不可穿牆／不可墜落樓層）或自由穿牆模式">🚶 行人防穿牆</button>
       <button id="sv-exit-btn" class="px-2.5 py-1 rounded-lg bg-rose-500/85 hover:bg-rose-500 text-white text-[11px] font-semibold transition">退出街景</button>
     </div>
 
@@ -265,6 +266,13 @@
               <div class="text-[11px] text-slate-400">左鍵平移地圖・右鍵旋轉傾斜</div>
             </div>
             <input id="toggle-earth-nav" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+          </label>
+          <label class="flex items-center justify-between p-2 rounded-xl bg-emerald-500/15 border border-emerald-400/35 hover:bg-emerald-500/25 cursor-pointer transition">
+            <div>
+              <div class="text-emerald-200 font-medium">🚶 行人防穿牆模式（街景）</div>
+              <div class="text-[11px] text-slate-400">模擬真實行走碰撞・須由門洞與樓梯通行</div>
+            </div>
+            <input id="toggle-pedestrian" type="checkbox" checked class="w-4 h-4 accent-emerald-400 rounded cursor-pointer" />
           </label>
           <label class="flex items-center justify-between p-2 rounded-xl bg-amber-500/15 border border-amber-400/30 hover:bg-amber-500/25 cursor-pointer transition">
             <span class="text-amber-200 font-medium">新建中央廚房與風雨走廊</span>
@@ -1024,6 +1032,7 @@
           const leafW = (w - 0.08) * 0.5;
           [-1, 1].forEach((side) => {
             const pivot = new THREE.Group();
+            pivot.userData.nonBlocking = true;
             pivot.position.set(gx(cx + side * (w * 0.5 - 0.04)), yBase, gz(z));
             pivot.rotation.y = side * openDir * 1.15;
             addBox(pivot, leafW, doorH - 0.04, 0.05, -side * leafW * 0.5, doorH * 0.5, 0, MAT.glass, false, false);
@@ -1035,6 +1044,7 @@
           // Hinged wood-faced door leaf swung open ~68° inward so rooms can be entered & inspected cleanly
           const leafW = w - 0.08;
           const pivot = new THREE.Group();
+          pivot.userData.nonBlocking = true;
           pivot.position.set(gx(cx - w * 0.5 + 0.04), yBase, gz(z));
           pivot.rotation.y = openDir * 1.18;
           addBox(pivot, leafW, doorH - 0.04, 0.06, leafW * 0.5, doorH * 0.5, 0, MAT.woodDoor, false, false);
@@ -1052,6 +1062,7 @@
         addBox(parent, w + 0.05, 0.05, 0.16, gx(cx), yBase + doorH, gz(z), MAT.alFrame, false, false);
         const leafW = w - 0.06;
         const pivot = new THREE.Group();
+        pivot.userData.nonBlocking = true;
         pivot.position.set(gx(cx - w * 0.5 + 0.03), yBase, gz(z));
         pivot.rotation.y = openDir * 1.15;
         addBox(pivot, leafW, doorH - 0.04, 0.05, leafW * 0.5, doorH * 0.5, 0, leafMat, false, false);
@@ -1065,6 +1076,7 @@
         addBox(parent, 0.16, 0.05, w + 0.05, gx(x), yBase + doorH, gz(cz), MAT.alFrame, false, false);
         const leafW = w - 0.06;
         const pivot = new THREE.Group();
+        pivot.userData.nonBlocking = true;
         pivot.position.set(gx(x), yBase, gz(cz - w * 0.5 + 0.03));
         pivot.rotation.y = openDir * 1.15;
         addBox(pivot, 0.05, doorH - 0.04, leafW, 0, doorH * 0.5, leafW * 0.5, leafMat, false, false);
@@ -1207,6 +1219,11 @@
         addBox(foundationGroup, 2.65, 0.45, 5.80, gx(77.725), 0.225, gz(13.75), MAT.concreteBase);  // 東側發電機室／消防泵浦室底板 (+0.45)
         addBox(foundationGroup, 4.40, ELEV.F1 - 0.45, 1.80, gx(74.20), 0.45 + (ELEV.F1 - 0.45) * 0.5, gz(11.75), MAT.concreteBase); // 樓梯 A 1F 北平台基座 (Z=10.85~12.65, 齊平 +1.20)
         addBox(foundationGroup, 2.65, 0.45, 0.80, gx(77.725), 0.225, gz(17.05), MAT.concreteBase);  // D4 機房門前入口踏階 (+0.45/+0.65)
+        // 地下消防水池（緊急發電機室正下方，GL 0.00 至 -1.55m，依 A4-2 剖面圖：淨寬 530cm、深 90cm 蓄水池＋底板）
+        addBox(foundationGroup, 6.80, 1.55, 6.40, gx(75.55), -0.775, gz(14.65), MAT.wallFrameDark, false, false);
+        addBox(foundationGroup, 6.20, 0.90, 5.80, gx(75.55), -0.85, gz(14.65), MAT.glass, false, false); // 地下消防蓄水示意
+        // 地下電梯機坑（昇降機坑 GL 0.00 至 -1.55m，依 A4-2 剖面圖）
+        addBox(foundationGroup, 2.20, 1.55, 2.35, gx(73.12), -0.775, gz(6.52), MAT.wallFrameDark, false, false);
 
         // South entry grand steps along corridor (Grid ③–⑤ per A1-1: X=16.5~42.2m; Grid ②–③ has corridor railing)
         addFlatPoly(foundationGroup, [[16.2, 10.85], [42.4, 10.85], [42.4, 12.15], [18.0, 12.15]], 0, ELEV.F1 - 0.04, MAT.corridorFloor);
@@ -1341,16 +1358,71 @@
         // 1. Floor finish (15x50 light wood-grain tile)
         addBox(parent, 6.95, 0.06, 7.65, gx(75.52), yBase + 0.03, gz(3.97), MAT.restFloorWood, false, true);
 
-        // 2. Elevator shaft (Southwest corner: X=72.05~74.2, Z=5.4~7.7) + Mech closet
-        addBox(parent, 2.15, FLOOR_H - 0.15, 2.25, gx(73.12), yBase + (FLOOR_H - 0.15) * 0.5, gz(6.52), MAT.wallFrameGray);
-        addBox(parent, 1.0, 2.15, 0.08, gx(73.12), yBase + 1.08, gz(7.68), MAT.steelSilver); // Elevator door
+        // 2. Complete 1F–3F Accessible Elevator (無障礙昇降梯 9人 S=60: X=72.05~74.15, Z=5.35~7.70 per A1-6 & A4-2)
+        const elH = FLOOR_H - 0.15;
+        // Hollow 4-sided RC elevator shaft with real south entrance opening (X=72.62~73.60, H=2.14m)
+        addBox(parent, 2.10, elH, 0.18, gx(73.10), yBase + elH * 0.5, gz(5.44), MAT.wallFrameGray); // 北牆
+        addBox(parent, 0.18, elH, 2.35, gx(72.14), yBase + elH * 0.5, gz(6.52), MAT.wallFrameGray); // 西牆
+        addBox(parent, 0.18, elH, 2.35, gx(74.06), yBase + elH * 0.5, gz(6.52), MAT.wallFrameGray); // 東牆（與弱電室共牆）
+        // 南牆（走廊面 Z=7.66）：門洞 X=72.62~73.60
+        addBox(parent, 0.57, elH, 0.18, gx(72.335), yBase + elH * 0.5, gz(7.66), MAT.wallFrameGray);
+        addBox(parent, 0.55, elH, 0.18, gx(73.875), yBase + elH * 0.5, gz(7.66), MAT.wallFrameGray);
+        addBox(parent, 0.98, elH - 2.14, 0.18, gx(73.11), yBase + 2.14 + (elH - 2.14) * 0.5, gz(7.66), MAT.wallFrameGray);
+        // Stainless recessed portal frame + center-parting double brushed stainless doors + center seam
+        addBox(parent, 0.06, 2.16, 0.22, gx(72.62), yBase + 1.08, gz(7.68), MAT.chrome, false);
+        addBox(parent, 0.06, 2.16, 0.22, gx(73.60), yBase + 1.08, gz(7.68), MAT.chrome, false);
+        addBox(parent, 1.04, 0.07, 0.22, gx(73.11), yBase + 2.15, gz(7.68), MAT.chrome, false);
+        addBox(parent, 0.45, 2.10, 0.05, gx(72.88), yBase + 1.05, gz(7.64), MAT.steelSilver, false); // 左門扇
+        addBox(parent, 0.45, 2.10, 0.05, gx(73.34), yBase + 1.05, gz(7.64), MAT.steelSilver, false); // 右門扇
+        addBox(parent, 0.02, 2.10, 0.06, gx(73.11), yBase + 1.05, gz(7.65), MAT.steelDark, false);   // 中縫線
+        // Illuminated floor indicator LED panel above door + call button panel (▲/▼) on right jamb + tactile floor strip (導盲警示帶)
+        addBox(parent, 0.36, 0.14, 0.04, gx(73.11), yBase + 2.34, gz(7.76), MAT.steelDark, false);
+        addBox(parent, 0.18, 0.07, 0.05, gx(73.11), yBase + 2.34, gz(7.765), makeMat(0xef4444, { emissive: 0xef4444, emissiveIntensity: 0.75 }), false);
+        addBox(parent, 0.11, 0.32, 0.03, gx(73.76), yBase + 1.12, gz(7.76), MAT.chrome, false);
+        addBox(parent, 0.04, 0.04, 0.04, gx(73.76), yBase + 1.18, gz(7.775), makeMat(0x38bdf8, { emissive: 0x38bdf8, emissiveIntensity: 0.6 }), false);
+        addBox(parent, 0.04, 0.04, 0.04, gx(73.76), yBase + 1.06, gz(7.775), makeMat(0xf59e0b, { emissive: 0xf59e0b, emissiveIntensity: 0.6 }), false);
+        addBox(parent, 1.05, 0.015, 0.32, gx(73.11), yBase + 0.01, gz(8.02), makeMat(0xfacc15, { roughness: 0.7 }), false); // 黃色導盲磚警示帶
+        // Interior elevator cab lining (visible in X-Ray / cutaway)
+        addBox(parent, 1.65, 2.25, 0.04, gx(73.10), yBase + 1.15, gz(5.60), MAT.steelSilver, false);
+        addBox(parent, 1.40, 0.05, 0.06, gx(73.10), yBase + 0.90, gz(5.68), MAT.chrome, false); // 車廂內無障礙扶手
+
+        // 2b. 1F–3F Weak Current Room (弱電室／機械室：X=74.15~74.95, Z=5.35~7.70，東向門 D9B 正對無障礙廁所入口 D6，依 A1-6 / B-02 / B-13！)
+        addBox(parent, 0.80, elH, 0.14, gx(74.55), yBase + elH * 0.5, gz(5.42), MAT.wallFrameGray); // 北牆
+        addBox(parent, 0.80, elH, 0.14, gx(74.55), yBase + elH * 0.5, gz(7.68), MAT.wallFrameGray); // 南牆（走廊面）
+        addBox(parent, 0.14, elH, 0.44, gx(74.88), yBase + elH * 0.5, gz(5.62), MAT.wallFrameGray); // 東牆北段
+        addBox(parent, 0.14, elH, 0.44, gx(74.88), yBase + elH * 0.5, gz(7.52), MAT.wallFrameGray); // 東牆南段
+        addBox(parent, 0.14, elH - 2.08, 1.54, gx(74.88), yBase + 2.08 + (elH - 2.08) * 0.5, gz(6.57), MAT.wallFrameGray); // 門楣牆
+        // 弱電室雙開鋁框檢修門 D9B（W=152cm × H=208cm，正對無障礙廁所 D6 入口！微微半開可檢視內部機櫃）
+        addBox(parent, 0.16, 2.08, 0.05, gx(74.88), yBase + 1.04, gz(5.82), MAT.alFrame, false, false);
+        addBox(parent, 0.16, 2.08, 0.05, gx(74.88), yBase + 1.04, gz(7.32), MAT.alFrame, false, false);
+        addBox(parent, 0.16, 0.05, 1.54, gx(74.88), yBase + 2.08, gz(6.57), MAT.alFrame, false, false);
+        {
+          const wLeafN = new THREE.Group();
+          wLeafN.userData.nonBlocking = true;
+          wLeafN.position.set(gx(74.91), yBase, gz(5.85));
+          wLeafN.rotation.y = 0.28; // 微開露白框線與鋁門片
+          addBox(wLeafN, 0.05, 2.04, 0.72, 0, 1.02, 0.36, MAT.ckWhite, false, false);
+          addBox(wLeafN, 0.07, 0.14, 0.03, 0.02, 1.02, 0.64, MAT.steelDark, false, false);
+          parent.add(wLeafN);
+          const wLeafS = new THREE.Group();
+          wLeafS.userData.nonBlocking = true;
+          wLeafS.position.set(gx(74.91), yBase, gz(7.29));
+          wLeafS.rotation.y = -0.10;
+          addBox(wLeafS, 0.05, 2.04, 0.72, 0, 1.02, -0.36, MAT.ckWhite, false, false);
+          addBox(wLeafS, 0.07, 0.14, 0.03, 0.02, 1.02, -0.64, MAT.steelDark, false, false);
+          parent.add(wLeafS);
+        }
+        // 弱電室內機櫃與配線箱
+        addBox(parent, 0.42, 1.75, 1.15, gx(74.45), yBase + 0.875, gz(6.55), MAT.steelDark, false);
+        addBox(parent, 0.04, 0.65, 0.75, gx(74.67), yBase + 1.25, gz(6.55), MAT.steelSilver, false);
 
         // 3. Accessible Restroom (Southeast corner: X=76.55~78.95, Z=5.55~7.75)
         addBox(parent, 2.40, 2.40, 0.14, gx(77.75), yBase + 1.20, gz(5.55), MAT.wallInt); // North partition
         addBox(parent, 2.40, 1.15, 0.14, gx(77.75), yBase + 2.98, gz(5.55), MAT.restYelUpper);
         addBox(parent, 0.14, 3.55, 1.10, gx(76.55), yBase + 1.78, gz(6.10), MAT.wallInt); // West side wall (leaves 1.03m sliding door opening)
         addBox(parent, 0.14, 1.40, 1.05, gx(76.55), yBase + 2.85, gz(7.16), MAT.wallInt); // Door lintel above D6
-        addBox(parent, 0.06, 2.10, 0.96, gx(76.47), yBase + 1.05, gz(6.22), MAT.restCubicleWood); // D6 拉門開啟（滑至牆側，通道全開）
+        const d6Door = addBox(parent, 0.06, 2.10, 0.96, gx(76.47), yBase + 1.05, gz(6.22), MAT.restCubicleWood); // D6 拉門開啟（滑至牆側，通道全開）
+        d6Door.userData.nonBlocking = true;
         // Accessible toilet & basin inside
         addBox(parent, 0.45, 0.45, 0.65, gx(78.45), yBase + 0.25, gz(6.05), MAT.porcelain);
         addBox(parent, 0.55, 0.18, 0.45, gx(77.15), yBase + 0.78, gz(5.90), MAT.porcelain);
@@ -1359,16 +1431,21 @@
         const entTexMat = floorNum === 1 ? MAT.ent1F : (floorNum === 2 ? MAT.ent2F : MAT.ent3F);
         addBox(parent, 2.42, 3.55, 0.16, gx(77.76), yBase + 1.78, gz(7.82), entTexMat);
 
-        // 5. East Mech Room (機械室：依 B-02 僅 1F/3F 保留，2F 依 B-13 / D-01 已整併拓寬空間，避免與 2F 濕地馬賽克入口牆碰撞！)
-        if (!is2F) {
-          addBox(parent, 1.20, 3.55, 0.14, gx(78.40), yBase + 1.78, gz(3.15), MAT.wallInt); // 北牆
-          addBox(parent, 0.14, 3.55, 0.70, gx(77.82), yBase + 1.78, gz(3.50), MAT.wallInt); // 西牆北段
-          addBox(parent, 0.14, 3.55, 0.75, gx(77.82), yBase + 1.78, gz(5.12), MAT.wallInt); // 西牆南段
-          addInteriorDoorZ(parent, 77.82, yBase, 3.55, 4.30, 0.88, 2.10, MAT.steelDark, -1, MAT.wallInt); // D8 檢修門
-          // 機械室內管線立管與配電／熱水設備
-          addBox(parent, 0.45, 1.45, 0.65, gx(78.55), yBase + 0.725, gz(3.80), MAT.steelSilver, false);
-          addBox(parent, 0.14, 3.20, 0.14, gx(78.70), yBase + 1.60, gz(4.85), MAT.steelDark, false);
+        // 5. East Mech Room (1F/2F/3F 機械室：X=77.95~79.00, Z=3.15~5.55；依 D-01 & D-07，2F 白色機電室門緊貼濕地馬賽克裝飾牆南側，零碰撞！)
+        addBox(parent, 1.05, 3.55, 0.14, gx(78.475), yBase + 1.78, gz(3.15), MAT.wallInt); // 北牆
+        if (is2F) {
+          // 2F：北段實牆 (Z=3.15~4.29) 精準銜接 330cm 濕地裝飾牆 (Z=4.15)，門洞 (Z=4.29~5.13) 緊貼裝飾牆南側，南段實牆 (Z=5.13~5.55) 接無障礙廁所北牆（依 D-07！）
+          addBox(parent, 0.14, 3.55, 1.14, gx(77.95), yBase + 1.78, gz(3.72), MAT.wallInt);
+          addBox(parent, 0.14, 3.55, 0.42, gx(77.95), yBase + 1.78, gz(5.34), MAT.wallInt);
+          addInteriorDoorZ(parent, 77.95, yBase, 3.55, 4.71, 0.84, 2.10, MAT.ckWhite, -0.35, MAT.wallInt); // 2F 機電室白門緊貼裝飾牆！
+        } else {
+          addBox(parent, 0.14, 3.55, 0.72, gx(77.95), yBase + 1.78, gz(3.51), MAT.wallInt);
+          addBox(parent, 0.14, 3.55, 0.80, gx(77.95), yBase + 1.78, gz(5.15), MAT.wallInt);
+          addInteriorDoorZ(parent, 77.95, yBase, 3.55, 4.31, 0.88, 2.10, MAT.steelDark, -1, MAT.wallInt); // 1F/3F 機械室 D8 檢修門
         }
+        // 機械室內管線立管與配電／熱水設備
+        addBox(parent, 0.42, 1.45, 0.65, gx(78.55), yBase + 0.725, gz(3.80), MAT.steelSilver, false);
+        addBox(parent, 0.14, 3.20, 0.14, gx(78.70), yBase + 1.60, gz(4.85), MAT.steelDark, false);
 
         // Helper: Sculpted recessed trough washbasin (馬槽式洗手台) + chrome faucets + black-framed reflective mirror (依 D-06 / D-07)
         const addBasinAndMirror = (cx, zWall, faceDirZ, w, faucets = 1, mirrorH = 0.78) => {
@@ -1405,8 +1482,8 @@
           // =================================================================
           // 2F 性別友善廁所 (圖號 B-13 ~ B-20, D-01 ~ D-09)
           // =================================================================
-          // Entry Wetland Mosaic Feature Wall (330cm wide x 240cm tall, X=75.00~78.30, Z=4.15 per B-13 & D-01 — zero collision!)
-          addBox(parent, 3.30, 2.40, 0.16, gx(76.65), yBase + 1.20, gz(4.15), MAT.wetlandWall);
+          // Entry Wetland Mosaic Feature Wall (330cm wide x 240cm tall, X=74.65~77.95, Z=4.15 — 東端緊貼 2F 機電室白門零碰撞！依 D-01 / D-07)
+          addBox(parent, 3.30, 2.40, 0.16, gx(76.30), yBase + 1.20, gz(4.15), MAT.wetlandWall);
 
           // West row: 1 Sit Toilet (north) + 3 Enclosed Urinal Cubicles (H=240cm + anti-peep top lip)
           addBox(parent, 1.15, 0.08, 3.20, gx(72.65), yBase + 0.04, gz(3.60), MAT.restFloorDark, false); // 50x50 dark tile urinal zone
@@ -1428,24 +1505,24 @@
             }
           });
 
-          // Center Island (north of Wetland wall, Z=3.05~4.07): Sculpted vanity + mirror + 2 raised Squat Cubicles (B-13 / D-06)
-          addBox(parent, 0.88, 0.72, 0.18, gx(75.44), yBase + 0.36, gz(3.98), MAT.restLavMosaic);
-          addBasinAndMirror(75.44, 4.05, -1, 0.84, 1, 0.76);
+          // Center Island (north of Wetland wall, Z=3.05~4.07, X=74.65~77.90): Sculpted vanity + mirror + 2 raised Squat Cubicles (B-13 / D-06)
+          addBox(parent, 0.86, 0.72, 0.18, gx(75.08), yBase + 0.36, gz(3.98), MAT.restLavMosaic);
+          addBasinAndMirror(75.08, 4.05, -1, 0.82, 1, 0.76);
           // 2 raised squat platforms (+18cm) & H=225cm cubicles
-          addBox(parent, 2.40, 0.18, 1.00, gx(77.08), yBase + 0.09, gz(3.56), MAT.restFloorWood);
-          [75.88, 77.08, 78.28].forEach((dx) => {
+          addBox(parent, 2.34, 0.18, 1.00, gx(76.72), yBase + 0.09, gz(3.56), MAT.restFloorWood);
+          [75.55, 76.72, 77.88].forEach((dx) => {
             addBox(parent, 0.05, 2.25, 1.00, gx(dx), yBase + 1.22, gz(3.56), MAT.restCubicleWood);
             addBox(parent, 0.22, 0.04, 1.00, gx(dx), yBase + 2.34, gz(3.56), MAT.restCubicleWood);
           });
-          [76.48, 77.68].forEach((cx) => {
-            addBox(parent, 1.12, 2.18, 0.04, gx(cx), yBase + 1.20, gz(3.06), MAT.restCubicleWood);
+          [76.14, 77.30].forEach((cx) => {
+            addBox(parent, 1.10, 2.18, 0.04, gx(cx), yBase + 1.20, gz(3.06), MAT.restCubicleWood);
             addBox(parent, 0.16, 0.16, 0.06, gx(cx), yBase + 1.68, gz(3.03), MAT.restPurpleIcon, false);
           });
 
-          // South Vestibule Single Vanity + Mirror + Mop Basin (along Accessible Restroom north wall Z=5.48 per B-13 / D-01)
-          addBox(parent, 0.90, 0.68, 0.44, gx(77.25), yBase + 0.34, gz(5.24), MAT.wallInt, false);
-          addBasinAndMirror(77.25, 5.47, -1, 0.90, 1, 0.74);
-          addBox(parent, 0.52, 0.36, 0.46, gx(78.15), yBase + 0.18, gz(5.24), MAT.porcelain, false); // 新設拖布盆
+          // South Vestibule Single Vanity + Mirror + Mop Basin (along Accessible Restroom north wall Z=5.47, X=76.55~77.82 — 避開東側機電室白門！)
+          addBox(parent, 0.78, 0.68, 0.44, gx(76.96), yBase + 0.34, gz(5.24), MAT.wallInt, false);
+          addBasinAndMirror(76.96, 5.47, -1, 0.78, 1, 0.74);
+          addBox(parent, 0.44, 0.36, 0.44, gx(77.62), yBase + 0.18, gz(5.24), MAT.porcelain, false); // 新設拖布盆
 
           // North Pipe Shaft + 132cm Trough Sink & Black-Framed Mirror (X=74.6~75.9, Z=0.15~1.7 per D-06 & D-07)
           addBox(parent, 1.32, 3.55, 1.05, gx(75.26), yBase + 1.78, gz(0.68), MAT.wallInt);
@@ -1601,7 +1678,7 @@
         } else {
           addBox(targetGroup, 79.10, 0.14, 0.06, gx(39.525), yBase - 0.06, gz(-0.02), MAT.mosaicStrip, false);
         }
-        addBox(targetGroup, 0.06, 0.14, 10.90, gx(-0.02), yBase - 0.06, gz(5.425), MAT.mosaicStrip, false);
+        // 西側外牆（X=0.0）無藍色馬賽克橫條；僅保留東側外牆樓板飾帶
         addBox(targetGroup, 0.06, 0.14, 7.90, gx(79.16), yBase - 0.06, gz(3.925), MAT.mosaicStrip, false);
 
         // 2. Structural RC Columns along Grids ①–⑩ on Lines D, C, B (Grid ⑪ has no full structural column)
@@ -1727,41 +1804,55 @@
           addBox(targetGroup, 0.04, 1.60, 1.90, gx(0.10), yBase + 2.00, gz(wz), MAT.glass, false, false);
           addBox(targetGroup, 0.08, 1.60, 0.06, gx(0.10), yBase + 2.00, gz(wz), MAT.alFrame, false, false);
         });
-        addWindowWallX(targetGroup, 0.2, 5.1, yBase, FLOOR_H, 0.10, MAT.wallExt, 3.0, 1.4, 1.3);
-        addWindowWallX(targetGroup, 0.2, 3.8, yBase, FLOOR_H, 7.75, MAT.wallExt, 2.2, 1.4, 1.3);
-        // Complete West Restroom interior (女廁北半 + 男廁南半 + 管道兼掃具間 + 樓梯B隔牆，依 A1-8)
-        addBox(targetGroup, 4.85, 0.05, 7.55, gx(2.58), yBase + 0.025, gz(3.925), MAT.restFloorWood, false, true);
-        addBox(targetGroup, 0.15, FLOOR_H - 0.15, 7.65, gx(5.09), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt); // 廁所與樓梯B隔牆
-        addBox(targetGroup, 3.70, FLOOR_H - 0.15, 0.14, gx(2.05), yBase + (FLOOR_H - 0.15) * 0.5, gz(4.25), MAT.wallInt); // 男女廁中隔牆
-        // 女廁 (North: Z=0.15~4.25): 3 stalls along north wall + 2 stalls along south divider + wash trough
-        for (let i = 0; i < 3; i++) {
-          const sx = 0.85 + i * 1.02;
-          addBox(targetGroup, 0.05, 2.05, 1.35, gx(sx + 0.51), yBase + 1.025, gz(0.88), MAT.restCubicleWood);
-          addBox(targetGroup, 0.90, 2.00, 0.04, gx(sx), yBase + 1.00, gz(1.55), MAT.restCubicleWood);
+        addWindowWallX(targetGroup, 0.2, 5.1, yBase, FLOOR_H, 0.10, MAT.wallExt, 3.0, 0.90, 2.05); // W8 北向高窗（依 A2-2 北向立面）
+        // 南牆（走廊面 Z=7.20，退縮 65cm 留設面向走廊之 286cm 公共洗手台與明鏡，依 A1-8！）
+        addWindowWallX(targetGroup, 0.2, 3.88, yBase, FLOOR_H, 7.20, MAT.wallExt, 2.2, 0.65, 2.25); // W10 高氣窗
+        addBox(targetGroup, 2.86, 0.12, 0.52, gx(2.35), yBase + 0.78, gz(7.52), MAT.porcelain);    // 走廊側 3 槽共用洗手台
+        addBox(targetGroup, 2.80, 0.72, 0.03, gx(2.35), yBase + 1.48, gz(7.29), MAT.mirror, false); // 共用明鏡
+        addBox(targetGroup, 2.86, 0.03, 0.04, gx(2.35), yBase + 1.85, gz(7.29), MAT.steelDark, false);
+        addBox(targetGroup, 2.86, 0.03, 0.04, gx(2.35), yBase + 1.11, gz(7.29), MAT.steelDark, false);
+        [1.45, 2.35, 3.25].forEach((fx) => {
+          addBox(targetGroup, 0.04, 0.16, 0.04, gx(fx), yBase + 0.92, gz(7.34), MAT.chrome, false);
+          addBox(targetGroup, 0.035, 0.035, 0.12, gx(fx), yBase + 0.98, gz(7.40), MAT.chrome, false);
+        });
+        // Complete West Restroom interior (女廁北半 + 管道兼掃具間 D12 + 男廁南半 + 東側 121cm 玄關完整實體隔牆，零破圖浮空門框！依 A1-8)
+        const wcH = FLOOR_H - 0.15;
+        addBox(targetGroup, 4.88, 0.05, 7.10, gx(2.60), yBase + 0.025, gz(3.68), MAT.restFloorWood, false, true);
+        addBox(targetGroup, 0.15, wcH, 7.15, gx(5.09), yBase + wcH * 0.5, gz(3.68), MAT.wallInt);  // 東側廁所與樓梯B實牆
+        addBox(targetGroup, 3.74, wcH, 0.14, gx(2.05), yBase + wcH * 0.5, gz(3.98), MAT.wallInt);  // 男女廁中隔實牆 (X=0.18~3.92)
+        // 女廁入口牆（Z=3.98，橫跨東側玄關 X=3.88~5.09，左右實牆柱完整包覆 D11 門框！）
+        addBox(targetGroup, 0.16, wcH, 0.14, gx(3.96), yBase + wcH * 0.5, gz(3.98), MAT.wallInt);
+        addBox(targetGroup, 0.16, wcH, 0.14, gx(4.98), yBase + wcH * 0.5, gz(3.98), MAT.wallInt);
+        addInteriorDoorX(targetGroup, 4.47, yBase, wcH, 3.98, 0.88, 2.08, MAT.woodDoor, -1, MAT.wallInt); // 女廁 D11
+        // 女廁內部 (Z=0.15~3.98): 北側 4 間蹲式＋南側 2 間坐/蹲式（依 A1-8）
+        for (let i = 0; i < 4; i++) {
+          const sx = 0.72 + i * 1.00;
+          addBox(targetGroup, 0.05, 2.05, 1.25, gx(sx + 0.50), yBase + 1.025, gz(0.80), MAT.restCubicleWood);
+          addBox(targetGroup, 0.90, 2.00, 0.04, gx(sx), yBase + 1.00, gz(1.42), MAT.restCubicleWood);
         }
         for (let i = 0; i < 2; i++) {
-          const sx = 0.85 + i * 1.02;
-          addBox(targetGroup, 0.05, 2.05, 1.30, gx(sx + 0.51), yBase + 1.025, gz(3.52), MAT.restCubicleWood);
-          addBox(targetGroup, 0.90, 2.00, 0.04, gx(sx), yBase + 1.00, gz(2.86), MAT.restCubicleWood);
+          const sx = 0.95 + i * 1.02;
+          addBox(targetGroup, 0.05, 2.05, 1.22, gx(sx + 0.51), yBase + 1.025, gz(3.30), MAT.restCubicleWood);
+          addBox(targetGroup, 0.90, 2.00, 0.04, gx(sx), yBase + 1.00, gz(2.68), MAT.restCubicleWood);
         }
-        addBox(targetGroup, 0.48, 0.22, 1.85, gx(4.78), yBase + 0.78, gz(1.45), MAT.porcelain); // 女廁洗手台
-        // 男廁 (South: Z=4.25~7.70): 中空管道兼掃具間(D12) + 2 west stalls + 3 urinals + south wash trough + D11 入口門框
-        //   中空管道兼掃具間（X=2.45~3.85, Z=4.25~5.55，東向 D12 檢修門開向玄關，內設給排水立管與拖布盆，依 A1-8）
-        addBox(targetGroup, 0.14, FLOOR_H - 0.15, 1.30, gx(2.48), yBase + (FLOOR_H - 0.15) * 0.5, gz(4.90), MAT.wallInt);
-        addBox(targetGroup, 1.40, FLOOR_H - 0.15, 0.14, gx(3.15), yBase + (FLOOR_H - 0.15) * 0.5, gz(5.52), MAT.wallInt);
-        addInteriorDoorZ(targetGroup, 3.82, yBase, FLOOR_H - 0.15, 4.90, 0.85, 2.05, MAT.woodDoor, -1, MAT.wallInt); // D12 掃具間門
-        addBox(targetGroup, 0.48, 0.32, 0.46, gx(2.85), yBase + 0.16, gz(4.85), MAT.porcelain, false); // 拖布盆
-        addBox(targetGroup, 0.12, 3.20, 0.12, gx(2.75), yBase + 1.60, gz(5.25), MAT.steelSilver, false); // 排水立管
-        //   男女廁入口門框 D11（連接玄關 X=3.85~5.05 至女廁北側與男廁南側，依 A1-8）
-        addInteriorDoorX(targetGroup, 4.45, yBase, FLOOR_H - 0.15, 4.25, 0.96, 2.10, MAT.woodDoor, -1, MAT.wallInt); // 女廁 D11
-        addInteriorDoorZ(targetGroup, 3.85, yBase, FLOOR_H - 0.15, 6.25, 0.96, 2.10, MAT.woodDoor, -1, MAT.wallInt); // 男廁 D11
-        addBox(targetGroup, 1.25, 2.05, 0.05, gx(0.85), yBase + 1.025, gz(5.45), MAT.restCubicleWood);
-        addBox(targetGroup, 1.25, 2.05, 0.05, gx(0.85), yBase + 1.025, gz(6.55), MAT.restCubicleWood);
-        addBox(targetGroup, 0.04, 2.00, 2.10, gx(1.48), yBase + 1.00, gz(5.45), MAT.restCubicleWood);
-        [2.25, 2.95, 3.65].forEach((ux) => {
-          addBox(targetGroup, 0.34, 0.58, 0.28, gx(ux), yBase + 0.85, gz(5.72), MAT.porcelain);
+        // 東側玄關西牆（X=3.88, Z=3.98~7.20）：連續實牆段嚴密銜接 D12（掃具間）與 D11（男廁），徹底消除浮空破圖！
+        addBox(targetGroup, 0.14, wcH, 0.22, gx(3.88), yBase + wcH * 0.5, gz(4.09), MAT.wallInt); // Z=3.98~4.20
+        addInteriorDoorZ(targetGroup, 3.88, yBase, wcH, 4.62, 0.84, 2.06, MAT.woodDoor, -1, MAT.wallInt); // D12 管道兼掃具間 (Z=4.20~5.04)
+        addBox(targetGroup, 0.14, wcH, 0.30, gx(3.88), yBase + wcH * 0.5, gz(5.19), MAT.wallInt); // Z=5.04~5.34
+        addInteriorDoorZ(targetGroup, 3.88, yBase, wcH, 5.78, 0.88, 2.08, MAT.woodDoor, -1, MAT.wallInt); // D11 男廁入口 (Z=5.34~6.22)
+        addBox(targetGroup, 0.14, wcH, 0.98, gx(3.88), yBase + wcH * 0.5, gz(6.71), MAT.wallInt); // Z=6.22~7.20
+        // 管道兼掃具間（X=2.40~3.88, Z=3.98~5.24）
+        addBox(targetGroup, 0.14, wcH, 1.26, gx(2.40), yBase + wcH * 0.5, gz(4.61), MAT.wallInt);
+        addBox(targetGroup, 1.48, wcH, 0.14, gx(3.14), yBase + wcH * 0.5, gz(5.24), MAT.wallInt);
+        addBox(targetGroup, 0.46, 0.34, 0.44, gx(2.82), yBase + 0.17, gz(4.65), MAT.porcelain, false); // 拖布盆
+        addBox(targetGroup, 0.12, 3.20, 0.12, gx(2.68), yBase + 1.60, gz(4.95), MAT.steelSilver, false); // 給排水立管
+        // 男廁內部 (Z=3.98~7.20): 北側 2 間廁間 + 南牆 5 座小便斗與隔屏（依 A1-8）
+        addBox(targetGroup, 0.05, 2.05, 1.22, gx(1.28), yBase + 1.025, gz(4.62), MAT.restCubicleWood);
+        addBox(targetGroup, 2.10, 2.00, 0.04, gx(1.30), yBase + 1.00, gz(5.22), MAT.restCubicleWood);
+        [0.65, 1.35, 2.05, 2.75, 3.42].forEach((ux) => {
+          addBox(targetGroup, 0.32, 0.56, 0.26, gx(ux), yBase + 0.84, gz(6.98), MAT.porcelain);
+          if (ux < 3.2) addBox(targetGroup, 0.04, 0.95, 0.42, gx(ux + 0.35), yBase + 0.95, gz(6.92), MAT.restCubicleWood, false);
         });
-        addBox(targetGroup, 1.95, 0.22, 0.48, gx(2.55), yBase + 0.78, gz(7.42), MAT.porcelain); // 男廁洗手台
         // Helper: Solid RC inclined stair flight along Z with 22cm soffit waist slab, crisp treads, & stainless handrail (A4-2 / A4-3)
         const addSolidStairFlightZ = (xCenter, width, z0, y0, z1, y1, steps = 12, railSideX = 0, waistThick = 0.22) => {
           const sMin = Math.min(z0, z1), sMax = Math.max(z0, z1), runL = sMax - sMin;
@@ -1777,6 +1868,7 @@
           wMesh.rotation.y = -Math.PI / 2;
           wMesh.position.set(gx(xCenter + width * 0.5), 0, gz(sMin));
           wMesh.castShadow = true; wMesh.receiveShadow = true;
+          wMesh.userData.nonBlocking = true;
           targetGroup.add(wMesh);
           // 2) Crisp stepped concrete treads on top of waist slab
           const riser = (y1 - y0) / steps;
@@ -1784,7 +1876,8 @@
           for (let i = 0; i < steps; i++) {
             const zMid = z0 + (i + 0.5) * tread;
             const yTop = y0 + (i + 1) * riser;
-            addBox(targetGroup, width, riser + 0.04, Math.abs(tread) + 0.02, gx(xCenter), yTop - (riser + 0.04) * 0.5, gz(zMid), MAT.concreteBase, false);
+            const st = addBox(targetGroup, width, riser + 0.04, Math.abs(tread) + 0.02, gx(xCenter), yTop - (riser + 0.04) * 0.5, gz(zMid), MAT.concreteBase, false);
+            st.userData.nonBlocking = true;
           }
           // 3) Sloped stainless tubular handrail along stairwell inner edge (扶手(1)/(2))
           if (railSideX !== 0) {
@@ -1800,28 +1893,40 @@
           }
         };
 
-        // Stair B north wall (Z=0.10, X=5.15~8.95) & 1F Storage Room (儲藏室, A1-8 / A4-3)
+        // Stair B north wall (Z=0.10, X=5.15~8.95) & 1F Storage Room (儲藏室, A1-8 / A2-2 / A4-3)
+        //   依 A1-8 與 A2-2 北向立面：西半 (X=5.15~7.05) 全為實心 RC 外牆；窗洞 W7 (1F) / W11 (2F/3F) 全部位於東半貼近軸線② (X=7.05~8.95)！
+        addBox(targetGroup, 1.90, FLOOR_H, 0.18, gx(6.10), yBase + FLOOR_H * 0.5, gz(0.10), MAT.wallExt); // 北牆西半實牆
         if (floorNum === 1) {
-          // 1F north wall with W7 high window under +3.10m mid-landing lighting 儲藏室 (A4-3)
-          addWindowWallX(targetGroup, 5.15, 8.95, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.50, 0.85, 0.78);
-          // 1F 儲藏室 under west flight & north +3.10m mid-landing: south wall at Z=6.10 flush to 2F flight soffit (3.58m) with D13 door + east partition at X=7.04
-          addBox(targetGroup, 0.40, 3.58, 0.14, gx(5.35), yBase + 1.79, gz(6.10), MAT.wallInt);
-          addBox(targetGroup, 0.55, 3.58, 0.14, gx(6.77), yBase + 1.79, gz(6.10), MAT.wallInt);
-          addInteriorDoorX(targetGroup, 6.02, yBase, 3.58, 6.10, 0.94, 2.08, MAT.woodDoor, -1, MAT.wallInt); // D13 儲藏室門（面向南走廊）
-          addBox(targetGroup, 0.14, 1.85, 3.60, gx(7.04), yBase + 0.925, gz(4.30), MAT.wallInt);           // 儲藏室東側梯下隔牆
+          // 1F 東半 W7 儲藏室高窗（X=7.05~8.95，位於 +3.10m 中平台下方，依 A1-8 / A2-2）
+          addWindowWallX(targetGroup, 7.05, 8.95, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.56, 0.72, 1.05);
+          // 1F 儲藏室（西段梯下與北中平台下）：南牆 Z=6.10 貼合至二樓梯底 3.58m 並開 D13 門；東牆 X=7.04 全高 3.62m 徹底封死儲藏室與樓梯 B 之間隙！
+          addBox(targetGroup, 0.40, 3.62, 0.14, gx(5.35), yBase + 1.81, gz(6.10), MAT.wallInt);
+          addBox(targetGroup, 0.55, 3.62, 0.14, gx(6.77), yBase + 1.81, gz(6.10), MAT.wallInt);
+          addInteriorDoorX(targetGroup, 6.02, yBase, 3.62, 6.10, 0.94, 2.08, MAT.woodDoor, -1, MAT.wallInt); // D13 儲藏室門（面向南走廊）
+          addBox(targetGroup, 0.14, 3.62, 3.64, gx(7.04), yBase + 1.81, gz(4.30), MAT.wallInt);           // 儲藏室與樓梯B東側全高封牆（徹底消除三角縫隙！）
           addBox(targetGroup, 2.40, 1.50, 0.55, gx(7.35), yBase + 0.75, gz(0.65), MAT.steelSilver, false); // 儲藏室貨架
         } else {
-          addWindowWallX(targetGroup, 5.15, 8.95, yBase, FLOOR_H, 0.10, MAT.wallExt, 2.0, 1.45, 1.25);
+          // 2F & 3F 東半 W11 梯間採光大窗（緊靠軸線② X=7.05~8.95，低窗台對齊樓層線上方，依 A1-8 / A2-2！）
+          addWindowWallX(targetGroup, 7.05, 8.95, yBase, FLOOR_H, 0.10, MAT.wallExt, 1.62, 1.65, 0.15);
         }
-        // Stair B flights (依 A1-8 & A4-3：僅 1F→2F 與 2F→3F，每層 12+12=24 階，東段向北上、西段向南回上！3F 無上屋頂樓梯僅設安全欄杆！)
+        // Stair B flights (依 A1-8 & A4-3：僅 1F→2F 與 2F→3F，每層 12+12=24 階，東段向北上、西段向南回上！3F 無上屋頂樓梯，設 56cm 延伸平台、欄杆(2) 與屋頂不鏽鋼爬梯！)
         if (floorNum === 1 || floorNum === 2) {
           addSolidStairFlightZ(8.00, 1.72, 6.10, yBase, 2.50, yBase + 1.90, 12, -1);                    // 下段（東側向北上）
-          addBox(targetGroup, 3.76, 0.18, 2.32, gx(7.04), yBase + 1.90 - 0.09, gz(1.34), MAT.concreteBase); // 北側轉折中平台 (+3.10 / +6.90)
+          const midB = addBox(targetGroup, 3.76, 0.18, 2.32, gx(7.04), yBase + 1.90 - 0.09, gz(1.34), MAT.concreteBase); // 北側轉折中平台 (+3.10 / +6.90)
+          midB.userData.nonBlocking = true;
           addSolidStairFlightZ(6.10, 1.72, 2.50, yBase + 1.90, 6.10, yBase + 3.80, 12, 1);              // 上段（西側向南上）
         } else if (floorNum === 3) {
-          // 3F 樓梯 B 頂部無上屋頂梯段，設 欄杆(2) H=110cm 防護梯井開口（依 A1-8 & A4-3）
-          addRailingX(targetGroup, 7.05, 8.90, yBase, 6.10, 1.10);
-          addRailingZ(targetGroup, 5.55, 6.10, yBase, 7.05, 1.10);
+          // 3F 樓梯 B（依 A1-8 參層樓梯(B) & A4-3）：東側平台向北延伸 56cm (Z=5.54~6.12)，設 欄杆(2) H=110cm 與東南側不鏽鋼屋頂爬梯＋檢修孔！
+          addBox(targetGroup, 1.95, 0.18, 0.58, gx(7.98), yBase - 0.09, gz(5.83), MAT.slabFloor);       // 56cm 延伸平台
+          addRailingX(targetGroup, 7.00, 8.90, yBase, 5.56, 1.10);                                      // 東半梯井防護 欄杆(2)
+          addRailingZ(targetGroup, 5.56, 6.12, yBase, 7.00, 1.10);                                      // 中線 56cm 轉折欄杆
+          // 不鏽鋼屋頂檢修爬梯（貼東牆 X=8.84, Z=6.45~7.05，自 3F +8.80 爬升至屋頂檢修孔 +12.60，依 A1-8！）
+          addBox(targetGroup, 0.04, 3.75, 0.04, gx(8.84), yBase + 1.88, gz(6.50), MAT.chrome, false);
+          addBox(targetGroup, 0.04, 3.75, 0.04, gx(8.84), yBase + 1.88, gz(7.00), MAT.chrome, false);
+          for (let ry = 0.35; ry < 3.65; ry += 0.30) {
+            addBox(targetGroup, 0.03, 0.03, 0.50, gx(8.84), yBase + ry, gz(6.75), MAT.chrome, false);
+          }
+          addBox(targetGroup, 0.80, 0.06, 0.80, gx(8.48), yBase + FLOOR_H - 0.05, gz(6.75), MAT.steelDark, false); // 屋頂檢修孔蓋框
         }
 
         // Helper for classroom/rear-balcony furnishings (依 A1-1~A1-3, A3-2, A3-5)
@@ -1865,12 +1970,10 @@
             const med = new THREE.Mesh(new THREE.CylinderGeometry(3.75, 3.75, 0.04, 48), MAT.breezewayCenter);
             med.position.set(gx(58.5), yBase + 0.03, gz(4.05));
             targetGroup.add(med);
-            // 穿堂西側隔間牆（軸線⑦，A1-1：總務處與穿堂之間，近走廊端設門 D1 可開啟進出）
-            addBox(targetGroup, 0.18, FLOOR_H - 0.15, 5.55, gx(54.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(0.1 + 2.775), MAT.wallInt);
-            addBox(targetGroup, 0.18, FLOOR_H - 0.15, 0.90, gx(54.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(7.32), MAT.wallInt);
-            addInteriorDoorZ(targetGroup, 54.0, yBase, FLOOR_H - 0.15, 6.22, 0.96, 2.15, MAT.woodDoor, -1, MAT.wallInt);
-            // 穿堂兩側木框公布欄（依 A1-1：穿堂兩側設置公布欄）
-            [1.6, 3.2, 4.8].forEach((bz) => {
+            // 穿堂西側隔間牆（軸線⑦，依 A1-1：總務處與穿堂間為連續實牆無開門，兩側均設置木框公布欄！）
+            addBox(targetGroup, 0.18, FLOOR_H - 0.15, 7.65, gx(54.0), yBase + (FLOOR_H - 0.15) * 0.5, gz(3.925), MAT.wallInt);
+            // 穿堂兩側木框公布欄（依 A1-1：穿堂兩側設置公布欄共 12 組）
+            [1.4, 3.0, 4.6, 6.2].forEach((bz) => {
               addBox(targetGroup, 0.08, 1.25, 1.35, gx(54.14), yBase + 1.65, gz(bz), MAT.woodDoor, false);
               addBox(targetGroup, 0.09, 1.12, 1.22, gx(54.15), yBase + 1.65, gz(bz), MAT.bulletinCork, false);
               addBox(targetGroup, 0.08, 1.25, 1.35, gx(62.86), yBase + 1.65, gz(bz), MAT.woodDoor, false);
@@ -1951,6 +2054,9 @@
             // 1F 圖書室西半：D16 寬 180cm 雙開玻璃門（向內開啟）＋ 窗（依 A1-1 & A5-1）
             addDoorWithTransomX(targetGroup, bx0 + 1.15, yBase, FLOOR_H, 7.75, 1.76, 2.17, 0.60, true);
             addTwinWindowWallX(targetGroup, bx0 + 2.15, bx1 - 0.35, yBase, FLOOR_H, 7.75, MAT.wallExt, 1.90, 0.90, 0.50, 3);
+          } else if (floorNum === 1 && bay === 2) {
+            // 1F 圖書室東半（軸線 ④–⑤）：依 A1-1 & A2-1 中段南牆無開門，全設連續採光窗 W2-W1-W1-W2！
+            addTwinWindowWallX(targetGroup, bx0 + 0.35, bx1 - 0.35, yBase, FLOOR_H, 7.75, MAT.wallExt, 1.90, 0.90, 0.45, 4);
           } else {
             addTwinWindowWallX(targetGroup, bx0 + 1.20, bx1 - 1.20, yBase, FLOOR_H, 7.75, MAT.wallExt, 1.90, 0.90, 0.50, 3);
             addDoorWithTransomX(targetGroup, bx0 + 0.65, yBase, FLOOR_H, 7.75, 0.96);
@@ -2058,6 +2164,13 @@
             pt.position.set(gx(73.45), 0.45 + 0.675, gz(16.85)); targetGroup.add(pt); // 梯下消防壓力桶
           }
           addBox(targetGroup, 4.00, 0.50, 0.14, gx(74.20), 0.45 + 0.25, gz(17.75), MAT.concreteBase, false); // 南側 1/2B 磚矮牆 (H=50cm, A4-2)
+          // 2 座 Ø60cm 鑄鐵人孔蓋（通往地下室 GL -1.55m 消防水池，依 A1-6 & A4-2！）
+          [[74.35, 16.05], [77.25, 15.75]].forEach(([mx, mz]) => {
+            const mh = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 18), MAT.steelDark);
+            mh.position.set(gx(mx), 0.47, gz(mz)); targetGroup.add(mh);
+            const mr = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.025, 18), MAT.steelSilver);
+            mr.position.set(gx(mx), 0.46, gz(mz)); targetGroup.add(mr);
+          });
         } else if (floorNum === 2) {
           // 2F Roof Terrace over Generator Room (露台 +500, X=76.4~79.05, Z=10.85~16.65, 女兒牆 +620 per A1-6 & A3-7)
           addBox(targetGroup, 2.65, 0.18, 5.8, gx(77.725), yBase - 0.09, gz(13.75), MAT.corridorFloor);
@@ -2080,16 +2193,16 @@
           addBox(targetGroup, 0.22, ELEV.F2, 1.80, gx(76.29), ELEV.F2 * 0.5, gz(11.75), MAT.wallFrameGray);
           addBox(targetGroup, 0.22, ELEV.F2, 1.65, gx(76.29), ELEV.F2 * 0.5, gz(17.375), MAT.wallFrameGray);
           addBox(targetGroup, 0.22, ELEV.F2 - 2.85, 3.90, gx(76.29), 2.85 + (ELEV.F2 - 2.85) * 0.5, gz(14.60), MAT.wallFrameGray);
-          // 1F 梯間與梯下發電機室防火分隔 RC 牆（封閉 Z=12.65 東半與西段梯側，避免 1F 梯廳落差直通機房，依 A1-6 & A4-2！）
+          // 1F 梯間與梯下緊急發電機室防火分隔 RC 牆（完全封閉 1F 樓梯 A 與發電機室之間，同時保留東段梯下 L 形中空機房！依 A1-6 & A4-2！）
           addBox(targetGroup, 2.25, ELEV.F2 - 0.18 - 0.45, 0.16, gx(75.15), 0.45 + (ELEV.F2 - 0.18 - 0.45) * 0.5, gz(12.65), MAT.wallFrameGray);
           {
-            // 西段梯下三角分隔牆（沿 X=74.05, Z=12.65~16.25，從 +0.45 貼合西段樓梯斜板底面）
-            const tri = new THREE.Shape();
-            tri.moveTo(0, 0.45); tri.lineTo(3.60, 0.45); tri.lineTo(3.60, 3.10 - 0.20); tri.lineTo(0, 1.20 - 0.18); tri.closePath();
-            const triM = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, { depth: 0.16, bevelEnabled: false }), MAT.wallFrameGray);
-            triM.rotation.y = -Math.PI / 2;
-            triM.position.set(gx(74.13), 0, gz(12.65));
-            triM.castShadow = true; triM.receiveShadow = true; targetGroup.add(triM);
+            // 中脊全高防火分隔 RC 牆（沿 X=74.13, Z=12.65~16.25，自 +0.45 連續封頂貼合東段上行梯板底面 +4.82 -> +2.95，徹底封住 1F 梯間看入發電機室之破口！）
+            const spine = new THREE.Shape();
+            spine.moveTo(0, 0.45); spine.lineTo(3.60, 0.45); spine.lineTo(3.60, 2.96); spine.lineTo(0, 4.82); spine.closePath();
+            const spineM = new THREE.Mesh(new THREE.ExtrudeGeometry(spine, { depth: 0.16, bevelEnabled: false }), MAT.wallFrameGray);
+            spineM.rotation.y = -Math.PI / 2;
+            spineM.position.set(gx(74.21), 0, gz(12.65));
+            spineM.castShadow = true; spineM.receiveShadow = true; targetGroup.add(spineM);
           }
           // 1F 南外牆 Z=18.09：由 GL 0.0 實建至 +4.30m（中平台 +3.10 + 120cm 女兒牆 = +430，依 A1-6 & A4-2），下段實挖 W14 百葉通風口進入梯下發電機室！
           addBox(targetGroup, 1.50, 4.30, 0.22, gx(72.75), 2.15, gz(18.09), MAT.wallFrameGray);
@@ -2101,7 +2214,8 @@
           }
           // 1F→2F 實心斜板樓梯（12+12=24 階，西段向南上 +1.20→+3.10，中平台 +3.10，東段向北上 +3.10→+5.00，依 A4-2！）
           addSolidStairFlightZ(73.12, 1.72, 12.65, yBase, 16.25, yBase + 1.90, 12, 1);
-          addBox(targetGroup, 4.00, 0.20, 1.75, gx(74.20), yBase + 1.90 - 0.10, gz(17.125), MAT.concreteBase); // +3.10 中平台
+          const midA1 = addBox(targetGroup, 4.00, 0.20, 1.75, gx(74.20), yBase + 1.90 - 0.10, gz(17.125), MAT.concreteBase); // +3.10 中平台
+          midA1.userData.nonBlocking = true;
           addSolidStairFlightZ(75.28, 1.72, 16.25, yBase + 1.90, 12.65, yBase + 3.80, 12, -1);
         } else if (floorNum === 2) {
           // 2F 西／東外牆（+5.00 -> +8.80）
@@ -2113,7 +2227,8 @@
           addBox(targetGroup, 3.50, 1.40, 0.22, gx(74.20), 7.40, gz(18.09), MAT.wallFrameGray); // +6.70 -> +8.10 實牆帶（精準包覆 +6.90 中平台＋欄牆）
           // 2F→3F 實心斜板樓梯（12+12=24 階，+5.00→+6.90→+8.80，依 A4-2！）
           addSolidStairFlightZ(73.12, 1.72, 12.65, yBase, 16.25, yBase + 1.90, 12, 1);
-          addBox(targetGroup, 4.00, 0.20, 1.75, gx(74.20), yBase + 1.90 - 0.10, gz(17.125), MAT.concreteBase); // +6.90 中平台
+          const midA2 = addBox(targetGroup, 4.00, 0.20, 1.75, gx(74.20), yBase + 1.90 - 0.10, gz(17.125), MAT.concreteBase); // +6.90 中平台
+          midA2.userData.nonBlocking = true;
           addSolidStairFlightZ(75.28, 1.72, 16.25, yBase + 1.90, 12.65, yBase + 3.80, 12, -1);
         } else if (floorNum === 3) {
           // 3F 樓梯 A 依 A4-2 / A1-4 / A1-7：無上屋頂梯段！主梯井 (Z=10.85~16.75) 升至 RFL +12.60，南側突出中平台區 (Z=16.75~18.20) 降階收頭於 +10.70/+10.90！
@@ -3358,7 +3473,7 @@
           { floor: '1F', name: '10-2 人事會計室', shortName: '10-2 人事會計', x: 65.2, z: 3.9, w: 4.2, d: 7.4, y: ELEV.F1, area: 34, meta: W, desc: '軸線⑧–⑨西半間（原設計「辦公室」）。' },
           { floor: '1F', name: '7-1 健康中心', shortName: '7-1 健康中心', x: 69.8, z: 3.9, w: 4.2, d: 7.4, y: ELEV.F1, area: 34, meta: W, desc: '軸線⑧–⑨東半間，原設計即為健康中心。' },
           { floor: '1F', name: '20-4 廁所（東側）', shortName: '20-4 廁所', x: 75.5, z: 3.9, w: 6.8, d: 7.4, y: ELEV.F1, area: 52, isRestroom: true, meta: W, desc: '溪埔國中廁所整修工程（細部設計圖 2026.01 第四版，超聖工程顧問）。入口為大樹「玉荷包荔枝」意象牆；男廁新設小便斗 3 處（含無障礙小便斗 1 處）、坐式馬桶 1、蹲式 1；女廁坐式 1、蹲式 4；無障礙廁所含瞬熱式電熱水器。每間設掛衣勾與緊急求救鈴。同區西南角為昇降機。', images: [{ src: 'campus-3d-assets/restroom/d04-1f-lychee.jpg', cap: 'D-04 1F廁所荔枝水果意象設計' }, { src: 'campus-3d-assets/restroom/b02-1f3f-plan.jpg', cap: 'B-02 A梯1F及3F廁所平面配置與地板計畫' }] },
-          { floor: '1F', name: '無障礙樓梯A・發電機室／消防泵浦室', shortName: '樓梯A・機房', x: 75.5, z: 13.8, w: 7.0, d: 5.6, y: ELEV.F1, area: 39, meta: W, desc: '東端走廊南側附屬區：無障礙樓梯 A、發電機室／消防泵浦室與配電室。昇降機（電梯）在東側廁所區的西南角。' },
+          { floor: '1F', name: '無障礙樓梯A・發電機室／消防泵浦室', shortName: '樓梯A・機房', x: 75.5, z: 13.8, w: 7.0, d: 5.6, y: ELEV.F1, area: 39, meta: W, desc: '東端走廊南側附屬區：無障礙樓梯 A（1F–3F）、L 形發電機室／消防泵浦室（地坪 +0.45m，與梯間採防火 RC 牆完全分隔；正下方為 GL -1.55m 地下消防水池並設兩座 Ø60cm 鑄鐵人孔蓋，依 A1-6／A4-2）。無障礙電梯設於 1F–3F 東側廁所區西南角，其東側為弱電室。' },
           // ── 2F 貳層 ──
           { floor: '2F', name: '20-2 廁所（西側）', shortName: '20-2 廁所', x: 3.5, z: 3.8, w: 6.5, d: 6.8, y: ELEV.F2, area: 44, isRestroom: true, meta: W, desc: '西側二樓男女廁所。' },
           { floor: '2F', name: '1-4 普通教室（302班）', shortName: '1-4 教室(302)', x: 13.5, z: 3.9, w: 8.6, d: 7.4, y: ELEV.F2, area: 68, meta: W, desc: '九年級 302 班（軸線②–③）。' },
@@ -3770,6 +3885,7 @@
         earthNavStyle: true,
         pegmanDropMode: false,
         svFloor: 0,
+        svPedestrian: true,
         svYaw: 0,
         svPitch: 0,
         svTargetYaw: 0,
@@ -4204,11 +4320,151 @@
         return 3;
       }
 
-      function walkStreetViewTo(nx, nz, clickedY = null) {
+      // 行人防穿牆碰撞引擎（快取所有建築實牆／柱／窗／欄杆／女兒牆之世界包圍盒，自動略過敞開門扇、樓梯踏步與水平樓板）
+      let svColliders = null;
+      const svColRay = new THREE.Raycaster();
+      const svColOrigin = new THREE.Vector3();
+      const svColDir = new THREE.Vector3();
+
+      function isAncestorNonBlocking(obj) {
+        let cur = obj;
+        while (cur) {
+          if (cur.userData && cur.userData.nonBlocking) return true;
+          if (cur === roomZonesGroup || cur === streetViewGroup || cur === gridSystemGroup) return true;
+          cur = cur.parent;
+        }
+        return false;
+      }
+
+      function isObjectTreeVisible(obj) {
+        let cur = obj;
+        while (cur) {
+          if (!cur.visible) return false;
+          cur = cur.parent;
+        }
+        return true;
+      }
+
+      function buildSvColliders() {
+        svColliders = [];
+        const tmpBox = new THREE.Box3();
+        scene.updateMatrixWorld(true);
+        [buildingExportRoot, campusSiteGroup].forEach((root) => {
+          root.traverse((obj) => {
+            if (!obj.isMesh || !obj.geometry) return;
+            if (isAncestorNonBlocking(obj)) return;
+            tmpBox.setFromObject(obj);
+            const h = tmpBox.max.y - tmpBox.min.y;
+            const w = tmpBox.max.x - tmpBox.min.x;
+            const d = tmpBox.max.z - tmpBox.min.z;
+            // 跳過純水平地面／樓板薄片（高度 < 0.32m 且面積大），保留所有垂直實牆、窗戶、柱、女兒牆、欄杆與設備機櫃
+            if (h < 0.32) return;
+            if (w > 100 && d > 100) return;
+            svColliders.push({
+              mesh: obj,
+              minX: tmpBox.min.x, maxX: tmpBox.max.x,
+              minY: tmpBox.min.y, maxY: tmpBox.max.y,
+              minZ: tmpBox.min.z, maxZ: tmpBox.max.z
+            });
+          });
+        });
+      }
+
+      function canPedestrianStep(sx, sz, tx, tz, fy, curFl) {
+        const dx = tx - sx, dz = tz - sz;
+        const dist = Math.hypot(dx, dz);
+        if (dist < 1e-4) return true;
+        // 1) 防高樓墜落與跳層（2F/3F 陽台欄杆外不可直跳地面，必須走樓梯 A / B / A05；允許 1F↔地面 ±1.35m 階梯與坡道）
+        const wNext = resolveStreetWalk(tx, tz, curFl, fy, null);
+        if (!wNext.onStair && Math.abs(wNext.y - fy) > 1.35) return false;
+
+        if (!svColliders) buildSvColliders();
+        const bodyR = 0.25;
+        const pad = bodyR + 0.25;
+        const qMinX = Math.min(sx, tx) - pad, qMaxX = Math.max(sx, tx) + pad;
+        const qMinZ = Math.min(sz, tz) - pad, qMaxZ = Math.max(sz, tz) + pad;
+        const yLow = fy + 0.72, yHigh = fy + 1.36;
+
+        const nearby = [];
+        for (let i = 0; i < svColliders.length; i++) {
+          const c = svColliders[i];
+          if (c.maxX < qMinX || c.minX > qMaxX || c.maxZ < qMinZ || c.minZ > qMaxZ) continue;
+          if (c.maxY < yLow - 0.05 || c.minY > yHigh + 0.05) continue;
+          if (!isObjectTreeVisible(c.mesh)) continue;
+          nearby.push(c.mesh);
+        }
+        if (nearby.length === 0) return true;
+
+        const ux = dx / dist, uz = dz / dist;
+        const px = -uz, pz = ux; // 左右肩寬偏移
+        const maxRay = dist + bodyR;
+        svColDir.set(ux, 0, uz);
+        svColRay.near = 0.02;
+        svColRay.far = maxRay;
+
+        const offsets = [0, -0.15, 0.15];
+        const heights = [yLow, yHigh];
+        for (let hi = 0; hi < heights.length; hi++) {
+          const ry = heights[hi];
+          for (let oi = 0; oi < offsets.length; oi++) {
+            const off = offsets[oi];
+            svColOrigin.set(sx + px * off, ry, sz + pz * off);
+            svColRay.set(svColOrigin, svColDir);
+            const hits = svColRay.intersectObjects(nearby, false);
+            if (hits.length > 0 && hits[0].distance < maxRay) return false;
+          }
+        }
+        return true;
+      }
+
+      function resolvePedestrianMove(sx, sz, tx, tz, fy, curFl) {
+        const dx = tx - sx, dz = tz - sz;
+        const dist = Math.hypot(dx, dz);
+        if (dist < 1e-4) return { x: tx, z: tz, blocked: false };
+
+        // 大跨步（點擊移動／步進鍵）分段步進 0.38m，絕不穿過薄牆，並順暢走到牆前停止
+        if (dist > 0.65) {
+          const steps = Math.min(40, Math.ceil(dist / 0.38));
+          let cx = sx, cz = sz, cfy = fy, cfl = curFl, blocked = false;
+          for (let i = 1; i <= steps; i++) {
+            const nx = sx + (dx * i) / steps;
+            const nz = sz + (dz * i) / steps;
+            if (canPedestrianStep(cx, cz, nx, nz, cfy, cfl)) {
+              const w = resolveStreetWalk(nx, nz, cfl, cfy, null);
+              cx = nx; cz = nz; cfy = w.y; cfl = w.floor;
+            } else {
+              blocked = true;
+              break;
+            }
+          }
+          return { x: cx, z: cz, blocked };
+        }
+
+        // 小步連續行走（WASD / 方向鍵）：遇牆自動沿牆面順暢滑行！
+        if (canPedestrianStep(sx, sz, tx, tz, fy, curFl)) return { x: tx, z: tz, blocked: false };
+        if (Math.abs(dx) > 0.005 && canPedestrianStep(sx, sz, tx, sz, fy, curFl)) return { x: tx, z: sz, blocked: true };
+        if (Math.abs(dz) > 0.005 && canPedestrianStep(sx, sz, sx, tz, fy, curFl)) return { x: sx, z: tz, blocked: true };
+        return { x: sx, z: sz, blocked: true };
+      }
+
+      let lastWallToastAt = 0;
+      function walkStreetViewTo(nx, nz, clickedY = null, allowTeleport = false) {
+        const curX = state.svTargetPos.x, curZ = state.svTargetPos.z;
         const prevFootY = state.svTargetPos.y - SV_EYE_HEIGHT;
-        const baseFloor = clickedY !== null ? inferFloorFromY(clickedY) : state.svFloor;
-        const walk = resolveStreetWalk(nx, nz, baseFloor, prevFootY, clickedY);
-        state.svTargetPos.set(nx, walk.y + SV_EYE_HEIGHT, nz);
+        let finalX = nx, finalZ = nz;
+        if (state.svPedestrian && !allowTeleport) {
+          const res = resolvePedestrianMove(curX, curZ, nx, nz, prevFootY, state.svFloor);
+          finalX = res.x;
+          finalZ = res.z;
+          if (res.blocked && Math.hypot(finalX - curX, finalZ - curZ) < 0.04 && performance.now() - lastWallToastAt > 2600) {
+            lastWallToastAt = performance.now();
+            showToast('🚶 行人防穿牆：前方為實牆／欄杆，請由門洞或樓梯通行');
+          }
+        }
+        const effectiveClickedY = (state.svPedestrian && !allowTeleport && Math.hypot(finalX - nx, finalZ - nz) > 0.25) ? null : clickedY;
+        const baseFloor = effectiveClickedY !== null ? inferFloorFromY(effectiveClickedY) : state.svFloor;
+        const walk = resolveStreetWalk(finalX, finalZ, baseFloor, prevFootY, effectiveClickedY);
+        state.svTargetPos.set(finalX, walk.y + SV_EYE_HEIGHT, finalZ);
         if (walk.floor !== state.svFloor) {
           state.svFloor = walk.floor;
           updateModeButtonsUI();
@@ -4351,6 +4607,16 @@
           btn.classList.toggle('bg-slate-800/80', !active);
           btn.classList.toggle('text-slate-300', !active);
         });
+        const pedBtn = document.getElementById('sv-pedestrian-btn');
+        if (pedBtn) {
+          pedBtn.textContent = state.svPedestrian ? '🚶 行人防穿牆' : '👻 自由穿牆';
+          pedBtn.classList.toggle('bg-emerald-500', state.svPedestrian);
+          pedBtn.classList.toggle('text-slate-950', state.svPedestrian);
+          pedBtn.classList.toggle('bg-slate-800/90', !state.svPedestrian);
+          pedBtn.classList.toggle('text-slate-300', !state.svPedestrian);
+        }
+        const pedChk = document.getElementById('toggle-pedestrian');
+        if (pedChk) pedChk.checked = state.svPedestrian;
         updateStreetViewVisibility();
       }
 
@@ -4950,7 +5216,7 @@
               updateModeButtonsUI();
               updateStreetViewLocationText(nearest.name);
             } else {
-              walkStreetViewTo(wx, wz, null);
+              walkStreetViewTo(wx, wz, null, true);
               updateStreetViewLocationText();
             }
           }
@@ -5158,6 +5424,13 @@
           updateStreetViewLocationText();
         });
       });
+      const setPedestrianMode = (enabled) => {
+        state.svPedestrian = Boolean(enabled);
+        updateModeButtonsUI();
+        showToast(state.svPedestrian ? '🚶 已開啟「行人防穿牆模式」：模擬真實步行（僅能經門洞與樓梯通行）' : '👻 已切換「自由穿牆模式」：可任意穿越牆面檢視');
+      };
+      document.getElementById('sv-pedestrian-btn').addEventListener('click', () => setPedestrianMode(!state.svPedestrian));
+      document.getElementById('toggle-pedestrian').addEventListener('change', (e) => setPedestrianMode(e.target.checked));
       document.getElementById('sv-exit-btn').addEventListener('click', () => exitStreetView('earth'));
 
       // Room Info Card buttons
