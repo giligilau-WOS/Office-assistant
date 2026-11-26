@@ -1218,49 +1218,67 @@
         addStepsX(foundationGroup, 79.1, 81.3, 0, ELEV.F1, 5.3, 7.85, 6, MAT.plazaTile); // North steps (+30 -> +120)
         addStepsX(foundationGroup, 79.1, 81.2, 0, ELEV.F1, 12.4, 10.85, 5, MAT.plazaTile); // South steps (+60 -> +120)
 
-        // ★ 穿堂後方（北側）戶外樓梯（依 A1-1 / A2-2 / A3-8：平台北伸，西側東西向兩段式階梯往西下至地面，北側 12cm RC 欄牆 H=90cm）
-        addBox(foundationGroup, 9.0, ELEV.F1, 2.3, gx(58.5), ELEV.F1 * 0.5, gz(-1.15), MAT.corridorFloor);
-        // Upper run (+1.20 -> +0.60, X=54.6 -> 52.8) + mid-landing (+0.60, X=51.4~52.8) + lower run (+0.60 -> 0.0, X=51.4 -> 49.4)
-        addStepsZ(foundationGroup, -4.0, -2.15, 0.60, ELEV.F1, 52.8, 54.8, 4, MAT.plazaTile);
-        addBox(foundationGroup, 1.5, 0.60, 1.85, gx(52.05), 0.30, gz(-3.075), MAT.plazaTile);
-        addStepsZ(foundationGroup, -4.0, -2.15, 0.0, 0.60, 49.4, 51.3, 4, MAT.plazaTile);
-        // 12cm RC cheek wall (H=90cm) tightly bordering the north stair run & connecting to landing
-        addBox(foundationGroup, 5.9, 0.90, 0.14, gx(52.25), 0.75, gz(-4.06), MAT.wallExt);
-        addBox(foundationGroup, 0.14, 0.90, 1.85, gx(55.15), 0.75, gz(-3.15), MAT.wallExt);
-        addRailingX(foundationGroup, 55.2, 63.0, ELEV.F1, -2.25, 1.05);
-
-        // 北側東旁：水箱室（中空圍牆＋北向雙開檢修門＋橫臥式不鏽鋼水箱，X=63.2~67.8, Z=-4.2~-1.835, +40~+260）＋ 資源回收場（鋁格柵 H=+190，東端開放進出，依 A1-1 / A2-2）
-        addBox(foundationGroup, 4.6, 0.40, 2.35, gx(65.5), 0.20, gz(-3.02), MAT.concreteBase); // +40 水箱室底板（深 2.40m）
-        addBox(foundationGroup, 0.16, 2.20, 2.35, gx(63.28), 1.30, gz(-3.02), MAT.wallFrameGray); // 西牆
-        addBox(foundationGroup, 0.16, 2.20, 2.35, gx(67.72), 1.30, gz(-3.02), MAT.wallFrameGray); // 東牆
-        addBox(foundationGroup, 1.55, 2.20, 0.16, gx(64.05), 1.30, gz(-4.12), MAT.wallFrameGray); // 北牆西段（中段留 1.50m 雙開檢修門洞）
-        addBox(foundationGroup, 1.45, 2.20, 0.16, gx(67.00), 1.30, gz(-4.12), MAT.wallFrameGray); // 北牆東段
-        // 北向雙開檢修門（向外敞開，依 A1-1 雙開門標示）
-        addBox(foundationGroup, 0.06, 2.00, 0.18, gx(64.82), 1.40, gz(-4.12), MAT.alFrame, false);
-        addBox(foundationGroup, 0.06, 2.00, 0.18, gx(66.28), 1.40, gz(-4.12), MAT.alFrame, false);
-        addBox(foundationGroup, 1.52, 0.06, 0.18, gx(65.55), 2.40, gz(-4.12), MAT.alFrame, false);
-        [-1, 1].forEach((side) => {
-          const piv = new THREE.Group();
-          piv.position.set(gx(65.55 + side * 0.72), 0.40, gz(-4.12));
-          piv.rotation.y = side * -1.10; // 向北（外）敞開
-          addBox(piv, 0.70, 1.96, 0.05, -side * 0.35, 0.98, 0, MAT.steelSilver, false);
-          foundationGroup.add(piv);
-        });
+        // ★ 穿堂後方（北側）戶外樓梯（依 A1-1 / A2-2：平台與頂階完全齊平無凸出，往西連續 7 階下至地面，北側 12cm RC 斜向欄牆 H=90cm）
+        addBox(foundationGroup, 9.0, ELEV.F1, 2.25, gx(58.5), ELEV.F1 * 0.5, gz(-1.125), MAT.corridorFloor);        // 穿堂北伸平台 (X=54~63, Z=-2.25~0)
+        addBox(foundationGroup, 2.0, ELEV.F1, 1.80, gx(54.6), ELEV.F1 * 0.5, gz(-2.95), MAT.corridorFloor);         // 樓梯頂部對齊平台 (X=53.6~55.6, Z=-3.85~-2.05)
+        addStepsZ(foundationGroup, -3.85, -2.05, 0.0, ELEV.F1, 50.8, 53.6, 7, MAT.plazaTile);                       // 往西連續 7 階 (X=53.6→50.8，與頂平台 Z=-3.85~-2.05 完全齊平！)
+        // 北側 12cm RC 欄牆（頂平台段高 2.10m + 樓梯段依坡度由 2.10m 斜降至 0.90m，對照 A2-2 北立面圖！）
+        addBox(foundationGroup, 0.14, ELEV.F1 + 0.90, 1.72, gx(55.65), (ELEV.F1 + 0.90) * 0.5, gz(-3.08), MAT.wallExt); // 東側回折欄牆
+        addBox(foundationGroup, 2.12, ELEV.F1 + 0.90, 0.14, gx(54.66), (ELEV.F1 + 0.90) * 0.5, gz(-3.92), MAT.wallExt); // 頂平台北欄牆
         {
-          // 橫臥式不鏽鋼水箱（依 A1-1 標註）
+          const cwSh = new THREE.Shape();
+          cwSh.moveTo(0, 0); cwSh.lineTo(2.85, 0); cwSh.lineTo(2.85, ELEV.F1 + 0.90); cwSh.lineTo(0, 0.90); cwSh.closePath();
+          const cwMesh = new THREE.Mesh(new THREE.ExtrudeGeometry(cwSh, { depth: 0.14, bevelEnabled: false }), MAT.wallExt);
+          cwMesh.position.set(gx(50.75), 0, gz(-3.99));
+          cwMesh.castShadow = true; cwMesh.receiveShadow = true;
+          foundationGroup.add(cwMesh);
+        }
+        addRailingX(foundationGroup, 55.72, 63.0, ELEV.F1, -2.22, 1.05);
+
+        // 北側東旁：水箱室（依 A1-1 / A2-2 北立面圖：改為通風鋁格柵圍欄＋北向雙開鋁格柵門＋橫臥式不鏽鋼水箱！）＋ 資源回收場（鋁格柵 H=+190，東端開放）
+        addBox(foundationGroup, 4.6, 0.40, 2.35, gx(65.5), 0.20, gz(-3.02), MAT.concreteBase); // +40 水箱室底板（深 2.40m）
+        {
+          const addGrilleX = (x0, x1, zPos, y0, h) => {
+            for (let lx = x0; lx <= x1 + 0.01; lx += 0.18) {
+              addBox(foundationGroup, 0.04, h, 0.05, gx(lx), y0 + h * 0.5, gz(zPos), MAT.alFrame, false);
+            }
+            [0.06, h * 0.5, h - 0.03].forEach((ry) => addBox(foundationGroup, x1 - x0 + 0.06, 0.05, 0.065, gx((x0 + x1) * 0.5), y0 + ry, gz(zPos), MAT.alFrame, false));
+          };
+          const addGrilleZ = (xPos, z0, z1, y0, h) => {
+            for (let lz = z0; lz <= z1 + 0.01; lz += 0.18) {
+              addBox(foundationGroup, 0.05, h, 0.04, gx(xPos), y0 + h * 0.5, gz(lz), MAT.alFrame, false);
+            }
+            [0.06, h * 0.5, h - 0.03].forEach((ry) => addBox(foundationGroup, 0.065, 0.05, z1 - z0 + 0.06, gx(xPos), y0 + ry, gz((z0 + z1) * 0.5), MAT.alFrame, false));
+          };
+          // 水箱室三面鋁格柵圍欄（y = 0.40..2.30, H=1.90m，取代原本水泥牆面！）
+          addGrilleZ(63.26, -4.14, -1.90, 0.40, 1.90);
+          addGrilleZ(67.74, -4.14, -1.90, 0.40, 1.90);
+          addGrilleX(63.26, 64.76, -4.14, 0.40, 1.90);
+          addGrilleX(66.34, 67.74, -4.14, 0.40, 1.90);
+          // 北向雙開鋁格柵檢修門（向外敞開，可直接檢視與維護臥式水箱）
+          [-1, 1].forEach((side) => {
+            const piv = new THREE.Group();
+            piv.position.set(gx(65.55 + side * 0.74), 0.40, gz(-4.14));
+            piv.rotation.y = side * -1.05;
+            const lw = 0.72, lh = 1.88;
+            addBox(piv, lw, 0.05, 0.06, -side * lw * 0.5, 0.04, 0, MAT.alFrame, false);
+            addBox(piv, lw, 0.05, 0.06, -side * lw * 0.5, lh - 0.04, 0, MAT.alFrame, false);
+            addBox(piv, lw, 0.04, 0.06, -side * lw * 0.5, lh * 0.5, 0, MAT.alFrame, false);
+            for (let k = 0; k <= 4; k++) {
+              addBox(piv, 0.04, lh, 0.05, -side * (k / 4) * lw, lh * 0.5, 0, MAT.alFrame, false);
+            }
+            foundationGroup.add(piv);
+          });
+          // 橫臥式不鏽鋼水箱（依 A1-1 標註，透過鋁格柵清晰可見！）
           const hTank = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 2.9, 18), MAT.steelSilver);
           hTank.rotation.z = Math.PI / 2;
           hTank.position.set(gx(65.5), 1.15, gz(-2.95));
           hTank.castShadow = true;
           foundationGroup.add(hTank);
+          // 資源回收場（X=67.8~71.5，北面設同式鋁格柵 H=+190，東側開放進出草地／維護通道）
+          addBox(foundationGroup, 3.8, 0.12, 2.35, gx(69.7), 0.06, gz(-3.02), MAT.concreteBase);
+          addGrilleX(67.92, 71.45, -4.14, 0.12, 1.82);
         }
-        // 資源回收場（X=67.8~71.5，北面設鋁格柵 H=+190，東側開放進出草地／維護通道，依 A1-1）
-        addBox(foundationGroup, 3.8, 0.12, 2.35, gx(69.7), 0.06, gz(-3.02), MAT.concreteBase);
-        for (let lx = 67.95; lx <= 71.45; lx += 0.22) {
-          addBox(foundationGroup, 0.045, 1.90, 0.06, gx(lx), 0.95, gz(-4.14), MAT.alFrame, false);
-        }
-        addBox(foundationGroup, 3.65, 0.06, 0.08, gx(69.72), 1.90, gz(-4.14), MAT.alFrame, false);
-        addBox(foundationGroup, 3.65, 0.06, 0.08, gx(69.72), 0.14, gz(-4.14), MAT.alFrame, false);
 
         // 東側無障礙坡道（1:12 無障礙坡道，緊鄰無障礙樓梯 A 西側：X=70.5~71.95，從 +1.20m 連續平順降至地面 +0.00m，尾端無階梯！）
         {
@@ -2618,16 +2636,68 @@
           // 107 室內更衣櫃（避開南側 106 旋轉北牆與西側 D2 門）
           kbox(kitchen1FGroup, 25.9, 27.6, 12.15, 12.65, y1, y1 + 1.85, MAT.woodLight, false);
 
-          // A05 戶外樓梯下段（與 106 黃色食育教室同旋轉 0.112 rad，緊貼 106 東牆外側 lx=4.02..5.62，完全零穿模！）
+          // A05 戶外樓梯下段與梯下中空「配電室（電力機房）」：與 106 同旋轉 0.112 rad 緊貼東牆外側 lx=4.02..5.62，梯下實挖 D4 敞開門洞＋配電盤（依 A2-1 / A3-2 / 04107.jpg）
           const a05Lower = new THREE.Group();
           a05Lower.position.set(dcx, 0, dcz);
           a05Lower.rotation.y = 0.112;
           const lzBot = 0.65, lzTop = -4.55, L = lzBot - lzTop, stW = 1.60;
-          const s1 = new THREE.Shape();
-          s1.moveTo(0, 0); s1.lineTo(L, 0); s1.lineTo(L, yMid); s1.lineTo(0, y1); s1.closePath();
-          const m1 = new THREE.Mesh(new THREE.ExtrudeGeometry(s1, { depth: stW, bevelEnabled: false }), MAT.ckWhite);
-          m1.rotation.y = Math.PI / 2;
-          m1.position.set(4.02, 0, lzBot); m1.castShadow = true; m1.receiveShadow = true; a05Lower.add(m1);
+          const uSplit = 2.30; // 南側低矮段實心 (u=0..2.30)，北側高挑段中空作為配電室 (u=2.30..L, lz=-1.65..-4.55)
+          const yAt = (u) => y1 + (u / L) * (yMid - y1);
+          // 1) 樓梯斜板（厚 0.24m，讓下方騰出中空配電室空間）
+          const sWaist = new THREE.Shape();
+          sWaist.moveTo(0, y1 - 0.24); sWaist.lineTo(L, yMid - 0.24); sWaist.lineTo(L, yMid); sWaist.lineTo(0, y1); sWaist.closePath();
+          const mWaist = new THREE.Mesh(new THREE.ExtrudeGeometry(sWaist, { depth: stW, bevelEnabled: false }), MAT.ckWhite);
+          mWaist.rotation.y = Math.PI / 2; mWaist.position.set(4.02, 0, lzBot);
+          mWaist.castShadow = true; mWaist.receiveShadow = true; a05Lower.add(mWaist);
+          // 2) 南側低矮段實心基座 (u=0..uSplit)
+          const sLow = new THREE.Shape();
+          sLow.moveTo(0, 0); sLow.lineTo(uSplit, 0); sLow.lineTo(uSplit, yAt(uSplit) - 0.22); sLow.lineTo(0, y1 - 0.22); sLow.closePath();
+          const mLow = new THREE.Mesh(new THREE.ExtrudeGeometry(sLow, { depth: stW, bevelEnabled: false }), MAT.ckWhite);
+          mLow.rotation.y = Math.PI / 2; mLow.position.set(4.02, 0, lzBot);
+          mLow.castShadow = true; mLow.receiveShadow = true; a05Lower.add(mLow);
+          // 3) 配電室中空底板 (+0.40) 與北端封牆（西側緊貼 106 東牆）
+          const pFloor = new THREE.Mesh(new THREE.BoxGeometry(stW, 0.40, L - uSplit), MAT.concreteBase);
+          pFloor.position.set(4.02 + stW * 0.5, 0.20, lzBot - (uSplit + L) * 0.5);
+          pFloor.receiveShadow = true; a05Lower.add(pFloor);
+          const pNorth = new THREE.Mesh(new THREE.BoxGeometry(stW, yMid - 0.40, 0.16), MAT.ckWhite);
+          pNorth.position.set(4.02 + stW * 0.5, 0.40 + (yMid - 0.40) * 0.5, lzTop + 0.08);
+          pNorth.castShadow = true; a05Lower.add(pNorth);
+          // 4) 配電室東側外牆（實挖 D4 門洞 u=4.10..5.00, y=0.40..2.45，真正可進入檢視電力機房！）
+          const sEast = new THREE.Shape();
+          sEast.moveTo(uSplit, 0); sEast.lineTo(L, 0); sEast.lineTo(L, yMid); sEast.lineTo(uSplit, yAt(uSplit)); sEast.closePath();
+          const d4Hole = new THREE.Path();
+          d4Hole.moveTo(4.10, 0.40); d4Hole.lineTo(5.00, 0.40); d4Hole.lineTo(5.00, 2.45); d4Hole.lineTo(4.10, 2.45); d4Hole.closePath();
+          sEast.holes.push(d4Hole);
+          const mEast = new THREE.Mesh(new THREE.ExtrudeGeometry(sEast, { depth: 0.16, bevelEnabled: false }), MAT.ckWhite);
+          mEast.rotation.y = Math.PI / 2; mEast.position.set(4.02 + stW - 0.16, 0, lzBot);
+          mEast.castShadow = true; mEast.receiveShadow = true; a05Lower.add(mEast);
+          // D4 門框、向外敞開白門扇與門前小踏階（+0.40，對照 A2-1 / A3-2 / 04107.jpg「電力機房」）
+          {
+            const d4z0 = lzBot - 5.00, d4z1 = lzBot - 4.10, d4cz = (d4z0 + d4z1) * 0.5, d4x = 4.02 + stW - 0.06;
+            const jambN = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.05, 0.05), MAT.alFrame);
+            jambN.position.set(d4x, 1.425, d4z0 + 0.025); a05Lower.add(jambN);
+            const jambS = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.05, 0.05), MAT.alFrame);
+            jambS.position.set(d4x, 1.425, d4z1 - 0.025); a05Lower.add(jambS);
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 0.90), MAT.alFrame);
+            head.position.set(d4x, 2.43, d4cz); a05Lower.add(head);
+            const d4Piv = new THREE.Group();
+            d4Piv.position.set(4.02 + stW - 0.02, 0.40, d4z0 + 0.04);
+            d4Piv.rotation.y = 1.15; // 向東（外）敞開露出配電室內部！
+            const d4Leaf = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.00, 0.84), MAT.ckWhite);
+            d4Leaf.position.set(0, 1.00, 0.42); d4Piv.add(d4Leaf);
+            a05Lower.add(d4Piv);
+            const stepOut = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.20, 1.05), MAT.concreteBase);
+            stepOut.position.set(4.02 + stW + 0.22, 0.10, d4cz); a05Lower.add(stepOut);
+          }
+          // 5) 配電室內部高壓受電盤與主配電箱（貼西牆 lx=4.16..4.68）
+          {
+            [-3.95, -2.95].forEach((cz) => {
+              const cab = new THREE.Mesh(new THREE.BoxGeometry(0.50, 1.75, 0.82), MAT.steelSilver);
+              cab.position.set(4.32, 0.40 + 0.875, cz); a05Lower.add(cab);
+              const meter = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.36, 0.44), MAT.steelDark);
+              meter.position.set(4.58, 0.40 + 1.32, cz); a05Lower.add(meter);
+            });
+          }
           const steps1 = 14;
           for (let i = 0; i < steps1; i++) {
             const u = (i + 0.5) / steps1;
@@ -2654,13 +2724,6 @@
             gatePiv.position.set(4.06, y1, lzBot); gatePiv.rotation.y = 0.85;
             const gateLeaf = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.15, 0.04), MAT.ckWhite);
             gateLeaf.position.set(0.575, 0.575, 0); gatePiv.add(gateLeaf); a05Lower.add(gatePiv);
-          }
-          // D4 地面白色門（貼齊 A05 旋轉東牆外側 lx=5.63、樓梯下方，依 A2-1 / A3-2 / 04107.jpg）
-          {
-            const d4Frame = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.14, 0.88), MAT.alFrame);
-            d4Frame.position.set(4.02 + stW + 0.01, 1.11, -4.15); a05Lower.add(d4Frame);
-            const d4Leaf = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.06, 0.78), MAT.ckWhite);
-            d4Leaf.position.set(4.02 + stW + 0.03, 1.10, -4.15); a05Lower.add(d4Leaf);
           }
           kitchen1FGroup.add(a05Lower);
           // 中段弧形轉角白色密排欄杆（沿 107 圓弧頂緣從東切點順繞至北側上段樓梯口，依 04107.jpg & 基本設計 3D）
@@ -2831,8 +2894,8 @@
         });
 
         // ── 14. 白色鍍鋅烤漆鋼板風雨走廊（依 A2-1/A2-2 & 照片 yellow-se.jpg / 04133.jpg）──
-        //     食育教室東側 → 主校舍一樓西側走廊（+1.20）＋白色鋼構屋頂（避開 A05 樓梯起點零穿模）＋南側白欄杆與階梯
-        const wx0 = KIT.x + 29.1, wxCan = KIT.x + 30.9, wx1 = 0.4, wz0 = 7.9, wz1 = 11.3;
+        //     食育教室東側 → 主校舍一樓西側走廊（+1.20，Z=7.85~10.85 與主校舍走廊完全齊平！）＋南側階梯無縫接主校舍西側階梯（無斷層！）
+        const wx0 = KIT.x + 29.1, wxCan = KIT.x + 30.9, wx1 = 0.4, wz0 = 7.85, wz1 = 10.85;
         addBox(kitchenBaseGroup, wx1 - wx0, y1, wz1 - wz0, gx((wx0 + wx1) / 2), y1 / 2, gz((wz0 + wz1) / 2), MAT.plazaTile);
         // 白色烤漆鋼板屋頂＋白色 H 型鋼側梁（由 A05 梯底東側 wxCan 起建，完全不切入樓梯踏步！）
         addBox(kitchenBaseGroup, wx1 - wxCan + 0.6, 0.16, wz1 - wz0 + 0.8, gx((wxCan + wx1) / 2), y1 + 3.25, gz((wz0 + wz1) / 2), MAT.ckWhite);
@@ -2841,9 +2904,9 @@
         for (let x = wxCan + 0.3; x < wx1; x += 3.5) {
           [wz0 + 0.2, wz1 - 0.2].forEach((z) => addBox(kitchenBaseGroup, 0.18, 3.15, 0.18, gx(x), y1 + 1.575, gz(z), MAT.ckWhite));
         }
-        // 西段（食育教室旁至大樹處）白色密排欄杆（照片 yellow-se.jpg）＋ 東段南側大階梯
-        addWhitePicketX(kitchenBaseGroup, 29.4, 34.2, y1, 11.22 - KIT.z, 1.10);
-        addStepsX(kitchenBaseGroup, wx0 + 4.8, wx1 - 1.2, 0, y1, wz1 + 2.4, wz1, 6, MAT.plazaTile);
+        // 西段（食育教室旁至大樹處）白色密排欄杆（照片 yellow-se.jpg）＋ 東段南側連續大階梯（完全相連至主校舍 X=0.0 階梯，同 Z=10.85→13.10、6 階無斷層！）
+        addWhitePicketX(kitchenBaseGroup, 29.4, 34.0, y1, wz1 - 0.08 - KIT.z, 1.10);
+        addStepsX(kitchenBaseGroup, wx0 + 4.8, 0.02, 0, y1, 13.10, 10.85, 6, MAT.plazaTile);
         // 保留大樹（⑧ 處樹穴，避開階梯與風雨走廊）
         {
           const [tx, tz] = K(31.8, 22.4);
@@ -2873,7 +2936,7 @@
         ['2-5', '資源班', 'special', 45], ['2-4', '理化實驗室', 'special', 50], ['2-3', '生科教室', 'special', 45],
         ['2-2', '資訊教室', 'special', 50], ['2-1', '藝術教室', 'special', 45], ['20-6', '3F 鳳梨廁所', 'restroom', 55],
         ['21-1', '中央廚房', 'kitchen', 80, true], ['2-7', '食育教室', 'kitchen', 70], ['10-8', '營養師室', 'admin', 45],
-        ['20-7', '廚房廁所', 'restroom', 30], ['廚工休息室', '休息室・配電', 'utility', 20], ['風雨走廊', '風雨走廊', 'kitchen', 60],
+        ['20-7', '廚房廁所', 'restroom', 30], ['107', '廚工更衣室', 'utility', 25], ['配電室', '配電室（梯下）', 'utility', 25], ['風雨走廊', '風雨走廊', 'kitchen', 60],
         ['消防機房', '廚房機房', 'utility', 20],
         ['操場', '操場', 'outdoor', 80, true], ['司令台', '司令台', 'outdoor', 65, true], ['17-2', '公用儲藏室', 'utility', 20],
         ['籃球場', '籃球場', 'outdoor', 75], ['風雨球場', '風雨球場', 'outdoor', 75, true], ['噴水池', '噴水池', 'outdoor', 65],
@@ -2935,8 +2998,9 @@
           { floor: '1F', building: 'kitchen', name: '10-8 營養師辦公室', shortName: '10-8 營養師', x: -29.5, z: 7.5, w: 3.0, d: 4.5, y: ELEV.F1, area: 15, meta: '111.11 完工・保固 5 年', desc: '營養師辦公室（規劃面積約 15.45 m²）。' },
           { floor: '1F', building: 'kitchen', name: '20-7 廁所（中央廚房）', shortName: '20-7 廁所', x: -26, z: 7.5, w: 3.6, d: 4.5, y: ELEV.F1, area: 18, isRestroom: true, meta: '111.11 完工・保固 5 年', desc: '廚房衛生區：淋浴間、座式馬桶、無障礙廁所（規劃約 18.30 m²）。' },
           { floor: '1F', building: 'kitchen', name: '2-7 食育教室', shortName: '2-7 食育教室', x: -20, z: 7.5, w: 7.6, d: 6.0, y: ELEV.F1, area: 57, meta: '111.11 完工・保固 5 年', desc: '午餐教育教室（規劃約 57.2 m²），外廊作為餐食教育區，連接風雨走廊。', images: [{ src: 'campus-3d-assets/kitchen/yellow-south.jpg', cap: '現況照片：食育教室南面（面向操場）' }, { src: 'campus-3d-assets/kitchen/yellow-track.jpg', cap: '現況照片：由操場看中央廚房南側' }, { src: 'campus-3d-assets/kitchen/yellow-se.jpg', cap: '現況照片：食育教室東南角與風雨走廊' }, { src: 'campus-3d-assets/kitchen/veranda-west.jpg', cap: '現況照片：外廊內部往西（洗手台、通往 A01 走廊）' }, { src: 'campus-3d-assets/kitchen/veranda-entry.jpg', cap: '現況照片：由 A01 走廊進入外廊' }, { src: 'campus-3d-assets/kitchen/04156.jpg', cap: '現況照片：2-7 食育教室內部' }, { src: 'campus-3d-assets/kitchen/04204.jpg', cap: '現況照片：粉紅進貨平台內部往南' }] },
-          { floor: '1F', building: 'kitchen', name: '廚工休息室・配電室', shortName: '休息室・配電', x: -22.2, z: -0.8, w: 3.4, d: 7.0, y: ELEV.F1, area: 26, meta: '111.11 完工・保固 5 年', desc: '中央廚房東側：廚工休息室與配電室。' },
-          { floor: '1F', building: 'kitchen', name: '風雨走廊', shortName: '風雨走廊', x: -7.6, z: 9.45, w: 15.0, d: 3.0, y: ELEV.F1, area: 58, meta: '111.11 完工', desc: '連接中央廚房與主校舍一樓西側走廊（+1.20 m）。' },
+          { floor: '1F', building: 'kitchen', name: '107 廚工更衣・休息室', shortName: '107 更衣室', x: -18.2, z: 3.2, w: 3.6, d: 2.3, y: ELEV.F1, area: 12, meta: '111.11 完工・保固 5 年', desc: '白色弧形量體 1F（+1.20m，依 A2-1），由 102 走道緩衝區經 D2 門進入，設 W9 四格橫窗與更衣置物櫃。' },
+          { floor: '1F', building: 'kitchen', name: '配電室（電力機房・A05 戶外梯下）', shortName: '配電室（梯下）', x: -15.8, z: 6.2, w: 1.8, d: 3.0, y: 0.40, area: 6, meta: '111.11 完工・保固 5 年', desc: '位於 2-7 食育教室東側 A05 戶外樓梯下方空間（地坪 +0.40m，依 A2-1 / A3-2 / 04107.jpg「電力機房」），由東側地面 D4 門直接出入維護受電盤與主配電箱。' },
+          { floor: '1F', building: 'kitchen', name: '風雨走廊', shortName: '風雨走廊', x: -7.6, z: 9.35, w: 15.0, d: 3.0, y: ELEV.F1, area: 58, meta: '111.11 完工', desc: '連接中央廚房與主校舍一樓西側走廊（+1.20 m），南側階梯與主校舍西側階梯連續相接。' },
           { floor: '2F', building: 'kitchen', name: '消防機房（中央廚房 2F）', shortName: '廚房2F 消防機房', x: -30, z: -6.5, w: 12.0, d: 5.0, y: 4.9, area: 60, meta: '111.11 完工・保固 5 年', desc: '中央廚房局部二層機房（約 60 m²），由西向東分為消防機房（消防泵浦組 HD）、RO 機房（8T+1T 不鏽鋼水塔）與儲藏室（2T 水塔×2），南向設 SD3/D3 檢修門與 W15 百葉（依 A2-2 二層平面圖）。' },
           // ── 戶外設施 ──
           { floor: 'GF', building: 'site', name: '操場（200 m 跑道）', shortName: '操場', x: SITE.track.cx, z: SITE.track.cz, w: 30, d: 16, y: 0, area: 3200, meta: '跑道 99 年度工程重新施作', desc: '200 m 跑道＋南側直線跑道。' },
@@ -3584,6 +3648,7 @@
         { id: 'sv_walkway', name: '中央廚房風雨走廊 (貫通通道)', x: gx(-8.0), z: gz(9.45), floor: 1, yaw: Math.PI * 0.5 },
         { id: 'sv_dining_veranda', name: '2-7 食育教室戶外外廊', x: gx(-19.8), z: gz(12.5), floor: 1, yaw: 0.2 },
         { id: 'sv_dining_in', name: '1F 2-7 食育教室內部', x: gx(KIT.x + 25.0), z: gz(KIT.z + 16.5), floor: 1, yaw: Math.PI },
+        { id: 'sv_kitchen_power', name: '中央廚房 配電室前（A05 梯下 D4）', x: gx(KIT.x + 31.8), z: gz(KIT.z + 14.2), floor: 0, yaw: Math.PI * 0.5 },
         { id: 'sv_kitchen_102', name: '1F 中央廚房 102 走道緩衝區', x: gx(KIT.x + 20.0), z: gz(KIT.z + 13.0), floor: 1, yaw: Math.PI * 0.5 },
         { id: 'sv_kitchen_111', name: '1F 中央廚房 111 烹飪區', x: gx(KIT.x + 13.0), z: gz(KIT.z + 9.5), floor: 1, yaw: 0 },
         { id: 'sv_kitchen_2f', name: '2F 中央廚房屋頂與機房前', x: gx(KIT.x + 15.0), z: gz(KIT.z + 7.5), floor: 2, yaw: 0 },
@@ -3603,8 +3668,9 @@
         const rz = worldZ - OFFSET_Z;
         const inGenRoom = rx >= 76.3 && rx <= 79.2 && rz >= 10.8 && rz <= 16.8;
         const inMain = rx >= -1.0 && rx <= 82.8 && rz >= -2.2 && rz <= 16.8;
-        const inWalkway = rx >= KIT.x + 29 && rx <= 0.5 && rz >= 7.8 && rz <= 11.2;
+        const inWalkway = rx >= KIT.x + 29 && rx <= 0.5 && rz >= 7.8 && rz <= 10.9;
         const inKitchenBoiler = rx >= KIT.x + 4.0 && rx <= KIT.x + 9.0 && rz >= KIT.z - 0.2 && rz <= KIT.z + 4.6;
+        const inKitchenPower = rx >= KIT.x + 28.4 && rx <= KIT.x + 30.6 && rz >= KIT.z + 13.4 && rz <= KIT.z + 17.2;
         const inKitchen = rx >= KIT.x - 2.6 && rx <= KIT.x + 30.4 && rz >= KIT.z - 0.2 && rz <= KIT.z + 24.4;
 
         if (inGenRoom && svFloor <= 1) return 0.45;
@@ -3613,7 +3679,7 @@
           if (svFloor === 2) return ELEV.F2;
           return ELEV.F1;
         }
-        if (inKitchenBoiler && svFloor <= 1) return 0.40;
+        if ((inKitchenBoiler || inKitchenPower) && svFloor <= 1) return 0.40;
         if (inKitchen) {
           if (svFloor >= 2) return 4.90;
           return ELEV.F1;
