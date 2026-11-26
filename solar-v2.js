@@ -33,6 +33,25 @@
 let solarV2SelectedId = null;
 let solarV2DetailTab = 'billing'; // billing | bonds | compliance
 
+// 從預警提醒開啟指定契約的頁籤。
+// 先切到太陽能分頁、再設定選取：switchTab 在「已位於太陽能分頁」時會清除選取（回總覽），
+// 若先選取再切頁，在太陽能頁點「前往處理」會被立刻清掉而看似無反應。
+function openSolarContractFromAlert(solarId, tab = 'billing') {
+  if (typeof currentTab === 'undefined' || currentTab !== 'solar') switchTab('solar');
+  solarV2SelectedId = solarId;
+  solarV2DetailTab = tab;
+  renderCurrentView();
+  const mv = document.getElementById('main-view');
+  if (mv) mv.scrollTop = 0;
+  window.scrollTo(0, 0);
+}
+
+// 預警標題：契約名稱已含期別時不再重複附加
+function solarContractTitle(c) {
+  const name = String(c.building_name || ''), phase = String(c.phase_label || '');
+  return phase && !name.includes(phase) ? `${name}（${phase}）` : name;
+}
+
 function ensureSolarV2Tables() {
   if (!appData.tables) appData.tables = {};
   ['Solar_Contracts', 'Solar_Records', 'Solar_Bond_Ledger', 'Solar_Compliance_Logs'].forEach(k => {
@@ -199,8 +218,8 @@ function buildSolarV2Alerts() {
   appData.tables.Solar_Contracts.forEach(c => { cMap[c.solar_id] = c; });
 
   appData.tables.Solar_Contracts.filter(c => !['已屆滿', '已期滿', '已解約'].includes(c.status)).forEach(c => {
-    const title = `${c.building_name}${c.phase_label ? '（' + c.phase_label + '）' : ''}`;
-    const go = tab => () => { solarV2SelectedId = c.solar_id; solarV2DetailTab = tab; switchTab('solar'); };
+    const title = solarContractTitle(c);
+    const go = tab => () => openSolarContractFromAlert(c.solar_id, tab);
     const cmp = getContractComplianceSummary(c.solar_id, c);
 
     if (cmp.pub.level !== 'ok') {
@@ -252,7 +271,7 @@ function buildSolarV2Alerts() {
   appData.tables.Solar_Records.forEach(r => {
     const c = cMap[r.solar_id]; if (!c) return;
     const calc = calcSolarBillV2(r, c);
-    const go = () => { solarV2SelectedId = c.solar_id; solarV2DetailTab = 'billing'; switchTab('solar'); };
+    const go = () => openSolarContractFromAlert(c.solar_id, 'billing');
     if (calc.penInfo.canTerminate && !r.payment_date) {
       alerts.push({ level: 'red', badge: '光電得終止', title: `${c.building_name} (${r.period_label})`, detail: `逾期已達 ${calc.penInfo.fullMonths} 個月（達得終止門檻！違約金 10% = ${fmtMoney(calc.penInfo.penalty)}）`, sortKey: -30, action: go });
     } else if (!r.payment_date && calc.penInfo.overdueDays > 0) {

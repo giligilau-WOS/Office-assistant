@@ -452,7 +452,7 @@
       .forEach(c => {
         const t = getRentTerms(c);
         if (!t) return;
-        const title = `${c.building_name}${c.phase_label ? '（' + c.phase_label + '）' : ''}`;
+        const title = solarContractTitle(c);
         // 以實際繳納時程取代「固定月日」推算的催繳提醒
         alerts = alerts.filter(a => !(a.badge === '太陽能催繳' && a.title === title));
         const recs = contractRecords(c);
@@ -460,7 +460,7 @@
         if (!next) return;
         const rec = matchRecord(next, recs);
         const st = installmentStatus(next, rec, t.notice_days, t);
-        const go = () => { solarV2SelectedId = c.solar_id; solarV2DetailTab = 'billing'; switchTab('solar'); };
+        const go = () => openSolarContractFromAlert(c.solar_id, 'billing');
         const amt = fmtMoney(next.amount);
         if (st.key === 'overdue' && !rec) {
           alerts.push({ level: 'red', badge: '太陽能催繳', title, sortKey: st.d, action: go,
