@@ -98,6 +98,78 @@
   XIPU_RENEWAL_PRESET.key = 'xipu-renewal';
 
   const PRESETS = [XIPU_RENEWAL_PRESET, XIPU_PHASE2_PRESET];
+
+  // --------------------------------------------------------------------------
+  // 1c. 二期屋頂型保單（華南產物）
+  //     產險：電子設備綜合保險 19 處案場之第 17 項「溪埔國中二期」
+  //     意外險：公共意外責任險，保單手註「二期」
+  // --------------------------------------------------------------------------
+  const INSURANCE_PRESETS = [{
+    key: 'xipu-phase2-ins-115',
+    contractMatch: c => XIPU_PHASE2_PRESET.match(c),
+    label: '二期保單（產險 115/06/15 起、意外險 114/11/25 起）',
+    logs: [
+      {
+        policyKey: '151060201', log_type: 'PROPERTY_INS',
+        doc_or_policy_no: '華南產物 1401字第151060201號',
+        effective_date: '2026-06-15', expiry_date: '2027-06-15',
+        compliance: { typhoon: true, fire: true, earthquake: true },
+        notes: '電子設備綜合保險（高雄 19 處案場）第 17 項：溪埔路1號「溪埔國中二期」，製造年份 112/01/31，保額 5,979,373 元。附加條款 F05 加保颱風、洪水、地震；火災屬主險承保範圍。自負額每一事故每一地址損失之 15%，最低 10 萬元。續保自 1401字第141060197號。'
+      },
+      {
+        policyKey: '142021519', log_type: 'PUBLIC_LIABILITY_INS',
+        doc_or_policy_no: '華南產物 1402第142021519號',
+        effective_date: '2025-11-25', expiry_date: '2026-11-25',
+        compliance: { per_person: 300, per_accident_body: 1500, per_accident_prop: 200, aggregate: 4800 },
+        notes: '公共意外責任險，被保險人經營業務處所：高雄市立溪埔國民中學（溪埔路1號），保單手註「二期」。每一意外事故自負額 2,500 元，保險費 5,936 元。續保自 1402字第132021555號。'
+      }
+    ]
+  }];
+
+  const missingPresetLogs = (c, pr) => {
+    const logs = (appData.tables.Solar_Compliance_Logs || []).filter(l => l.solar_id === c.solar_id);
+    return pr.logs.filter(x => !logs.some(l => String(l.doc_or_policy_no || '').includes(x.policyKey)));
+  };
+
+  window.openInsurancePresetModal = function(solarId, key) {
+    const c = (appData.tables.Solar_Contracts || []).find(x => x.solar_id === solarId);
+    const pr = INSURANCE_PRESETS.find(x => x.key === key);
+    if (!c || !pr) return;
+    const todo = missingPresetLogs(c, pr);
+    const tName = { PROPERTY_INS: '產物保險', PUBLIC_LIABILITY_INS: '公共意外責任險' };
+    openModal(`📄 帶入${pr.label}`, `
+      <div class="item-meta" style="margin-bottom:8px">將於 <strong>${esc(c.solar_id)}｜${esc(solarContractTitle(c))}</strong> 新增 ${todo.length} 筆保險紀錄：</div>
+      <table><thead><tr><th>類別</th><th>保單號碼</th><th>保險期間</th><th>內容</th></tr></thead><tbody>
+      ${todo.map(x => `<tr>
+        <td style="white-space:nowrap"><strong>${tName[x.log_type]}</strong></td>
+        <td style="white-space:nowrap">${esc(x.doc_or_policy_no)}</td>
+        <td style="white-space:nowrap">${rocShort(x.effective_date)} ～ ${rocShort(x.expiry_date)}${diffDays(todayStr(), x.expiry_date) < 0 ? '<div><span class="tag tag-red">已到期，需續保保單</span></div>' : ''}</td>
+        <td style="font-size:12.5px">${x.log_type === 'PROPERTY_INS' ? '颱風 ✓ 火災 ✓ 地震 ✓' : '300／1,500／200／4,800 萬（符合契約最低保額）'}<div class="item-meta">${esc(x.notes)}</div></td>
+      </tr>`).join('')}
+      </tbody></table>
+    `, `<button onclick="closeModal()">取消</button><button class="btn-primary" onclick="saveInsurancePreset('${esc(solarId)}','${esc(key)}')">💾 新增 ${todo.length} 筆保險紀錄</button>`);
+  };
+
+  window.saveInsurancePreset = async function(solarId, key) {
+    const c = (appData.tables.Solar_Contracts || []).find(x => x.solar_id === solarId);
+    const pr = INSURANCE_PRESETS.find(x => x.key === key);
+    if (!c || !pr) return;
+    const recs = missingPresetLogs(c, pr).map(x => {
+      const rec = {
+        log_id: nextId('Solar_Compliance_Logs', 'log_id', 'CMP', 4), solar_id: solarId, log_type: x.log_type,
+        doc_or_policy_no: x.doc_or_policy_no, effective_date: x.effective_date, expiry_date: x.expiry_date,
+        compliance_json: JSON.stringify(x.compliance), attachment_url: '', notes: x.notes,
+        updated_at: nowStr(), is_deleted: false
+      };
+      upsertLocal('Solar_Compliance_Logs', rec, 'log_id');
+      return rec;
+    });
+    closeModal();
+    solarV2SelectedId = solarId; solarV2DetailTab = 'compliance';
+    renderCurrentView();
+    if (recs.length) await pushToCloud({ action: 'batchUpsert', items: [{ table: 'Solar_Compliance_Logs', records: recs }] });
+    toast(`✅ 已新增 ${recs.length} 筆保險紀錄`);
+  };
   const findPreset = c => PRESETS.find(pr => pr.match(c)) || null;
   const fmtPresetFields = f => [
     f.billing_mode === 'TIERED_BASE_RENT' ? '計費方式＝5% 級距制' : '', f.billing_cycle || '',
@@ -426,6 +498,20 @@
     });
   };
 
+  // 雙保險頁籤：有尚未登錄的對應保單時，顯示一鍵帶入
+  const _prevComplianceTab = renderSolarDetailComplianceTabHTML;
+  renderSolarDetailComplianceTabHTML = function(c, cmp) {
+    const banners = INSURANCE_PRESETS.filter(pr => pr.contractMatch(c)).map(pr => {
+      const todo = missingPresetLogs(c, pr);
+      if (!todo.length) return '';
+      return `<div class="gate-banner amber" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <span>📄 已有 ${esc(pr.label)}：${todo.map(x => x.log_type === 'PROPERTY_INS' ? '產物保險' : '公共意外責任險').join('、')}尚未登錄</span>
+        <button class="btn-sm btn-primary" onclick="openInsurancePresetModal('${esc(c.solar_id)}','${esc(pr.key)}')">帶入 ${todo.length} 筆保單</button>
+      </div>`;
+    }).join('');
+    return banners + _prevComplianceTab(c, cmp);
+  };
+
   const _prevBillingTab = renderSolarDetailBillingTabHTML;
   renderSolarDetailBillingTabHTML = function(c, recs) {
     return renderRentTermsPanelHTML(c) + _prevBillingTab(c, recs);
@@ -452,7 +538,7 @@
       .forEach(c => {
         const t = getRentTerms(c);
         if (!t) return;
-        const title = `${c.building_name}${c.phase_label ? '（' + c.phase_label + '）' : ''}`;
+        const title = solarContractTitle(c);
         // 以實際繳納時程取代「固定月日」推算的催繳提醒
         alerts = alerts.filter(a => !(a.badge === '太陽能催繳' && a.title === title));
         const recs = contractRecords(c);
@@ -460,7 +546,7 @@
         if (!next) return;
         const rec = matchRecord(next, recs);
         const st = installmentStatus(next, rec, t.notice_days, t);
-        const go = () => { solarV2SelectedId = c.solar_id; solarV2DetailTab = 'billing'; switchTab('solar'); };
+        const go = () => openSolarContractFromAlert(c.solar_id, 'billing');
         const amt = fmtMoney(next.amount);
         if (st.key === 'overdue' && !rec) {
           alerts.push({ level: 'red', badge: '太陽能催繳', title, sortKey: st.d, action: go,
