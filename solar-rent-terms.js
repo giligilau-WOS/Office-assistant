@@ -137,7 +137,14 @@
     if (!c || !pr) return;
     const todo = missingPresetLogs(c, pr);
     const tName = { PROPERTY_INS: '產物保險', PUBLIC_LIABILITY_INS: '公共意外責任險' };
+    // 相似紀錄：同契約、同類別、保險期間重疊但保單號不同
+    const similar = (appData.tables.Solar_Compliance_Logs || []).filter(l => l.solar_id === c.solar_id && todo.some(x =>
+      x.log_type === l.log_type && !String(l.doc_or_policy_no || '').includes(x.policyKey) &&
+      (l.effective_date || '0000') <= x.expiry_date && (l.expiry_date || '9999') >= x.effective_date));
     openModal(`📄 帶入${pr.label}`, `
+      ${similar.length ? `<div class="gate-banner red" style="margin-bottom:10px;font-size:13px">⚠️ 已有 ${similar.length} 筆相似的保險紀錄（同類別、期間重疊）：
+        ${similar.map(l => `<div class="item-meta">${tName[l.log_type] || l.log_type}｜${esc(l.doc_or_policy_no)}｜${esc(l.effective_date || '-')}～${esc(l.expiry_date || '-')}</div>`).join('')}
+        <div style="margin-top:4px">請確認不是同一張保單後再新增。</div></div>` : ''}
       <div class="item-meta" style="margin-bottom:8px">將於 <strong>${esc(c.solar_id)}｜${esc(solarContractTitle(c))}</strong> 新增 ${todo.length} 筆保險紀錄：</div>
       <table><thead><tr><th>類別</th><th>保單號碼</th><th>保險期間</th><th>內容</th></tr></thead><tbody>
       ${todo.map(x => `<tr>
@@ -393,7 +400,11 @@
 
     const v = k => esc(base[k] ?? DEFAULT_TERMS[k] ?? '');
     const priorChecked = existing ? Number(existing.prior_settled_through) > 0 : true;
+    const similarContracts = isNew ? (appData.tables.Solar_Contracts || []).filter(x =>
+      /二期/.test(x.phase_label || '') || /中央廚房/.test(x.building_name || '') || Math.abs((Number(x.capacity_kwp) || 0) - (Number(c.capacity_kwp) || 0)) < 0.005) : [];
     openModal(isNew ? `📄 新增${preset.label}` : preset ? `📄 帶入${preset.label}條款` : '💰 年租金繳納條件', `
+      ${similarContracts.length ? `<div class="gate-banner red" style="margin-bottom:10px;font-size:13px">⚠️ 已有相似的契約，請確認不是同一份後再建立：
+        ${similarContracts.map(x => `<div class="item-meta">${esc(x.solar_id)}｜${esc(x.building_name)}${x.phase_label ? '（' + esc(x.phase_label) + '）' : ''}｜${esc(x.contract_start || '-')} 起｜${x.capacity_kwp} kWp</div>`).join('')}</div>` : ''}
       ${isNew ? `<div class="gate-banner amber" style="margin-bottom:10px;font-size:13px">將新增契約 <strong>${esc(c.solar_id)}｜${esc(c.building_name)}（${esc(c.phase_label)}）</strong>：${c.capacity_kwp} kWp、租期 ${rocShort(c.contract_start)}～${rocShort(c.contract_end)}（${c.term_months} 個月）、公證 ${esc(c.notary_no)}、履約保證金 ${fmtMoney(c.deposit_amount)}；${esc(fmtPresetFields(preset.contractFields))}。台電電號、保險等其他資料可於建立後以「編輯契約主檔」補上。</div>`
         : preset ? `<div class="gate-banner amber" style="margin-bottom:10px;font-size:13px">將同時更新本契約：${esc(fmtPresetFields(preset.contractFields))}。</div>` : ''}
       <div class="form-grid">
