@@ -174,6 +174,13 @@
       .ud-quick-memo .memo-quick { margin: 0 !important; }
       .ud-quick-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
       .ud-quick-btns button { min-height: 40px; justify-content: center; white-space: nowrap; }
+      .ud-quick-btns a.ud-quick-link {
+        grid-column: 1 / -1; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        padding: 7px 12px; border-radius: 8px; border: 1px solid #fcd34d; background: #fffbeb; color: #92400e;
+        font-size: 13px; font-weight: 700; text-decoration: none; transition: background .15s, border-color .15s;
+      }
+      .ud-quick-btns a.ud-quick-link:hover { background: #fef3c7; border-color: #f59e0b; text-decoration: none; }
+      body[data-nordic-theme="obsidian"] .ud-quick-btns a.ud-quick-link { background: rgba(245, 158, 11, 0.14); border-color: rgba(251, 191, 36, 0.45); color: #fde68a; }
       @media (max-width: 760px) {
         .ud-quick { grid-template-columns: 1fr; }
         .ud-mods { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -565,6 +572,7 @@
             <button type="button" onclick="udMenuAction('new-routine')">＋ 新增例行事務</button>
             <button type="button" onclick="switchTab('annual-gantt')">📅 全校甘特圖</button>
             <button type="button" onclick="switchTab('templates')">🗂️ 標案模板</button>
+            <a class="ud-quick-link" href="./campus-3d.html" target="_blank" rel="noopener" title="另開新分頁開啟溪埔國中 3D 校舍模型（測試建置中）">🏫 3D 校舍模型 <span class="badge-beta">測試建置中</span> ↗</a>
           </div>
         </div>
       </section>

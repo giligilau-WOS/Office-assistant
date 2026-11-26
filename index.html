@@ -90,6 +90,13 @@
     font-size: 10px; background: #e2e8f0; color: #475569; padding: 1px 5px;
     border-radius: 4px; margin-left: 4px; font-weight: 500;
   }
+  .badge-beta {
+    font-size: 10px; background: #fef3c7; color: #b45309; border: 1px solid #fcd34d;
+    padding: 1px 6px; border-radius: 999px; margin-left: 4px; font-weight: 700; white-space: nowrap;
+  }
+  .nav-tab-ext {
+    display: inline-flex; align-items: center; gap: 4px; text-decoration: none !important;
+  }
 
   .container { max-width: 1520px; margin: 0 auto; padding: 14px 18px 40px; }
 
@@ -297,6 +304,7 @@
     <button class="nav-tab" data-tab="templates" onclick="switchTab('templates')">🗂️ 標案模板</button>
     <button class="nav-tab" data-tab="routines" onclick="switchTab('routines')">🔁 例行事務</button>
     <button class="nav-tab" data-tab="upcoming" onclick="switchTab('upcoming')">🔧 設施與綠能 <span class="badge-soon">下階段</span></button>
+    <a class="nav-tab nav-tab-ext" href="./campus-3d.html" target="_blank" rel="noopener" title="另開新分頁開啟溪埔國中 3D 校舍模型（測試建置中）">🏫 3D 校舍模型 <span class="badge-beta">測試建置中</span> ↗</a>
   </div>
 
   <!-- 主內容容器 -->
