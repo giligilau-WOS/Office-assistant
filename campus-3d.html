@@ -293,6 +293,20 @@
             <span class="text-slate-200">校園基地（操場／球場／車棚）</span>
             <input id="toggle-site" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
           </label>
+          <div class="p-2 rounded-xl bg-teal-500/15 border border-teal-400/35 space-y-1.5">
+            <label class="flex items-center justify-between cursor-pointer">
+              <div>
+                <div class="text-teal-200 font-medium">🛰️ Google 衛星底圖套繪</div>
+                <div class="text-[10.5px] text-slate-400">依衛星圖對位校園地坪顏色與周邊道路</div>
+              </div>
+              <input id="toggle-sat" type="checkbox" checked class="w-4 h-4 accent-teal-400 rounded cursor-pointer" />
+            </label>
+            <div class="flex items-center gap-2 text-[10.5px] text-slate-300">
+              <span>底圖濃度</span>
+              <input id="sat-opacity" type="range" min="0" max="100" value="90" class="flex-1 accent-teal-400" />
+              <span id="sat-opacity-val" class="font-mono text-teal-300 w-8 text-right">90%</span>
+            </div>
+          </div>
           <label class="flex items-center justify-between p-2 rounded-xl bg-slate-800/55 hover:bg-slate-800 cursor-pointer transition">
             <span class="text-slate-200">結構軸線標尺（①–⑪／A–D）</span>
             <input id="toggle-grid" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
@@ -488,7 +502,7 @@
         stage: { cx: 6.3, cz: 74.7, w: 11.0, d: 7.0 },
         storage172: { cx: 0.4, cz: 85.5, w: 14.0, d: 14.5 },
         containers: { cx: 26.0, cz: 80.0 },
-        courtOpen: { cx: 55.5, cz: 80.0, w: 22.0, d: 18.0 },
+        courtOpen: { cx: 57.2, cz: 80.0, w: 22.0, d: 18.0 },
         courtCovered: { cx: 82.0, cz: 81.5, w: 27.0, d: 22.0 },
         pond: { cx: 72.5, cz: 47.2, plazaR: 7.8, waterR: 3.0 },
         entryPlaza: { x0: 78.0, x1: 123.5, z0: 38.0, z1: 55.0 },
@@ -901,23 +915,24 @@
         ckYellow: makeMat(0xf2d238, { roughness: 0.85, xrayable: true }),
         ckCream: makeMat(0xe9e2cd, { roughness: 0.85, xrayable: true }),
         containerPurple: makeMat(0x8d7fb8, { roughness: 0.7 }),
-        courtPurple: makeMat(0x6f6aa8, { roughness: 0.8 }),
+        courtPurple: makeMat(0x636c99, { roughness: 0.80 }), // 室外紫藍色壓克力籃球場（依 Google 衛星圖校色）
         ckGray: makeMat(0xbec4cb, { roughness: 0.82, xrayable: true }),
         ckYellowGreen: makeMat(0xf2cc3a, { roughness: 0.82, xrayable: true }), // 2-7 食育教室外廊黃色牆（依現況照片）
         ckTerracotta: makeMat(0xea8682, { roughness: 0.82, xrayable: true }),  // 珊瑚粉紅量體（依現況照片）
         ckSand: makeMat(0xedb48a, { roughness: 0.82, xrayable: true }),        // 蜜桃橘量體（依現況照片）
         ckSage: makeMat(0xdedacb, { roughness: 0.82, xrayable: true }),        // 2F 機房淺米灰（依現況照片）
-        // Campus Site
-        grass: makeMat(0x5d8d4a, { roughness: 0.94 }),
-        lawnInfield: makeMat(0x4c823d, { roughness: 0.92 }),
-        trackRed: makeMat(0xb54b3c, { roughness: 0.85 }),
-        asphalt: makeMat(0x4f565f, { roughness: 0.90 }),
-        plazaTile: makeMat(0xb6afa3, { roughness: 0.84 }),
-        courtBlue: makeMat(0x2d6a7a, { roughness: 0.78 }),
-        water: makeMat(0x3895ba, { roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.86 }),
+        // Campus Site（依 Google Maps 衛星圖實地校色）
+        grass: makeMat(0x4f6c47, { roughness: 0.95 }),
+        lawnInfield: makeMat(0x5a7751, { roughness: 0.93 }),
+        trackRed: makeMat(0x8c4840, { roughness: 0.86 }),
+        asphalt: makeMat(0x5c6066, { roughness: 0.90 }),
+        plazaTile: makeMat(0x9b9891, { roughness: 0.85 }),
+        concreteApron: makeMat(0xc5c1b6, { roughness: 0.86 }),
+        courtBlue: makeMat(0x366b7c, { roughness: 0.78 }),
+        water: makeMat(0x2e6f84, { roughness: 0.16, metalness: 0.2, transparent: true, opacity: 0.88 }),
         bark: makeMat(0x5b4432, { roughness: 0.92 }),
-        foliage1: makeMat(0x3e6b36, { roughness: 0.88 }),
-        foliage2: makeMat(0x528240, { roughness: 0.88 })
+        foliage1: makeMat(0x375d31, { roughness: 0.88 }),
+        foliage2: makeMat(0x49733b, { roughness: 0.88 })
       };
 
       // =========================================================================
@@ -3548,9 +3563,33 @@
       // =========================================================================
       // 11. CAMPUS SITE CONTEXT (操場、風雨球場、噴水池、司令台、車棚、警衛室)
       // =========================================================================
+      let satOverlayMesh = null;
+      let satOverlayMat = null;
+      const sitePavingMaterials = [
+        MAT.trackRed, MAT.lawnInfield, MAT.plazaTile, MAT.concreteApron,
+        MAT.asphalt, MAT.courtPurple, MAT.courtBlue
+      ];
+      function syncSatelliteBlend() {
+        const show = Boolean(state.showSat);
+        const op = show ? (state.satOpacity ?? 0.90) : 0;
+        if (satOverlayMesh) satOverlayMesh.visible = show && op > 0.01;
+        if (satOverlayMat) {
+          satOverlayMat.opacity = op;
+          satOverlayMat.needsUpdate = true;
+        }
+        // 當 Google 衛星底圖開啟時，地坪色塊轉為溫和半透明套色，讓真實衛星地坪材質與標線完美融合；關閉衛星圖時恢復 100% 實體 3D 鋪面！
+        const paveOp = show ? Math.max(0.32, 1.0 - op * 0.64) : 1.0;
+        sitePavingMaterials.forEach((m) => {
+          m.transparent = paveOp < 0.99;
+          m.opacity = paveOp;
+          m.depthWrite = paveOp >= 0.99;
+          m.needsUpdate = true;
+        });
+      }
+
       function buildCampusSite() {
-        // 大範圍地面
-        const ground = new THREE.Mesh(new THREE.PlaneGeometry(520, 400), makeMat(0x4a6b3e, { roughness: 0.96 }));
+        // 大範圍地面（與衛星圖邊緣無縫銜接之深橄欖草地色）
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(520, 400), makeMat(0x435d3c, { roughness: 0.96 }));
         ground.rotation.x = -Math.PI / 2;
         ground.position.set(gx(25), -0.06, gz(45));
         ground.receiveShadow = true;
@@ -3564,6 +3603,31 @@
         lawn.position.y = -0.02;
         lawn.receiveShadow = true;
         campusSiteGroup.add(lawn);
+
+        // Google Maps 衛星正射底圖套繪（精準對齊 rx ∈ [-90, 145] 寬 235m × rz ∈ [-28, 106] 深 134m，殘差 < 0.19m！）
+        {
+          const satLoader = new THREE.TextureLoader();
+          const satTex = satLoader.load('campus-3d-assets/site/google-sat.jpg');
+          satTex.colorSpace = THREE.SRGBColorSpace;
+          satTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+          satOverlayMat = new THREE.MeshStandardMaterial({
+            map: satTex,
+            roughness: 0.94,
+            metalness: 0.0,
+            transparent: true,
+            opacity: 0.90,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -1
+          });
+          satOverlayMesh = new THREE.Mesh(new THREE.PlaneGeometry(235, 134), satOverlayMat);
+          satOverlayMesh.rotation.x = -Math.PI / 2;
+          satOverlayMesh.position.set(gx(27.5), 0.015, gz(39.0));
+          satOverlayMesh.receiveShadow = true;
+          satOverlayMesh.userData.nonBlocking = true;
+          campusSiteGroup.add(satOverlayMesh);
+        }
+
         const fencePts = SITE.boundary.concat([SITE.boundary[0]]).map(([bx, bz]) => new THREE.Vector3(gx(bx), 0.9, gz(bz)));
         // 圍牆／木柵欄（高約 1.5 m，示意）
         const fenceMat = makeMat(0x9a6b4a, { roughness: 0.9, transparent: true, opacity: 0.55 });
@@ -3574,7 +3638,7 @@
           f.rotation.y = Math.atan2(bx - ax, bz - az);
         }
 
-        // 200 m 跑道（中心約在主校舍軸線①東側 8 m、北牆以南 41.5 m）
+        // 200 m 跑道（中心約在主校舍軸線①東側 8.9 m、北牆以南 43.8 m）
         const T = SITE.track;
         const buildStadiumShape = (sh, r) => {
           const sp = new THREE.Shape();
@@ -3606,8 +3670,27 @@
           pts.push(pts[0]);
           campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), laneMat));
         }
+        // 操場內場草坪足球場白線標記（邊線、中線、中圈與東西兩側球門禁區，依衛星圖）
+        {
+          const pitchMat = new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.55 });
+          const addLine2D = (coords, y = 0.055) => {
+            const pts = coords.map(([px, pz]) => new THREE.Vector3(gx(px), y, gz(pz)));
+            campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), pitchMat));
+          };
+          const px0 = T.cx - 24.5, px1 = T.cx + 24.5, pz0 = T.cz - 11.5, pz1 = T.cz + 11.5;
+          addLine2D([[px0, pz0], [px1, pz0], [px1, pz1], [px0, pz1], [px0, pz0]]);
+          addLine2D([[T.cx, pz0], [T.cx, pz1]]);
+          const cPts = [];
+          for (let i = 0; i <= 36; i++) {
+            const a = (i / 36) * Math.PI * 2;
+            cPts.push([T.cx + Math.cos(a) * 4.5, T.cz + Math.sin(a) * 4.5]);
+          }
+          addLine2D(cPts);
+          addLine2D([[px0, T.cz - 5.2], [px0 + 4.8, T.cz - 5.2], [px0 + 4.8, T.cz + 5.2], [px0, T.cz + 5.2]]);
+          addLine2D([[px1, T.cz - 5.2], [px1 - 4.8, T.cz - 5.2], [px1 - 4.8, T.cz + 5.2], [px1, T.cz + 5.2]]);
+        }
 
-        // 南側直線跑道
+        // 南側直線跑道（100m 延伸直線道）
         const SP = SITE.sprint;
         addBox(campusSiteGroup, SP.len, 0.04, SP.w, gx(SP.cx), 0.03, gz(SP.cz), MAT.trackRed, false, true);
 
@@ -3669,6 +3752,26 @@
         // 籃球場＋風雨球場（103.4）
         const CO = SITE.courtOpen, CC = SITE.courtCovered;
         addBox(campusSiteGroup, CO.w, 0.08, CO.d, gx(CO.cx), 0.04, gz(CO.cz), MAT.courtPurple, false, true);
+        // 室外紫藍色籃球場白色標線（邊線、中線、中圈、兩端禁區，依衛星圖）
+        {
+          const bMat = new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.78 });
+          const addCL = (coords) => {
+            const pts = coords.map(([px, pz]) => new THREE.Vector3(gx(px), 0.088, gz(pz)));
+            campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), bMat));
+          };
+          const bx0 = CO.cx - CO.w * 0.44, bx1 = CO.cx + CO.w * 0.44;
+          const bz0 = CO.cz - CO.d * 0.42, bz1 = CO.cz + CO.d * 0.42;
+          addCL([[bx0, bz0], [bx1, bz0], [bx1, bz1], [bx0, bz1], [bx0, bz0]]);
+          addCL([[CO.cx, bz0], [CO.cx, bz1]]);
+          const mc = [];
+          for (let i = 0; i <= 28; i++) {
+            const a = (i / 28) * Math.PI * 2;
+            mc.push([CO.cx + Math.cos(a) * 1.8, CO.cz + Math.sin(a) * 1.8]);
+          }
+          addCL(mc);
+          addCL([[bx0, CO.cz - 2.4], [bx0 + 4.4, CO.cz - 2.4], [bx0 + 4.4, CO.cz + 2.4], [bx0, CO.cz + 2.4]]);
+          addCL([[bx1, CO.cz - 2.4], [bx1 - 4.4, CO.cz - 2.4], [bx1 - 4.4, CO.cz + 2.4], [bx1, CO.cz + 2.4]]);
+        }
         addBox(campusSiteGroup, CC.w, 0.08, CC.d, gx(CC.cx), 0.04, gz(CC.cz), MAT.courtBlue, false, true);
         [CC.cx - CC.w / 2 + 0.5, CC.cx, CC.cx + CC.w / 2 - 0.5].forEach((cx) => {
           [CC.cz - CC.d / 2 - 0.5, CC.cz + CC.d / 2 + 0.5].forEach((cz) => addBox(campusSiteGroup, 0.45, 8.5, 0.45, gx(cx), 4.25, gz(cz), MAT.steelDark));
@@ -3678,23 +3781,30 @@
           addBox(campusSiteGroup, CC.w - 2.0, 0.08, 2.2, gx(CC.cx), 8.9, gz(CC.cz - CC.d / 2 + 1.8 + r * 3.0), MAT.solarPanel, false);
         }
 
-        // 中央廣場＋水池
+        // 中央廣場＋水池＋大門連鎖磚廣場與穿堂弧形通道（依 Google 衛星圖精確塑形與校色！）
         const PD = SITE.pond;
-        const plazaDisk = new THREE.Mesh(new THREE.CylinderGeometry(PD.plazaR, PD.plazaR, 0.08, 48), MAT.plazaTile);
+        const plazaDisk = new THREE.Mesh(new THREE.CylinderGeometry(PD.plazaR + 0.8, PD.plazaR + 0.8, 0.08, 48), MAT.plazaTile);
         plazaDisk.position.set(gx(PD.cx), 0.04, gz(PD.cz));
         plazaDisk.receiveShadow = true;
         campusSiteGroup.add(plazaDisk);
-        const pondRim = new THREE.Mesh(new THREE.CylinderGeometry(PD.waterR + 0.6, PD.waterR + 0.7, 0.45, 36), MAT.concreteBase);
+        const pondRim = new THREE.Mesh(new THREE.CylinderGeometry(PD.waterR + 0.65, PD.waterR + 0.75, 0.45, 36), MAT.concreteBase);
         pondRim.position.set(gx(PD.cx), 0.22, gz(PD.cz));
         campusSiteGroup.add(pondRim);
         const pondWater = new THREE.Mesh(new THREE.CylinderGeometry(PD.waterR, PD.waterR, 0.36, 36), MAT.water);
         pondWater.position.set(gx(PD.cx), 0.28, gz(PD.cz));
         campusSiteGroup.add(pondWater);
+        // 水池中央植栽綠島（依 Google 衛星圖深綠中島）
+        const pondIsle = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.65, 0.52, 24), MAT.foliage1);
+        pondIsle.position.set(gx(PD.cx), 0.34, gz(PD.cz));
+        campusSiteGroup.add(pondIsle);
+
+        // 大門連鎖磚廣場（大門 → 噴水池 → 穿堂與東側無障礙坡道弧形鋪面，依衛星圖）
         const EP = SITE.entryPlaza;
-        addBox(campusSiteGroup, EP.x1 - EP.x0, 0.06, EP.z1 - EP.z0, gx((EP.x0 + EP.x1) / 2), 0.03, gz((EP.z0 + EP.z1) / 2), MAT.asphalt, false, true);
-        // 穿堂往廣場的斜向鋪面
-        const diagWalk = addBox(campusSiteGroup, 7.0, 0.06, 30.0, gx(69.0), 0.035, gz(27.0), MAT.plazaTile, false, true);
-        diagWalk.rotation.y = 0.42;
+        addBox(campusSiteGroup, EP.x1 - EP.x0, 0.06, EP.z1 - EP.z0, gx((EP.x0 + EP.x1) / 2), 0.032, gz((EP.z0 + EP.z1) / 2), MAT.plazaTile, false, true);
+        addFlatPoly(campusSiteGroup, [
+          [53.0, 14.0], [79.5, 14.0], [79.5, 22.5], [75.0, 34.0], [78.5, 42.0],
+          [66.0, 44.0], [63.5, 34.0], [58.0, 23.0], [52.5, 17.0]
+        ], 0.0, 0.042, MAT.plazaTile);
 
         // 東側附屬建物：17-1 檔案室／4-1 體育器材室／22-1 備勤室／14-1 警衛室（103.4，北→南，4 獨立隔間＋西向敞開大門與鋁窗＋警衛室南向觀景窗！）
         const AX = SITE.annex;
@@ -3811,25 +3921,34 @@
           nsRoof.userData = { isSiteRoofPart: true };
         }
 
-        // 停車場（東北側既設汽車停車場、東南側既設停車場）
+        // 停車場（東北側既設教職員停車場＋白色停車格線，依 Google 衛星圖實地鋪面範圍）
         const PN = SITE.parkingNE;
-        addBox(campusSiteGroup, PN.x1 - PN.x0, 0.06, PN.z1 - PN.z0, gx((PN.x0 + PN.x1) / 2), 0.03, gz((PN.z0 + PN.z1) / 2), MAT.asphalt, false, true);
+        const pnZ0 = PN.z0 + 16.0, pnZ1 = PN.z1;
+        addBox(campusSiteGroup, PN.x1 - PN.x0 + 3.0, 0.06, pnZ1 - pnZ0 + 2.0, gx((PN.x0 + PN.x1) / 2 - 0.5), 0.03, gz((pnZ0 + pnZ1) / 2), MAT.asphalt, false, true);
+        for (let pz = pnZ0 + 1.5; pz <= pnZ1 - 1.5; pz += 3.0) {
+          addBox(campusSiteGroup, 4.4, 0.015, 0.12, gx(PN.x0 + 0.8), 0.066, gz(pz), MAT.ckWhite, false, false);
+          addBox(campusSiteGroup, 4.4, 0.015, 0.12, gx(PN.x1 - 1.2), 0.066, gz(pz), MAT.ckWhite, false, false);
+        }
+        // 主校舍北側與中央廚房北側淺灰白色水泥服務地坪（依衛星圖亮灰水泥鋪面）
+        addBox(campusSiteGroup, 82.0, 0.05, 8.5, gx(38.0), 0.025, gz(-5.2), MAT.concreteApron, false, true);
+        addBox(campusSiteGroup, 26.0, 0.05, 6.5, gx(-33.0), 0.025, gz(-12.8), MAT.concreteApron, false, true);
 
         // 學生、教職員車棚（103.10，主校舍北側，貼近北側圍牆留出後方通行空間）
         SITE.bikeShed.forEach(([x0, x1]) => {
           const cx = (x0 + x1) / 2, len = x1 - x0;
-          addBox(campusSiteGroup, len, 0.06, 3.2, gx(cx), 0.03, gz(SITE.bikeShedZ), MAT.asphalt, false, true);
+          addBox(campusSiteGroup, len, 0.06, 3.2, gx(cx), 0.035, gz(SITE.bikeShedZ), MAT.asphalt, false, true);
           addBox(campusSiteGroup, len, 0.16, 3.5, gx(cx), 2.75, gz(SITE.bikeShedZ), MAT.ckWhite);
           for (let px = x0 + 0.5; px <= x1 - 0.4; px += 6.0) {
             addBox(campusSiteGroup, 0.16, 2.75, 0.16, gx(px), 1.38, gz(SITE.bikeShedZ + 1.2), MAT.steelDark);
           }
         });
 
-        // 中央廚房西側進出車道（沿西側地界，接西南側門）
+        // 中央廚房西側進出車道與西北側迴車柏油廣場（沿西側地界，接西南側門，依衛星圖）
         const KR = SITE.kitchenRoad;
         const kdx = KR.to[0] - KR.from[0], kdz = KR.to[1] - KR.from[1];
-        const road = addBox(campusSiteGroup, KR.w, 0.06, Math.hypot(kdx, kdz), gx((KR.from[0] + KR.to[0]) / 2), 0.03, gz((KR.from[1] + KR.to[1]) / 2), MAT.asphalt, false, true);
+        const road = addBox(campusSiteGroup, KR.w, 0.06, Math.hypot(kdx, kdz), gx((KR.from[0] + KR.to[0]) / 2), 0.032, gz((KR.from[1] + KR.to[1]) / 2), MAT.asphalt, false, true);
         road.rotation.y = Math.atan2(kdx, kdz);
+        addBox(campusSiteGroup, 16.0, 0.055, 11.5, gx(-48.5), 0.028, gz(-14.5), MAT.asphalt, false, true); // 西北側送餐迴車廣場
 
         // 校門（門柱示意）
         Object.entries(SITE.gates).forEach(([k, [gxr, gzr]]) => {
@@ -3846,7 +3965,7 @@
         // 樹木（沿地界與廣場周邊，示意）
         const treeCoords = [
           [-49, -14], [-46, 22], [-48, 42], [-62.5, 58], [-20, 70], [-35, 85], [20, 90], [35, 75],
-          [40, 62], [70, 68], [95, 60], [100, 40], [88, 30], [85.5, 8], [92, -3], [40, -11.5], [-12.5, -11.0], [118, 60], [118, 85]
+          [44, 68], [70, 68], [95, 60], [100, 40], [88, 30], [85.5, 8], [92, -3], [40, -11.5], [-12.5, -11.0], [118, 60], [118, 85]
         ];
         treeCoords.forEach(([tx, tz], i) => {
           const g = new THREE.Group();
@@ -3882,6 +4001,8 @@
         xrayMode: false,
         showGrid: true,
         showSite: true,
+        showSat: true,
+        satOpacity: 0.90,
         showLabels: true,
         selectedRoomMesh: null,
         navMode: 'earth', // 'earth' | '2d' | 'street'
@@ -3896,6 +4017,7 @@
         svPos: new THREE.Vector3(),
         svTargetPos: new THREE.Vector3()
       };
+      syncSatelliteBlend();
 
       const CAMERA_PRESETS = {
         campus: { pos: [26, 52, 92], target: [-2, 4, 14] },
@@ -5331,6 +5453,17 @@
       document.getElementById('toggle-site').addEventListener('change', (e) => {
         state.showSite = e.target.checked;
         campusSiteGroup.visible = state.showSite;
+      });
+      document.getElementById('toggle-sat').addEventListener('change', (e) => {
+        state.showSat = e.target.checked;
+        syncSatelliteBlend();
+      });
+      document.getElementById('sat-opacity').addEventListener('input', (e) => {
+        const pct = Number(e.target.value);
+        state.satOpacity = pct / 100;
+        const valEl = document.getElementById('sat-opacity-val');
+        if (valEl) valEl.textContent = `${pct}%`;
+        syncSatelliteBlend();
       });
       document.getElementById('toggle-grid').addEventListener('change', (e) => {
         state.showGrid = e.target.checked;
