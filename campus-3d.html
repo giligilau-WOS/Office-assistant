@@ -263,13 +263,21 @@
       <section class="pt-3 border-t border-slate-700/50">
         <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">3. 顯示圖層與操作設定</h2>
         <div class="space-y-1.5 text-xs">
-          <label class="flex items-center justify-between p-2 rounded-xl bg-sky-500/15 border border-sky-400/35 hover:bg-sky-500/25 cursor-pointer transition">
-            <div>
-              <div class="text-sky-200 font-medium">Google Earth 操作模式</div>
-              <div class="text-[11px] text-slate-400">左鍵平移地圖・右鍵旋轉傾斜</div>
+          <div class="p-2 rounded-xl bg-sky-500/15 border border-sky-400/35 space-y-2">
+            <label class="flex items-center justify-between cursor-pointer">
+              <div>
+                <div class="text-sky-200 font-medium">💻 觸控板友善手勢</div>
+                <div class="text-[10.5px] text-slate-400">雙指滑動旋轉／雙指縮放・鍵盤 WASD+QE 可移動</div>
+              </div>
+              <input id="toggle-trackpad" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+            </label>
+            <div class="flex items-center gap-1.5 text-[11px]">
+              <span class="text-slate-300 shrink-0">單指拖曳</span>
+              <button id="drag-pan-btn" type="button" class="flex-1 py-1 rounded-lg bg-sky-500 text-white font-semibold transition">✋ 平移地圖</button>
+              <button id="drag-rot-btn" type="button" class="flex-1 py-1 rounded-lg bg-slate-800/90 text-slate-300 hover:text-white font-medium transition">🔄 旋轉視角</button>
             </div>
-            <input id="toggle-earth-nav" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
-          </label>
+            <input id="toggle-earth-nav" type="checkbox" checked class="hidden" />
+          </div>
           <label class="flex items-center justify-between p-2 rounded-xl bg-emerald-500/15 border border-emerald-400/35 hover:bg-emerald-500/25 cursor-pointer transition">
             <div>
               <div class="text-emerald-200 font-medium">🚶 行人防穿牆模式（街景）</div>
@@ -444,6 +452,10 @@
           <path d="M9.5 8.5h5a1.5 1.5 0 0 1 1.5 1.5v4.2a1 1 0 0 1-1 1h-.6V21a1 1 0 0 1-2 0v-4.5h-.8V21a1 1 0 0 1-2 0v-5.8H9a1 1 0 0 1-1-1V10a1.5 1.5 0 0 1 1.5-1.5z" />
         </svg>
       </button>
+      <button id="earth-drag-mode-btn" class="earth-btn w-10 h-10 rounded-xl text-[13px] font-bold text-emerald-300 flex flex-col items-center justify-center leading-none" title="單指拖曳切換：平移地圖 ↔ 旋轉視角（快捷鍵 Space）">
+        <span id="earth-drag-mode-icon">✋</span>
+        <span id="earth-drag-mode-lbl" class="text-[9px] mt-0.5 text-slate-200">平移</span>
+      </button>
       <button id="earth-tilt-btn" class="earth-btn w-10 h-10 rounded-xl text-[11px] font-bold text-sky-300 flex items-center justify-center" title="切換 2D 俯視 / 3D 傾斜">2D</button>
       <div class="earth-btn rounded-xl overflow-hidden flex flex-col w-10">
         <button id="earth-rot-left" class="h-8 text-slate-200 hover:bg-slate-700/70 text-xs flex items-center justify-center border-b border-slate-700/60" title="向左旋轉">↺</button>
@@ -493,30 +505,43 @@
       const ELEV = { GL: 0.0, F1: 1.20, F2: 5.00, F3: 8.80, RF: 12.60 };
       const FLOOR_H = 3.80;
 
-      // 校園配置（依中央廚房統包工程「現況全區配置圖」1/600 量測，原點＝主校舍軸線①×D，+X 東、+Z 南）
+      // 校園配置（依 Google Maps 正射空拍圖與中央廚房現況配置圖校正，原點＝主校舍軸線①×D，+X 東、+Z 南）
       const SITE = {
-        // 依 Google 衛星圖（比例尺 20 m）與現況全區配置圖校正；原點＝主校舍軸線①×D，+X 東、+Z 南
-        boundary: [[-61, -23], [-9, -23], [-9, -12.5], [123.5, -12.5], [123.5, 100], [110, 100], [8, 94], [-52, 78], [-72, 68], [-64, 53]],
-        track: { cx: 8.9, cz: 43.8, straightHalf: 25.7, outerR: 21.7, innerR: 14.4 },
-        sprint: { cx: 1.0, cz: 66.5, len: 104.0, w: 8.0 },
+        // 圍牆邊線（順時針，精準對齊空拍圖北界、東側溪埔路、南側溪埔路1巷1弄與西側廚房送餐車道外緣）
+        boundary: [
+          [-51.0, -21.5], [-41.0, -21.5], [-41.0, -14.5], [-10.0, -14.5],
+          [45.0, -12.5], [121.0, -9.5], [122.0, 42.0], [122.0, 53.0],
+          [121.5, 92.5], [116.5, 95.5], [95.0, 96.5], [60.0, 97.5],
+          [20.0, 97.0], [16.5, 96.6], [9.5, 96.0], [0.0, 95.2],
+          [-20.0, 89.8], [-40.0, 82.8], [-60.0, 74.5], [-68.0, 70.5],
+          [-61.5, 50.0], [-56.5, 20.0], [-53.5, 0.0]
+        ],
+        // 圍牆大門／側門缺口（對應 boundary 頂點區段索引：6=東大門、13=南側門、18=西南廚房車道門）
+        gateGaps: new Set([6, 13, 18]),
+        // 200m 六跑道標準橢圓跑道（空拍精測：北緣 z=23.2、南緣 z=69.8、西彎 x=-38.0、東彎 x=59.0）
+        track: { cx: 10.5, cz: 46.5, straightHalf: 25.2, outerR: 23.3, innerR: 15.5 },
+        // 南側 100m 直線跑道（與 200m 跑道南直道 z=62.0..69.8 無縫共面銜接，總長 108m 含起終點緩衝）
+        sprint: { x0: -50.0, x1: 58.0, z0: 62.0, z1: 69.8, cx: 4.0, cz: 65.9, len: 108.0, w: 7.8 },
         stage: { cx: 6.3, cz: 74.7, w: 11.0, d: 7.0 },
         storage172: { cx: 0.4, cz: 85.5, w: 14.0, d: 14.5 },
         containers: { cx: 26.0, cz: 80.0 },
-        courtOpen: { cx: 57.2, cz: 80.0, w: 22.0, d: 18.0 },
-        courtCovered: { cx: 82.0, cz: 81.5, w: 27.0, d: 22.0 },
-        pond: { cx: 72.5, cz: 47.2, plazaR: 7.8, waterR: 3.0 },
-        entryPlaza: { x0: 78.0, x1: 123.5, z0: 38.0, z1: 55.0 },
-        plazaCanopy: { x0: 82.0, x1: 112.0, z0: 55.2, z1: 58.0 },
+        // 戶外紫藍籃球場（空拍精測：球場白線 x=49.5..72.0, z=74.2..89.4，中線 x=61.3，中心 z=81.8）
+        courtOpen: { cx: 60.3, cz: 81.8, w: 24.4, d: 16.4, playCx: 61.3, x0: 49.5, x1: 72.0, z0: 74.2, z1: 89.4 },
+        // 風雨球場（空拍精測：屋頂 x=72.1..100.3, z=70.7..90.3）
+        courtCovered: { cx: 86.2, cz: 80.5, w: 26.2, d: 18.0 },
+        // 梅花形五瓣噴水池與圓形廣場（空拍精測中心 75.0, 46.1，圓形廣場半徑 8.0m）
+        pond: { cx: 75.0, cz: 46.1, plazaR: 8.0, waterR: 3.0 },
+        entryPlaza: { x0: 81.0, x1: 122.0, z0: 38.2, z1: 54.0 },
         annex: { x0: 112.0, x1: 119.0, z0: 27.0, z1: 41.0 },
         parkingNE: { x0: 99.0, x1: 111.0, z0: 0.0, z1: 37.0 },
         bikeShed: [[9.0, 73.0]],
         bikeShedZ: -9.8,
         northShed: { x0: -8.0, x1: -0.8, z0: -11.5, z1: -5.9 },
-        kitchenRoad: { from: [-59.5, 65.5], to: [-52.5, -10.0], w: 5.5 },
+        kitchenRoad: { from: [-63.0, 68.5], to: [-48.5, -16.0], w: 5.5 },
         gates: {
-          main: [123.5, 47.5],
-          south: [13.0, 95.5],
-          southwest: [-68.0, 68.5]
+          main: [122.0, 47.5],
+          south: [13.0, 96.3],
+          southwest: [-64.5, 69.0]
         }
       };
       // 中央廚房（110 年統包工程 A2 一層平面圖）：軸線①×Ⓐ 的校園座標；①–⑦ = 0/4/9/14/17/21/25 m，Ⓐ–Ⓔ = 0/4.5/12/19/23 m
@@ -555,8 +580,8 @@
       controls.maxDistance = 260;
       controls.target.set(-4, 5.0, 6);
 
-      function applyNavigationStyle(isGoogleEarth) {
-        if (isGoogleEarth) {
+      function applyNavigationStyle(isPanPrimary, isTrackpad = true) {
+        if (isPanPrimary) {
           controls.mouseButtons = {
             LEFT: THREE.MOUSE.PAN,
             MIDDLE: THREE.MOUSE.DOLLY,
@@ -566,7 +591,6 @@
             ONE: THREE.TOUCH.PAN,
             TWO: THREE.TOUCH.DOLLY_ROTATE
           };
-          document.getElementById('nav-footer-hint').textContent = '左鍵平移・右鍵旋轉傾斜・雙擊飛近';
         } else {
           controls.mouseButtons = {
             LEFT: THREE.MOUSE.ROTATE,
@@ -577,10 +601,40 @@
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
           };
-          document.getElementById('nav-footer-hint').textContent = '左鍵旋轉・滾輪縮放・右鍵平移';
+        }
+        const panBtn = document.getElementById('drag-pan-btn');
+        const rotBtn = document.getElementById('drag-rot-btn');
+        if (panBtn && rotBtn) {
+          panBtn.className = isPanPrimary
+            ? 'flex-1 py-1 rounded-lg bg-sky-500 text-white font-semibold transition'
+            : 'flex-1 py-1 rounded-lg bg-slate-800/90 text-slate-300 hover:text-white font-medium transition';
+          rotBtn.className = !isPanPrimary
+            ? 'flex-1 py-1 rounded-lg bg-sky-500 text-white font-semibold transition'
+            : 'flex-1 py-1 rounded-lg bg-slate-800/90 text-slate-300 hover:text-white font-medium transition';
+        }
+        const dockIcon = document.getElementById('earth-drag-mode-icon');
+        const dockLbl = document.getElementById('earth-drag-mode-lbl');
+        const dockBtn = document.getElementById('earth-drag-mode-btn');
+        if (dockIcon && dockLbl && dockBtn) {
+          dockIcon.textContent = isPanPrimary ? '✋' : '🔄';
+          dockLbl.textContent = isPanPrimary ? '平移' : '旋轉';
+          dockBtn.classList.toggle('text-emerald-300', isPanPrimary);
+          dockBtn.classList.toggle('text-amber-300', !isPanPrimary);
+        }
+        const hintEl = document.getElementById('nav-footer-hint');
+        if (hintEl) {
+          if (isTrackpad) {
+            hintEl.textContent = isPanPrimary
+              ? '單指平移・雙指旋轉傾斜・雙指縮放・Space切模式'
+              : '單指旋轉傾斜・雙指平移・雙指縮放・Space切模式';
+          } else {
+            hintEl.textContent = isPanPrimary
+              ? '左鍵平移・右鍵旋轉傾斜・滾輪縮放・雙擊飛近'
+              : '左鍵旋轉・右鍵平移・滾輪縮放・雙擊飛近';
+          }
         }
       }
-      applyNavigationStyle(true);
+      applyNavigationStyle(true, true);
 
       // Lighting (Kaohsiung Dashu Sun + Hemisphere Sky)
       const hemiLight = new THREE.HemisphereLight(0xeef6ff, 0x5c6b57, 0.78);
@@ -3604,12 +3658,14 @@
         lawn.receiveShadow = true;
         campusSiteGroup.add(lawn);
 
-        // Google Maps 衛星正射底圖套繪（精準對齊 rx ∈ [-90, 145] 寬 235m × rz ∈ [-28, 106] 深 134m，殘差 < 0.19m！）
+        // Google Maps 衛星正射底圖套繪（2× HD 2820×1608 全彩去浮水印修復版，精準對齊 rx ∈ [-90, 145] × rz ∈ [-28, 106]）
         {
           const satLoader = new THREE.TextureLoader();
-          const satTex = satLoader.load('campus-3d-assets/site/google-sat.jpg');
+          const satTex = satLoader.load('campus-3d-assets/site/google-sat.jpg?v=2');
           satTex.colorSpace = THREE.SRGBColorSpace;
-          satTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+          satTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          satTex.minFilter = THREE.LinearMipmapLinearFilter;
+          satTex.magFilter = THREE.LinearFilter;
           satOverlayMat = new THREE.MeshStandardMaterial({
             map: satTex,
             roughness: 0.94,
@@ -3628,18 +3684,19 @@
           campusSiteGroup.add(satOverlayMesh);
         }
 
-        const fencePts = SITE.boundary.concat([SITE.boundary[0]]).map(([bx, bz]) => new THREE.Vector3(gx(bx), 0.9, gz(bz)));
-        // 圍牆／木柵欄（高約 1.5 m，示意）
-        const fenceMat = makeMat(0x9a6b4a, { roughness: 0.9, transparent: true, opacity: 0.55 });
+        // 圍牆／邊界牆（依空拍圖實地邊線校準，高約 1.5 m，並於東大門、南側門與西南車道門留出通行開口）
+        const fenceMat = makeMat(0x9a6b4a, { roughness: 0.9, transparent: true, opacity: 0.62 });
         for (let k = 0; k < SITE.boundary.length; k++) {
+          if (SITE.gateGaps && SITE.gateGaps.has(k)) continue;
           const [ax, az] = SITE.boundary[k], [bx, bz] = SITE.boundary[(k + 1) % SITE.boundary.length];
           const len = Math.hypot(bx - ax, bz - az);
-          const f = addBox(campusSiteGroup, 0.12, 1.5, len, gx((ax + bx) / 2), 0.75, gz((az + bz) / 2), fenceMat, false, false);
+          const f = addBox(campusSiteGroup, 0.14, 1.5, len, gx((ax + bx) / 2), 0.75, gz((az + bz) / 2), fenceMat, false, false);
           f.rotation.y = Math.atan2(bx - ax, bz - az);
         }
 
-        // 200 m 跑道（中心約在主校舍軸線①東側 8.9 m、北牆以南 43.8 m）
+        // 200 m 標準六跑道橢圓操場 ＋ 南側 100 m 直線延伸跑道（依空拍圖精確對位，共面無重疊）
         const T = SITE.track;
+        const SP = SITE.sprint;
         const buildStadiumShape = (sh, r) => {
           const sp = new THREE.Shape();
           sp.moveTo(-sh, -r);
@@ -3652,47 +3709,94 @@
         const outerShape = buildStadiumShape(T.straightHalf, T.outerR);
         const innerHole = buildStadiumShape(T.straightHalf, T.innerR);
         outerShape.holes.push(innerHole);
-        const trackMesh = new THREE.Mesh(new THREE.ShapeGeometry(outerShape, 40), MAT.trackRed);
+        const trackMesh = new THREE.Mesh(new THREE.ShapeGeometry(outerShape, 48), MAT.trackRed);
         trackMesh.rotation.x = -Math.PI / 2;
         trackMesh.position.set(gx(T.cx), 0.04, gz(T.cz));
         trackMesh.receiveShadow = true;
         campusSiteGroup.add(trackMesh);
-        const infield = new THREE.Mesh(new THREE.ShapeGeometry(buildStadiumShape(T.straightHalf, T.innerR), 32), MAT.lawnInfield);
+
+        // 南側 100m 直線跑道東西兩側延伸段（沿外圓弧精準裁切，與橢圓南直道無縫共面零重疊！）
+        {
+          const aArc = Math.asin(T.innerR / T.outerR); // 內緣 z=62.0 對應之圓弧夾角
+          const yTop = -T.innerR; // shape Y = -(rz - T.cz) -> rz=62.0 => y=-15.5
+          const yBot = -T.outerR; // rz=69.8 => y=-23.3
+          // 西側 100m 延伸段（x0=-50.0 銜接西彎道外弧）
+          const wExt = new THREE.Shape();
+          const wx0 = SP.x0 - T.cx;
+          wExt.moveTo(wx0, yBot);
+          wExt.lineTo(-T.straightHalf, yBot);
+          wExt.absarc(-T.straightHalf, 0, T.outerR, -Math.PI / 2, -Math.PI + aArc, true);
+          wExt.lineTo(wx0, yTop);
+          wExt.closePath();
+          const wMesh = new THREE.Mesh(new THREE.ShapeGeometry(wExt, 20), MAT.trackRed);
+          wMesh.rotation.x = -Math.PI / 2;
+          wMesh.position.set(gx(T.cx), 0.04, gz(T.cz));
+          wMesh.receiveShadow = true;
+          campusSiteGroup.add(wMesh);
+          // 東側 100m 延伸段（銜接東彎道外弧延伸至 x1=58.0）
+          const eExt = new THREE.Shape();
+          const ex1 = SP.x1 - T.cx;
+          eExt.moveTo(T.straightHalf, yBot);
+          eExt.lineTo(ex1, yBot);
+          eExt.lineTo(ex1, yTop);
+          eExt.absarc(T.straightHalf, 0, T.outerR, -aArc, -Math.PI / 2, true);
+          eExt.closePath();
+          const eMesh = new THREE.Mesh(new THREE.ShapeGeometry(eExt, 20), MAT.trackRed);
+          eMesh.rotation.x = -Math.PI / 2;
+          eMesh.position.set(gx(T.cx), 0.04, gz(T.cz));
+          eMesh.receiveShadow = true;
+          campusSiteGroup.add(eMesh);
+        }
+
+        const infield = new THREE.Mesh(new THREE.ShapeGeometry(buildStadiumShape(T.straightHalf, T.innerR), 36), MAT.lawnInfield);
         infield.rotation.x = -Math.PI / 2;
         infield.position.set(gx(T.cx), 0.035, gz(T.cz));
         infield.receiveShadow = true;
         campusSiteGroup.add(infield);
-        const laneMat = new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.72 });
+
+        // 200m 橢圓 6 跑道白線 ＋ 100m 南側直線全段 6 跑道白線與起終點橫線
+        const laneMat = new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.78 });
         const laneW = (T.outerR - T.innerR) / 6;
-        for (let k = 1; k < 6; k++) {
+        for (let k = 0; k <= 6; k++) {
           const r = T.innerR + laneW * k;
-          const pts = buildStadiumShape(T.straightHalf, r).getPoints(72).map((pt) => new THREE.Vector3(gx(T.cx + pt.x), 0.06, gz(T.cz - pt.y)));
+          const pts = buildStadiumShape(T.straightHalf, r).getPoints(72).map((pt) => new THREE.Vector3(gx(T.cx + pt.x), 0.062, gz(T.cz - pt.y)));
           pts.push(pts[0]);
           campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), laneMat));
-        }
-        // 操場內場草坪足球場白線標記（邊線、中線、中圈與東西兩側球門禁區，依衛星圖）
-        {
-          const pitchMat = new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.55 });
-          const addLine2D = (coords, y = 0.055) => {
-            const pts = coords.map(([px, pz]) => new THREE.Vector3(gx(px), y, gz(pz)));
-            campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), pitchMat));
-          };
-          const px0 = T.cx - 24.5, px1 = T.cx + 24.5, pz0 = T.cz - 11.5, pz1 = T.cz + 11.5;
-          addLine2D([[px0, pz0], [px1, pz0], [px1, pz1], [px0, pz1], [px0, pz0]]);
-          addLine2D([[T.cx, pz0], [T.cx, pz1]]);
-          const cPts = [];
-          for (let i = 0; i <= 36; i++) {
-            const a = (i / 36) * Math.PI * 2;
-            cPts.push([T.cx + Math.cos(a) * 4.5, T.cz + Math.sin(a) * 4.5]);
+          // 100m 直線跑道東西兩側延伸標線（與南直道完全對齊）
+          const lz = T.cz + r;
+          const xArc = Math.sqrt(Math.max(0, T.outerR * T.outerR - r * r));
+          const xWestJoin = T.cx - T.straightHalf - xArc;
+          const xEastJoin = T.cx + T.straightHalf + xArc;
+          if (SP.x0 < xWestJoin) {
+            campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+              new THREE.Vector3(gx(SP.x0), 0.062, gz(lz)),
+              new THREE.Vector3(gx(T.cx - T.straightHalf), 0.062, gz(lz))
+            ]), laneMat));
           }
-          addLine2D(cPts);
-          addLine2D([[px0, T.cz - 5.2], [px0 + 4.8, T.cz - 5.2], [px0 + 4.8, T.cz + 5.2], [px0, T.cz + 5.2]]);
-          addLine2D([[px1, T.cz - 5.2], [px1 - 4.8, T.cz - 5.2], [px1 - 4.8, T.cz + 5.2], [px1, T.cz + 5.2]]);
+          if (SP.x1 > xEastJoin) {
+            campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+              new THREE.Vector3(gx(T.cx + T.straightHalf), 0.062, gz(lz)),
+              new THREE.Vector3(gx(SP.x1), 0.062, gz(lz))
+            ]), laneMat));
+          }
         }
+        // 100m 起跑線（x=-46.0）與終點線（x=+54.0，精確相距 100.0 m）及端點封口線
+        [SP.x0, -46.0, 54.0, SP.x1].forEach((tx) => {
+          campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(gx(tx), 0.066, gz(SP.z0)),
+            new THREE.Vector3(gx(tx), 0.066, gz(SP.z1))
+          ]), laneMat));
+        });
 
-        // 南側直線跑道（100m 延伸直線道）
-        const SP = SITE.sprint;
-        addBox(campusSiteGroup, SP.len, 0.04, SP.w, gx(SP.cx), 0.03, gz(SP.cz), MAT.trackRed, false, true);
+        // 操場內場草坪東西兩側實景足球球門框（依空拍圖實位：西門 x=-25.8、東門 x=46.5）
+        [-25.8, 46.5].forEach((gxGoal) => {
+          const gW = 7.3, gH = 2.4, gD = 1.6, dir = gxGoal < 0 ? -1 : 1;
+          addBox(campusSiteGroup, 0.12, gH, 0.12, gx(gxGoal), gH / 2, gz(T.cz - gW / 2), MAT.ckWhite, false);
+          addBox(campusSiteGroup, 0.12, gH, 0.12, gx(gxGoal), gH / 2, gz(T.cz + gW / 2), MAT.ckWhite, false);
+          addBox(campusSiteGroup, 0.12, 0.12, gW + 0.12, gx(gxGoal), gH, gz(T.cz), MAT.ckWhite, false);
+          addBox(campusSiteGroup, gD, 0.08, 0.08, gx(gxGoal + dir * gD / 2), 0.06, gz(T.cz - gW / 2), MAT.ckWhite, false);
+          addBox(campusSiteGroup, gD, 0.08, 0.08, gx(gxGoal + dir * gD / 2), 0.06, gz(T.cz + gW / 2), MAT.ckWhite, false);
+        });
 
         // 司令台（78.7）
         const ST = SITE.stage;
@@ -3749,61 +3853,112 @@
         // 紫色貨櫃（南側側門東邊，依街景）
         [[0, 0], [7.0, 0.4]].forEach(([dx, dz]) => addBox(campusSiteGroup, 6.0, 2.6, 2.4, gx(SITE.containers.cx + dx), 1.3, gz(SITE.containers.cz + dz), MAT.containerPurple));
 
-        // 籃球場＋風雨球場（103.4）
+        // 戶外紫藍籃球場＋風雨球場（依空拍圖精確校準邊線、中線、禁區、三分弧線與籃框！）
         const CO = SITE.courtOpen, CC = SITE.courtCovered;
-        addBox(campusSiteGroup, CO.w, 0.08, CO.d, gx(CO.cx), 0.04, gz(CO.cz), MAT.courtPurple, false, true);
-        // 室外紫藍色籃球場白色標線（邊線、中線、中圈、兩端禁區，依衛星圖）
+        addBox(campusSiteGroup, CO.w, 0.06, CO.d, gx(CO.cx), 0.03, gz(CO.cz), MAT.courtPurple, false, true);
         {
-          const bMat = new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.78 });
+          // 東西兩側橄欖黃綠油漆禁區
+          const keyMat = makeMat(0x88996e, { roughness: 0.9, transparent: true, opacity: 0.55 });
+          sitePavingMaterials.push(keyMat);
+          const bx0 = CO.x0, bx1 = CO.x1, bz0 = CO.z0, bz1 = CO.z1, pcx = CO.playCx, pcz = CO.cz;
+          addBox(campusSiteGroup, 5.7, 0.015, 4.6, gx(bx0 + 2.85), 0.068, gz(pcz), keyMat, false, true);
+          addBox(campusSiteGroup, bx1 - 67.4, 0.015, 4.6, gx((67.4 + bx1) / 2), 0.068, gz(pcz), keyMat, false, true);
+
+          const bMat = new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.88 });
           const addCL = (coords) => {
             const pts = coords.map(([px, pz]) => new THREE.Vector3(gx(px), 0.088, gz(pz)));
             campusSiteGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), bMat));
           };
-          const bx0 = CO.cx - CO.w * 0.44, bx1 = CO.cx + CO.w * 0.44;
-          const bz0 = CO.cz - CO.d * 0.42, bz1 = CO.cz + CO.d * 0.42;
+          const addArc = (cx, cz, r, a0, a1, segs = 28) => {
+            const pts = [];
+            for (let i = 0; i <= segs; i++) {
+              const a = a0 + (a1 - a0) * (i / segs);
+              pts.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]);
+            }
+            addCL(pts);
+          };
+          // 球場四週白線與中線 (x=61.3)
           addCL([[bx0, bz0], [bx1, bz0], [bx1, bz1], [bx0, bz1], [bx0, bz0]]);
-          addCL([[CO.cx, bz0], [CO.cx, bz1]]);
-          const mc = [];
-          for (let i = 0; i <= 28; i++) {
-            const a = (i / 28) * Math.PI * 2;
-            mc.push([CO.cx + Math.cos(a) * 1.8, CO.cz + Math.sin(a) * 1.8]);
-          }
-          addCL(mc);
-          addCL([[bx0, CO.cz - 2.4], [bx0 + 4.4, CO.cz - 2.4], [bx0 + 4.4, CO.cz + 2.4], [bx0, CO.cz + 2.4]]);
-          addCL([[bx1, CO.cz - 2.4], [bx1 - 4.4, CO.cz - 2.4], [bx1 - 4.4, CO.cz + 2.4], [bx1, CO.cz + 2.4]]);
+          addCL([[pcx, bz0], [pcx, bz1]]);
+          // 中圈 (r=1.8m)
+          addArc(pcx, pcz, 1.8, 0, Math.PI * 2, 32);
+          // 西側禁區 + 罰球圈 + 三分弧線
+          addCL([[bx0, pcz - 2.3], [55.2, pcz - 2.3], [55.2, pcz + 2.3], [bx0, pcz + 2.3]]);
+          addArc(55.2, pcz, 1.75, -Math.PI / 2, Math.PI / 2, 20);
+          addCL([[bx0, pcz - 6.2], [50.8, pcz - 6.2]]);
+          addCL([[bx0, pcz + 6.2], [50.8, pcz + 6.2]]);
+          addArc(50.8, pcz, 6.2, -Math.PI / 2, Math.PI / 2, 28);
+          // 東側禁區 + 罰球圈 + 三分弧線
+          addCL([[bx1, pcz - 2.3], [67.4, pcz - 2.3], [67.4, pcz + 2.3], [bx1, pcz + 2.3]]);
+          addArc(67.4, pcz, 1.75, Math.PI / 2, Math.PI * 1.5, 20);
+          addCL([[bx1, pcz - 6.2], [71.8, pcz - 6.2]]);
+          addCL([[bx1, pcz + 6.2], [71.8, pcz + 6.2]]);
+          addArc(71.8, pcz, 6.2, Math.PI / 2, Math.PI * 1.5, 28);
+          // 東西兩座籃球架（示意）
+          [[bx0 - 0.5, 1], [bx1 + 0.1, -1]].forEach(([hx, dir]) => {
+            addBox(campusSiteGroup, 0.16, 3.2, 0.16, gx(hx), 1.6, gz(pcz), MAT.steelDark, false);
+            addBox(campusSiteGroup, 1.2, 0.12, 0.12, gx(hx + dir * 0.6), 3.15, gz(pcz), MAT.steelDark, false);
+            addBox(campusSiteGroup, 0.08, 1.05, 1.8, gx(hx + dir * 1.2), 3.25, gz(pcz), MAT.ckWhite, false);
+          });
         }
         addBox(campusSiteGroup, CC.w, 0.08, CC.d, gx(CC.cx), 0.04, gz(CC.cz), MAT.courtBlue, false, true);
         [CC.cx - CC.w / 2 + 0.5, CC.cx, CC.cx + CC.w / 2 - 0.5].forEach((cx) => {
           [CC.cz - CC.d / 2 - 0.5, CC.cz + CC.d / 2 + 0.5].forEach((cz) => addBox(campusSiteGroup, 0.45, 8.5, 0.45, gx(cx), 4.25, gz(cz), MAT.steelDark));
         });
-        addBox(campusSiteGroup, CC.w + 2.0, 0.45, CC.d + 2.0, gx(CC.cx), 8.6, gz(CC.cz), MAT.ckWhite);
-        for (let r = 0; r < 7; r++) {
-          addBox(campusSiteGroup, CC.w - 2.0, 0.08, 2.2, gx(CC.cx), 8.9, gz(CC.cz - CC.d / 2 + 1.8 + r * 3.0), MAT.solarPanel, false);
+        addBox(campusSiteGroup, CC.w + 2.0, 0.45, CC.d + 1.6, gx(CC.cx), 8.6, gz(CC.cz), MAT.ckWhite);
+        for (let r = 0; r < 6; r++) {
+          addBox(campusSiteGroup, CC.w - 2.0, 0.08, 2.1, gx(CC.cx), 8.9, gz(CC.cz - CC.d / 2 + 1.5 + r * 3.0), MAT.solarPanel, false);
         }
 
-        // 中央廣場＋水池＋大門連鎖磚廣場與穿堂弧形通道（依 Google 衛星圖精確塑形與校色！）
+        // 中央圓形廣場＋五瓣梅花形噴水池＋大門連鎖磚廣場與穿堂弧形通道（依空拍圖精確對位於 75.0, 46.1！）
         const PD = SITE.pond;
-        const plazaDisk = new THREE.Mesh(new THREE.CylinderGeometry(PD.plazaR + 0.8, PD.plazaR + 0.8, 0.08, 48), MAT.plazaTile);
-        plazaDisk.position.set(gx(PD.cx), 0.04, gz(PD.cz));
+        const plazaDisk = new THREE.Mesh(new THREE.CylinderGeometry(PD.plazaR, PD.plazaR, 0.07, 48), MAT.plazaTile);
+        plazaDisk.position.set(gx(PD.cx), 0.035, gz(PD.cz));
         plazaDisk.receiveShadow = true;
         campusSiteGroup.add(plazaDisk);
-        const pondRim = new THREE.Mesh(new THREE.CylinderGeometry(PD.waterR + 0.65, PD.waterR + 0.75, 0.45, 36), MAT.concreteBase);
-        pondRim.position.set(gx(PD.cx), 0.22, gz(PD.cz));
-        campusSiteGroup.add(pondRim);
-        const pondWater = new THREE.Mesh(new THREE.CylinderGeometry(PD.waterR, PD.waterR, 0.36, 36), MAT.water);
-        pondWater.position.set(gx(PD.cx), 0.28, gz(PD.cz));
-        campusSiteGroup.add(pondWater);
-        // 水池中央植栽綠島（依 Google 衛星圖深綠中島）
-        const pondIsle = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.65, 0.52, 24), MAT.foliage1);
-        pondIsle.position.set(gx(PD.cx), 0.34, gz(PD.cz));
-        campusSiteGroup.add(pondIsle);
+        {
+          // 五瓣梅花形（r(θ) = R - A*cos(5θ)，五瓣精準指向西、北北西、東北、東南、南南西）
+          const buildBlossomShape = (R, A, segs = 80) => {
+            const sp = new THREE.Shape();
+            for (let i = 0; i <= segs; i++) {
+              const a = (i / segs) * Math.PI * 2;
+              const r = R - A * Math.cos(5 * a);
+              const px = Math.cos(a) * r, py = -Math.sin(a) * r;
+              if (i === 0) sp.moveTo(px, py); else sp.lineTo(px, py);
+            }
+            sp.closePath();
+            return sp;
+          };
+          const rimShape = buildBlossomShape(3.38, 0.34, 80);
+          rimShape.holes.push(buildBlossomShape(2.85, 0.29, 80));
+          const pondRim = new THREE.Mesh(new THREE.ExtrudeGeometry(rimShape, { depth: 0.46, bevelEnabled: false }), MAT.concreteBase);
+          pondRim.rotation.x = -Math.PI / 2;
+          pondRim.position.set(gx(PD.cx), 0.06, gz(PD.cz));
+          pondRim.castShadow = true; pondRim.receiveShadow = true;
+          campusSiteGroup.add(pondRim);
 
-        // 大門連鎖磚廣場（大門 → 噴水池 → 穿堂與東側無障礙坡道弧形鋪面，依衛星圖）
+          const waterShape = buildBlossomShape(2.90, 0.29, 72);
+          const pondWater = new THREE.Mesh(new THREE.ExtrudeGeometry(waterShape, { depth: 0.34, bevelEnabled: false }), MAT.water);
+          pondWater.rotation.x = -Math.PI / 2;
+          pondWater.position.set(gx(PD.cx), 0.06, gz(PD.cz));
+          pondWater.receiveShadow = true;
+          campusSiteGroup.add(pondWater);
+
+          // 中央雙層噴水石雕座
+          const ped1 = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 1.05, 0.55, 20), MAT.concreteBase);
+          ped1.position.set(gx(PD.cx), 0.35, gz(PD.cz));
+          campusSiteGroup.add(ped1);
+          const ped2 = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.52, 0.55, 16), MAT.concreteBase);
+          ped2.position.set(gx(PD.cx), 0.85, gz(PD.cz));
+          campusSiteGroup.add(ped2);
+        }
+
+        // 大門連鎖磚廣場（大門 → 梅花噴水池 → 穿堂與東側無障礙坡道弧形鋪面，依空拍圖）
         const EP = SITE.entryPlaza;
         addBox(campusSiteGroup, EP.x1 - EP.x0, 0.06, EP.z1 - EP.z0, gx((EP.x0 + EP.x1) / 2), 0.032, gz((EP.z0 + EP.z1) / 2), MAT.plazaTile, false, true);
         addFlatPoly(campusSiteGroup, [
-          [53.0, 14.0], [79.5, 14.0], [79.5, 22.5], [75.0, 34.0], [78.5, 42.0],
-          [66.0, 44.0], [63.5, 34.0], [58.0, 23.0], [52.5, 17.0]
+          [53.0, 14.0], [79.5, 14.0], [79.5, 22.0], [71.5, 31.0], [75.5, 39.0],
+          [68.0, 41.0], [64.0, 32.0], [58.0, 22.0], [52.5, 17.0]
         ], 0.0, 0.042, MAT.plazaTile);
 
         // 東側附屬建物：17-1 檔案室／4-1 體育器材室／22-1 備勤室／14-1 警衛室（103.4，北→南，4 獨立隔間＋西向敞開大門與鋁窗＋警衛室南向觀景窗！）
@@ -3895,12 +4050,6 @@
         }
         // 校名牆（大門南側）
         addBox(campusSiteGroup, 0.5, 1.8, 9.0, gx(SITE.gates.main[0] - 0.6), 0.9, gz(SITE.gates.main[1] + 9.0), makeMat(0x8a6f63, { roughness: 0.9 }));
-        // 大門內通道南側風雨廊（紫色柱）
-        const PC = SITE.plazaCanopy;
-        addBox(campusSiteGroup, PC.x1 - PC.x0, 0.2, PC.z1 - PC.z0, gx((PC.x0 + PC.x1) / 2), 3.3, gz((PC.z0 + PC.z1) / 2), MAT.roofSheet);
-        for (let x = PC.x0 + 0.5; x <= PC.x1; x += 4.0) {
-          [PC.z0 + 0.3, PC.z1 - 0.3].forEach((z) => addBox(campusSiteGroup, 0.2, 3.2, 0.2, gx(x), 1.6, gz(z), MAT.roofColumnPurple));
-        }
         // 主校舍西北側小型附屬建物（中空實開南向維護雙門＋採光窗）
         const NS = SITE.northShed;
         {
@@ -3948,7 +4097,7 @@
         const kdx = KR.to[0] - KR.from[0], kdz = KR.to[1] - KR.from[1];
         const road = addBox(campusSiteGroup, KR.w, 0.06, Math.hypot(kdx, kdz), gx((KR.from[0] + KR.to[0]) / 2), 0.032, gz((KR.from[1] + KR.to[1]) / 2), MAT.asphalt, false, true);
         road.rotation.y = Math.atan2(kdx, kdz);
-        addBox(campusSiteGroup, 16.0, 0.055, 11.5, gx(-48.5), 0.028, gz(-14.5), MAT.asphalt, false, true); // 西北側送餐迴車廣場
+        addBox(campusSiteGroup, 14.0, 0.055, 11.5, gx(-47.0), 0.028, gz(-14.5), MAT.asphalt, false, true); // 西北側送餐迴車廣場
 
         // 校門（門柱示意）
         Object.entries(SITE.gates).forEach(([k, [gxr, gzr]]) => {
@@ -3962,10 +4111,10 @@
           }
         });
 
-        // 樹木（沿地界與廣場周邊，示意）
+        // 樹木（沿地界與廣場周邊，避開跑道、球場與主入口通道）
         const treeCoords = [
-          [-49, -14], [-46, 22], [-48, 42], [-62.5, 58], [-20, 70], [-35, 85], [20, 90], [35, 75],
-          [44, 68], [70, 68], [95, 60], [100, 40], [88, 30], [85.5, 8], [92, -3], [40, -11.5], [-12.5, -11.0], [118, 60], [118, 85]
+          [-49, -14], [-46, 22], [-48, 42], [-56, 58], [-20, 76], [-35, 84], [20, 90], [35, 75],
+          [43, 74], [66, 65], [95, 62], [100, 38], [88, 30], [85.5, 8], [92, -3], [40, -11.5], [-12.5, -11.0], [116, 62], [116, 85]
         ];
         treeCoords.forEach(([tx, tz], i) => {
           const g = new THREE.Group();
@@ -4007,6 +4156,7 @@
         selectedRoomMesh: null,
         navMode: 'earth', // 'earth' | '2d' | 'street'
         earthNavStyle: true,
+        trackpadMode: true,
         pegmanDropMode: false,
         svFloor: 0,
         svPedestrian: true,
@@ -4886,33 +5036,152 @@
       let svDragging = false;
       let svLastPtr = { x: 0, y: 0 };
 
-      const svKeys = { forward: false, backward: false, left: false, right: false, shift: false };
+      const svKeys = { forward: false, backward: false, left: false, right: false, shift: false, rotL: false, rotR: false, tiltUp: false, tiltDown: false, zoomIn: false, zoomOut: false };
+      const isTextInput = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+
+      function setDragMode(isPan, announce = true) {
+        state.earthNavStyle = Boolean(isPan);
+        const cb = document.getElementById('toggle-earth-nav');
+        if (cb) cb.checked = state.earthNavStyle;
+        applyNavigationStyle(state.earthNavStyle, state.trackpadMode);
+        if (announce) {
+          showToast(state.earthNavStyle
+            ? '單指拖曳：✋ 平移地圖（觸控板雙指可旋轉傾斜）'
+            : '單指拖曳：🔄 旋轉視角（觸控板雙指可平移地圖）');
+        }
+      }
+
+      // 觸控板友善 3D 攝影機操作輔助函式（旋轉傾斜、地面平移、雙指捏合縮放）
+      function orbitCameraBy(dYaw, dPitch) {
+        if (state.navMode === '2d') return;
+        const off = camera.position.clone().sub(controls.target);
+        const sph = new THREE.Spherical().setFromVector3(off);
+        sph.theta -= dYaw;
+        sph.phi = THREE.MathUtils.clamp(sph.phi - dPitch, 0.08, controls.maxPolarAngle);
+        off.setFromSpherical(sph);
+        camera.position.copy(controls.target).add(off);
+        camera.lookAt(controls.target);
+      }
+      function panCameraBy(dx, dz) {
+        const dist = camera.position.distanceTo(controls.target);
+        const scale = Math.max(0.02, dist * 0.00145);
+        const fwd = new THREE.Vector3();
+        camera.getWorldDirection(fwd);
+        fwd.y = 0;
+        if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+        fwd.normalize();
+        const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+        const move = new THREE.Vector3().addScaledVector(right, dx * scale).addScaledVector(fwd, -dz * scale);
+        camera.position.add(move);
+        controls.target.add(move);
+      }
+      function zoomCameraBy(factor) {
+        const off = camera.position.clone().sub(controls.target);
+        const nextLen = THREE.MathUtils.clamp(off.length() * factor, controls.minDistance, controls.maxDistance);
+        off.setLength(nextLen);
+        camera.position.copy(controls.target).add(off);
+      }
+
+      // 智慧觸控板雙指手勢攔截（區分雙指捏合縮放、雙指滑動旋轉/平移、與傳統滑鼠滾輪縮放）
+      let lastTrackpadGestureAt = 0;
+      renderer.domElement.addEventListener('wheel', (e) => {
+        if (state.navMode === 'street') {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          if (Math.abs(e.deltaY) > 0.5) {
+            const step = THREE.MathUtils.clamp(-e.deltaY * 0.032, -2.2, 2.2);
+            const nx = THREE.MathUtils.clamp(state.svTargetPos.x - Math.sin(state.svTargetYaw) * step, -105, 86);
+            const nz = THREE.MathUtils.clamp(state.svTargetPos.z - Math.cos(state.svTargetYaw) * step, -35, 92);
+            walkStreetViewTo(nx, nz, null);
+            updateStreetViewLocationText();
+          }
+          if (Math.abs(e.deltaX) > 0.5) {
+            state.svTargetYaw -= e.deltaX * 0.0036;
+          }
+          return;
+        }
+        if (!state.trackpadMode) return;
+        const now = performance.now();
+        // 1. 雙指捏合縮放（macOS / Windows Precision 觸控板皆發送 ctrlKey=true）
+        if (e.ctrlKey) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          cameraAnim.active = false;
+          lastTrackpadGestureAt = now;
+          zoomCameraBy(Math.exp(THREE.MathUtils.clamp(e.deltaY, -45, 45) * 0.0065));
+          return;
+        }
+        // 2. 偵測觸控板雙指滑動 vs 傳統滾輪刻度（±100/±120）
+        const isPixel = (e.deltaMode === 0);
+        const looksDiscreteMouse = !isPixel || (e.deltaX === 0 && Math.abs(e.deltaY) >= 75 && Math.abs(e.deltaY % 10) < 0.01 && (now - lastTrackpadGestureAt) > 650);
+        if (!looksDiscreteMouse) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          cameraAnim.active = false;
+          lastTrackpadGestureAt = now;
+          if (state.navMode === '2d' || !state.earthNavStyle) {
+            // 2D 俯視或單指為旋轉模式時：雙指滑動平滑平移地圖
+            panCameraBy(e.deltaX, e.deltaY);
+          } else {
+            // 3D 單指為平移模式時：雙指滑動順滑旋轉與俯仰傾斜視角（免按右鍵！）
+            orbitCameraBy(e.deltaX * 0.0046, e.deltaY * 0.0038);
+          }
+        }
+      }, { passive: false, capture: true });
+
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'Shift') {
-          svKeys.shift = true;
-          if (state.navMode !== 'street' && state.earthNavStyle) controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+        if (isTextInput(e.target)) return;
+        if (e.key === 'Shift' || e.key === 'Alt') {
+          if (e.key === 'Shift') svKeys.shift = true;
+          if (state.navMode !== 'street') {
+            controls.mouseButtons.LEFT = state.earthNavStyle ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN;
+          }
+        }
+        if (e.code === 'Space' && state.navMode !== 'street') {
+          e.preventDefault();
+          setDragMode(!state.earthNavStyle, true);
+          return;
         }
         if (e.key === 'Escape') {
           if (state.pegmanDropMode) { state.pegmanDropMode = false; updateModeButtonsUI(); }
           else if (state.navMode === 'street') exitStreetView('earth');
         }
-        if (state.navMode !== 'street') return;
         const k = e.key.toLowerCase();
         if (k === 'w' || e.key === 'ArrowUp') svKeys.forward = true;
         if (k === 's' || e.key === 'ArrowDown') svKeys.backward = true;
         if (k === 'a' || e.key === 'ArrowLeft') svKeys.left = true;
         if (k === 'd' || e.key === 'ArrowRight') svKeys.right = true;
+        if (k === 'q') svKeys.rotL = true;
+        if (k === 'e') svKeys.rotR = true;
+        if (k === 'r') svKeys.tiltUp = true;
+        if (k === 'f') svKeys.tiltDown = true;
+        if (e.key === '+' || e.key === '=') svKeys.zoomIn = true;
+        if (e.key === '-' || e.key === '_') svKeys.zoomOut = true;
       });
       window.addEventListener('keyup', (e) => {
-        if (e.key === 'Shift') {
-          svKeys.shift = false;
-          if (state.earthNavStyle) controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+        if (e.key === 'Shift' || e.key === 'Alt') {
+          if (e.key === 'Shift') svKeys.shift = false;
+          if (state.navMode !== 'street') {
+            controls.mouseButtons.LEFT = state.earthNavStyle ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+          }
         }
         const k = e.key.toLowerCase();
         if (k === 'w' || e.key === 'ArrowUp') svKeys.forward = false;
         if (k === 's' || e.key === 'ArrowDown') svKeys.backward = false;
         if (k === 'a' || e.key === 'ArrowLeft') svKeys.left = false;
         if (k === 'd' || e.key === 'ArrowRight') svKeys.right = false;
+        if (k === 'q') svKeys.rotL = false;
+        if (k === 'e') svKeys.rotR = false;
+        if (k === 'r') svKeys.tiltUp = false;
+        if (k === 'f') svKeys.tiltDown = false;
+        if (e.key === '+' || e.key === '=') svKeys.zoomIn = false;
+        if (e.key === '-' || e.key === '_') svKeys.zoomOut = false;
+      });
+      window.addEventListener('blur', () => {
+        Object.keys(svKeys).forEach((k) => { svKeys[k] = false; });
+        if (state.navMode !== 'street') {
+          controls.mouseButtons.LEFT = state.earthNavStyle ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+        }
       });
 
       document.querySelectorAll('.dpad-btn').forEach((btn) => {
@@ -5427,11 +5696,19 @@
         });
       });
 
-      // Layer Toggles
+      // Layer Toggles & Trackpad / Drag Mode Controls
+      document.getElementById('toggle-trackpad').addEventListener('change', (e) => {
+        state.trackpadMode = e.target.checked;
+        applyNavigationStyle(state.earthNavStyle, state.trackpadMode);
+        showToast(state.trackpadMode
+          ? '💻 已開啟觸控板友善手勢：雙指滑動旋轉傾斜・雙指捏合縮放'
+          : '🖱️ 已切換傳統滑鼠模式：滾輪縮放・右鍵旋轉');
+      });
+      document.getElementById('drag-pan-btn').addEventListener('click', () => setDragMode(true, true));
+      document.getElementById('drag-rot-btn').addEventListener('click', () => setDragMode(false, true));
+      document.getElementById('earth-drag-mode-btn').addEventListener('click', () => setDragMode(!state.earthNavStyle, true));
       document.getElementById('toggle-earth-nav').addEventListener('change', (e) => {
-        state.earthNavStyle = e.target.checked;
-        applyNavigationStyle(state.earthNavStyle);
-        showToast(state.earthNavStyle ? '已切換為 Google Earth 模式' : '已切換為經典 3D 軌道模式');
+        setDragMode(e.target.checked, true);
       });
       document.getElementById('toggle-kitchen').addEventListener('change', (e) => {
         state.showKitchen = e.target.checked;
@@ -5813,6 +6090,19 @@
           const fwd = new THREE.Vector3(0, 0, -10).applyQuaternion(camera.quaternion);
           controls.target.copy(camera.position).add(fwd);
         } else {
+          // 3D／2D 模式鍵盤流暢操控（觸控板免雙指右鍵：WASD/方向鍵平移・Q/E 旋轉・R/F 俯仰・+/- 縮放）
+          const keyPanX = (svKeys.right ? 1 : 0) - (svKeys.left ? 1 : 0);
+          const keyPanZ = (svKeys.backward ? 1 : 0) - (svKeys.forward ? 1 : 0);
+          const keyRot = (svKeys.rotR ? 1 : 0) - (svKeys.rotL ? 1 : 0);
+          const keyTilt = (svKeys.tiltUp ? 1 : 0) - (svKeys.tiltDown ? 1 : 0);
+          const keyZoom = (svKeys.zoomOut ? 1 : 0) - (svKeys.zoomIn ? 1 : 0);
+          if (keyPanX || keyPanZ || keyRot || keyTilt || keyZoom) {
+            cameraAnim.active = false;
+            const boost = svKeys.shift ? 2.0 : 1.0;
+            if (keyPanX || keyPanZ) panCameraBy(keyPanX * 360 * dt * boost, keyPanZ * 360 * dt * boost);
+            if (keyRot || keyTilt) orbitCameraBy(keyRot * 1.4 * dt * boost, keyTilt * 1.1 * dt * boost);
+            if (keyZoom) zoomCameraBy(Math.exp(keyZoom * 1.1 * dt * boost));
+          }
           if (cameraAnim.active) {
             const t = Math.min(1, (now - cameraAnim.startTime) / cameraAnim.duration);
             const ease = 1 - Math.pow(1 - t, 3);
