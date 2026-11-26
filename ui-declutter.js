@@ -241,6 +241,7 @@
     else if (act === 'settings' && typeof openSettingsModal === 'function') openSettingsModal();
     else if (act === 'style' && typeof window.toggleLayoutSwitcherPopover === 'function') window.toggleLayoutSwitcherPopover(ev);
     else if (act === 'calendar' && typeof window.toggleNordicCalendar === 'function') window.toggleNordicCalendar();
+    else if (act === 'dedupe' && typeof window.openDedupeModal === 'function') window.openDedupeModal();
   };
 
   window.toggleUdNewMenu = function(ev) {
@@ -265,6 +266,7 @@
       <button type="button" class="ud-item" role="menuitem" onclick="udMenuAction('settings', event)">🔌 同步與備份</button>
       ${typeof window.toggleLayoutSwitcherPopover === 'function' ? `<button type="button" class="ud-item" role="menuitem" onclick="udMenuAction('style', event)">🎨 配色風格</button>` : ''}
       ${calBtn ? `<button type="button" class="ud-item" role="menuitem" onclick="udMenuAction('calendar', event)">📅 行事曆 <small>${esc_(calLabel.replace('行事曆', ''))}</small></button>` : ''}
+      ${typeof window.openDedupeModal === 'function' ? `<button type="button" class="ud-item" role="menuitem" onclick="udMenuAction('dedupe', event)">🔍 檢查重複資料</button>` : ''}
     `);
   };
 
