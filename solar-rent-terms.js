@@ -233,10 +233,51 @@
 
   window.generateRentSchedule = generateRentSchedule;
 
-  function getRentTerms(c) {
-    const t = parseJSON(c?.rent_terms_json, null);
-    return t && Array.isArray(t.schedule) && t.schedule.length ? t : null;
+  // ------------------------------------------------------------------
+  // 儲存位置：
+  //   主要 → Solar_Compliance_Logs 一列（log_type＝RENT_TERMS，內容存於既有的 compliance_json 欄）。
+  //          此表欄位為雲端既有欄位，保證能寫入試算表並於同步時讀回。
+  //   同步 → Solar_Contracts.rent_terms_json（若試算表有此欄亦一併保存）。
+  //   讀取時兩處取較新（updated_at）者。
+  // ------------------------------------------------------------------
+  const RT_LOG_TYPE = 'RENT_TERMS';
+  const rtLogId = solarId => `RT-${solarId}-TERMS`; // 結尾非數字，不影響保險紀錄 CMP-
+  const validTerms = t => t && Array.isArray(t.schedule) && t.schedule.length ? t : null;
+
+  function rentTermsLog(solarId) {
+    return (appData.tables.Solar_Compliance_Logs || [])
+      .filter(l => l.solar_id === solarId && l.log_type === RT_LOG_TYPE && !(l.is_deleted === true || String(l.is_deleted).toUpperCase() === 'TRUE'))
+      .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0] || null;
   }
+
+  function getRentTerms(c) {
+    if (!c) return null;
+    const fromCol = validTerms(parseJSON(c.rent_terms_json, null));
+    const log = rentTermsLog(c.solar_id);
+    const fromLog = log ? validTerms(parseJSON(log.compliance_json, null)) : null;
+    if (fromCol && fromLog) return String(fromCol.updated_at || '') >= String(fromLog.updated_at || '') ? fromCol : fromLog;
+    return fromCol || fromLog;
+  }
+
+  function buildRentTermsLog(solarId, terms) {
+    const first = terms.schedule[0], last = terms.schedule[terms.schedule.length - 1];
+    return {
+      log_id: rtLogId(solarId), solar_id: solarId, log_type: RT_LOG_TYPE,
+      doc_or_policy_no: terms.source || '年租金繳納條件',
+      effective_date: first?.period_start || '', expiry_date: last?.due_date || '',
+      compliance_json: JSON.stringify(terms), attachment_url: '',
+      notes: '年租金繳納條件（系統自動儲存，請勿手動刪除）',
+      updated_at: nowStr(), is_deleted: false
+    };
+  }
+
+  // 保險合規摘要不納入繳納條件紀錄
+  const _prevComplianceSummary = getContractComplianceSummary;
+  getContractComplianceSummary = function(solarId, contract) {
+    const r = _prevComplianceSummary(solarId, contract);
+    r.logs = (r.logs || []).filter(l => l.log_type !== RT_LOG_TYPE);
+    return r;
+  };
 
   function contractRecords(c) {
     return (appData.tables.Solar_Records || []).filter(r => r.solar_id === c.solar_id);
@@ -429,7 +470,7 @@
     const c = appData.tables.Solar_Contracts.find(x => x.solar_id === solarId);
     if (!c || !rtDraft) return;
     const t = getRentTerms(c);
-    c.rent_terms_json = JSON.stringify({ ...(t || {}), schedule: generateRentSchedule(c) });
+    c.rent_terms_json = JSON.stringify({ ...(t || {}), schedule: generateRentSchedule(c), updated_at: nowStr() });
     window.openRentTermsModal(solarId, false);
   };
 
@@ -461,11 +502,16 @@
       updated_at: nowStr()
     };
     upsertLocal('Solar_Contracts', rec, 'solar_id');
+    const logRec = buildRentTermsLog(rec.solar_id, terms);
+    upsertLocal('Solar_Compliance_Logs', logRec, 'log_id');
     const created = rtDraft.isNew;
     closeModal();
     if (created) { solarV2SelectedId = rec.solar_id; solarV2DetailTab = 'billing'; }
     renderCurrentView();
-    await pushToCloud({ action: 'batchUpsert', items: [{ table: 'Solar_Contracts', records: [rec] }] });
+    await pushToCloud({ action: 'batchUpsert', items: [
+      { table: 'Solar_Contracts', records: [rec] },
+      { table: 'Solar_Compliance_Logs', records: [logRec] }
+    ] });
     toast(created ? `✅ 已建立 ${rec.solar_id}｜${rec.building_name}（${terms.schedule.length} 期繳納時程）` : `✅ 已更新年租金繳納條件（${terms.schedule.length} 期）`);
   };
 

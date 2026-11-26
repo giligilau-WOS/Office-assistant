@@ -267,7 +267,9 @@
     const taskRecs = buildTaskRecords(p, st.mode === 'fill' ? { ...preset, stages: st.missing } : preset, seqBase, orderBase);
     taskRecs.forEach(t => upsertLocal('Project_Tasks', t, 'task_id'));
 
-    const projRec = { ...p, timeline_preset: preset.key, updated_at: nowStr(), ...(updateBudget ? { budget_amount: preset.budget } : {}) };
+    // 匯入標記同時寫入既有的 flags_json 欄（保證存入試算表）與 timeline_preset 欄
+    const flags = { ...parseJSON(p.flags_json, {}), timeline_preset: preset.key };
+    const projRec = { ...p, timeline_preset: preset.key, flags_json: JSON.stringify(flags), updated_at: nowStr(), ...(updateBudget ? { budget_amount: preset.budget } : {}) };
     upsertLocal('Projects', projRec, 'project_id');
 
     const items = [{ table: 'Projects', records: [projRec] }, { table: 'Project_Tasks', records: taskRecs }];
@@ -299,7 +301,8 @@
     if (!preset) return;
     const st = existingState(p, preset);
     if (!st.missing.length) return;                                   // 已全部存在
-    if (!st.present.length && p.timeline_preset === preset.key) return; // 已匯入後使用者自行移除，不再提示
+    const marked = p.timeline_preset === preset.key || parseJSON(p.flags_json, {}).timeline_preset === preset.key;
+    if (!st.present.length && marked) return; // 已匯入後使用者自行移除，不再提示
     const partial = st.present.length > 0;
     const div = document.createElement('div');
     div.id = 'tp-banner';
