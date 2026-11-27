@@ -17,123 +17,23 @@
   if (typeof buildSolarV2Alerts !== 'function') return;
 
   // --------------------------------------------------------------------------
-  // 1. 溪埔國中 D4 一期第 1 次續約契約書（114.09.19 版）條款
+  // 1. 動態讀取雲端預設條款與保單範本（公開程式碼庫不硬編碼特定機關／廠商／保單個資）
   // --------------------------------------------------------------------------
-  const XIPU_RENEWAL_PRESET = {
-    match: c => String(c.contract_start || '').slice(0, 10) === '2026-03-27' && Math.abs((Number(c.capacity_kwp) || 0) - 190.12) < 0.005,
-    label: '續約契約書（114.09.19 版）',
-    contractFields: {
-      billing_mode: 'TIERED_BASE_RENT', billing_cycle: '年結', annual_due_month_day: '04-27',
-      fit_rate: 4.8061, feedback_rate: 0.15, base_annual_rent: 175095
-    },
-    // 契約第五條第一款所列各期（第 5 期契約書誤植為民國 112 年，依連續年度以 120 年列管）
-    schedule: [
-      ['2027-04-27', 175095], ['2028-04-27', 175095], ['2029-04-27', 175095], ['2030-04-27', 175095],
-      ['2031-04-27', 175095], ['2032-04-27', 175095], ['2033-04-27', 175095], ['2034-04-27', 175095],
-      ['2035-04-27', 175095], ['2036-03-27', 160504]
-    ],
-    terms: {
-      calc: { kwp: 190.12, kwh_per_kwp_day: 3.5, days: 365, fit_rate: 4.8061, fit_label: '105年躉購費率', feedback_pct: 15, result: 175095 },
-      pay_methods: '現金、票據',
-      pay_place: '溪埔國民中學總務處出納組（84048 高雄市大樹區溪埔路1號）；或至各銀行、郵局、農漁會等金融機構繳納',
-      bank_name: '合作金庫 大樹分行',
-      bank_account_name: '高雄市立溪埔國民中學',
-      // 帳號不寫入程式碼（公開程式碼庫）：帶入時請依契約書第五條第四款於視窗中輸入，僅存於雲端試算表
-      bank_account_no: '',
-      notice_days: 30,
-      source: '續約契約書（114.09.19 版）第四～六條',
-      notes: '契約書第五條第 5 期誤植為「民國112年4月27日」，已確認正確為民國120年4月27日，系統以 120 年列管。'
-    }
-  };
-
-  // --------------------------------------------------------------------------
-  // 1b. 二期屋頂型租賃契約（111年度雄院民公吉字第1156號，111.11.17 公證）
-  //     標的：教室 11.84 ＋ 警衛室 17.76 ＋ 中央廚房 106.19 ＝ 135.79 kWp（B類，回饋 12%）
-  // --------------------------------------------------------------------------
-  const XIPU_PHASE2_PRESET = {
-    key: 'xipu-phase2',
-    match: c => String(c.contract_start || '').slice(0, 10) === '2022-11-17' && Math.abs((Number(c.capacity_kwp) || 0) - 135.79) < 0.005,
-    label: '二期屋頂型契約（111.11.17 公證）',
-    contractFields: {
-      billing_mode: 'TIERED_BASE_RENT', billing_cycle: '年結', annual_due_month_day: '12-17',
-      fit_rate: 4.497, feedback_rate: 0.12, base_annual_rent: 93612, min_annual_feedback: 93612
-    },
-    // 建立新契約時使用（本約尚未建檔時）
-    newContract: {
-      building_name: '教室、警衛室、中央廚房屋頂', phase_label: '二期', parent_contract_id: '', status: '併聯發電中',
-      buildings_json: JSON.stringify([
-        { name: '教室（11.84 kWp）', land_lot: '', permit_no: '', area: '', voltage: '' },
-        { name: '警衛室（17.76 kWp）', land_lot: '', permit_no: '', area: '', voltage: '' },
-        { name: '中央廚房（106.19 kWp）', land_lot: '', permit_no: '', area: '', voltage: '' }
-      ]),
-      lessee_vendor: '環球大宇宙太陽能工業有限公司／鄭玲玲／07-7338282',
-      vendor_name: '環球大宇宙太陽能工業有限公司', vendor_tax_id: '28929872', vendor_contact: '鄭玲玲', vendor_phone: '07-7338282',
-      vendor_email: '', vendor_address: '高雄市鳥松區美山路62-1號',
-      guarantor_name: '鉅光科技工業有限公司', guarantor_tax_id: '22073218', guarantor_rep: '吳家慶', guarantor_phone: '0980-889269',
-      taipower_meter_no: '', taipower_contract_no: '', shared_total_kwp: 135.79, capacity_kwp: 135.79, allocation_ratio: 100,
-      sales_mode: 'TAIPOWER_FIT', meter_cutoff_note: '',
-      contract_start: '2022-11-17', contract_end: '2032-10-16', term_months: 119, renewal_deadline: '2032-07-16',
-      notary_no: '111年度雄院民公吉字第1156號', drive_folder_url: '',
-      bond_method: '現金', deposit_amount: 187224, deposit_expiry: '', insurance_expiry: '', is_deleted: false
-    },
-    // 契約第五條第一款
-    schedule: [
-      ['2023-12-17', 93612], ['2024-12-17', 93612], ['2025-12-17', 93612], ['2026-12-17', 93612],
-      ['2027-12-17', 93612], ['2028-12-17', 93612], ['2029-12-17', 93612], ['2030-12-17', 93612],
-      ['2031-12-17', 93612], ['2032-11-17', 85811]
-    ],
-    terms: {
-      calc: { kwp: 135.79, kwh_per_kwp_day: 3.5, days: 365, fit_rate: 4.497, fit_label: '111年躉購費率，B類', feedback_pct: 12, result: 93612 },
-      min_guarantee: true,
-      pay_methods: '現金、票據',
-      pay_place: '溪埔國民中學總務處出納組（84048 高雄市大樹區溪埔路1號）；或至各銀行、郵局、農漁會等金融機構繳納',
-      bank_name: '合作金庫 大樹分行',
-      bank_account_name: '高雄市立溪埔國民中學',
-      bank_account_no: '',
-      notice_days: 30,
-      source: '二期屋頂型租賃契約（111年度雄院民公吉字第1156號）第三～六條',
-      notes: '保底：第三條第四款，參考年租金每年至少給付 93,612 元（第 10 期 11 個月至少 85,811 元），高於經營年租金時依第五條第二款 5% 級距計收。履約保證金 187,224 元（2 年經營年租金），繳納方式請依實際收執之票據或保證書更正。優先續租 2 次（第 1 次 9 年 11 個月）。'
-    }
-  };
-  XIPU_RENEWAL_PRESET.key = 'xipu-renewal';
-
-  const PRESETS = [XIPU_RENEWAL_PRESET, XIPU_PHASE2_PRESET];
-
-  // --------------------------------------------------------------------------
-  // 1c. 二期屋頂型保單（華南產物）
-  //     產險：電子設備綜合保險 19 處案場之第 17 項「溪埔國中二期」
-  //     意外險：公共意外責任險，保單手註「二期」
-  // --------------------------------------------------------------------------
-  const INSURANCE_PRESETS = [{
-    key: 'xipu-phase2-ins-115',
-    contractMatch: c => XIPU_PHASE2_PRESET.match(c),
-    label: '二期保單（產險 115/06/15 起、意外險 114/11/25 起）',
-    logs: [
-      {
-        policyKey: '151060201', log_type: 'PROPERTY_INS',
-        doc_or_policy_no: '華南產物 1401字第151060201號',
-        effective_date: '2026-06-15', expiry_date: '2027-06-15',
-        compliance: { typhoon: true, fire: true, earthquake: true },
-        notes: '電子設備綜合保險（高雄 19 處案場）第 17 項：溪埔路1號「溪埔國中二期」，製造年份 112/01/31，保額 5,979,373 元。附加條款 F05 加保颱風、洪水、地震；火災屬主險承保範圍。自負額每一事故每一地址損失之 15%，最低 10 萬元。續保自 1401字第141060197號。'
-      },
-      {
-        policyKey: '142021519', log_type: 'PUBLIC_LIABILITY_INS',
-        doc_or_policy_no: '華南產物 1402第142021519號',
-        effective_date: '2025-11-25', expiry_date: '2026-11-25',
-        compliance: { per_person: 300, per_accident_body: 1500, per_accident_prop: 200, aggregate: 4800 },
-        notes: '公共意外責任險，被保險人經營業務處所：高雄市立溪埔國民中學（溪埔路1號），保單手註「二期」。每一意外事故自負額 2,500 元，保險費 5,936 元。續保自 1402字第132021555號。'
-      }
-    ]
-  }];
+  const getRentPresets = () => (window.GA_CORE && typeof window.GA_CORE.getCloudPresets === 'function')
+    ? window.GA_CORE.getCloudPresets('SOLAR_RENT')
+    : [];
+  const getInsPresets = () => (window.GA_CORE && typeof window.GA_CORE.getCloudPresets === 'function')
+    ? window.GA_CORE.getCloudPresets('SOLAR_INS')
+    : [];
 
   const missingPresetLogs = (c, pr) => {
     const logs = (appData.tables.Solar_Compliance_Logs || []).filter(l => l.solar_id === c.solar_id);
-    return pr.logs.filter(x => !logs.some(l => String(l.doc_or_policy_no || '').includes(x.policyKey)));
+    return (pr.logs || []).filter(x => !logs.some(l => String(l.doc_or_policy_no || '').includes(x.policyKey)));
   };
 
   window.openInsurancePresetModal = function(solarId, key) {
     const c = (appData.tables.Solar_Contracts || []).find(x => x.solar_id === solarId);
-    const pr = INSURANCE_PRESETS.find(x => x.key === key);
+    const pr = getInsPresets().find(x => x.key === key);
     if (!c || !pr) return;
     const todo = missingPresetLogs(c, pr);
     const tName = { PROPERTY_INS: '產物保險', PUBLIC_LIABILITY_INS: '公共意外責任險' };
@@ -159,7 +59,7 @@
 
   window.saveInsurancePreset = async function(solarId, key) {
     const c = (appData.tables.Solar_Contracts || []).find(x => x.solar_id === solarId);
-    const pr = INSURANCE_PRESETS.find(x => x.key === key);
+    const pr = getInsPresets().find(x => x.key === key);
     if (!c || !pr) return;
     const recs = missingPresetLogs(c, pr).map(x => {
       const rec = {
@@ -177,7 +77,7 @@
     if (recs.length) await pushToCloud({ action: 'batchUpsert', items: [{ table: 'Solar_Compliance_Logs', records: recs }] });
     toast(`✅ 已新增 ${recs.length} 筆保險紀錄`);
   };
-  const findPreset = c => PRESETS.find(pr => pr.match(c)) || null;
+  const findPreset = c => getRentPresets().find(pr => pr.match(c)) || null;
   const fmtPresetFields = f => [
     f.billing_mode === 'TIERED_BASE_RENT' ? '計費方式＝5% 級距制' : '', f.billing_cycle || '',
     f.base_annual_rent ? `經營年租金 ${Number(f.base_annual_rent).toLocaleString('zh-TW')} 元` : '',
@@ -415,7 +315,7 @@
 
   // 依預設建立尚未建檔的新契約（例如二期屋頂型）
   window.openCreatePresetContract = function(presetKey) {
-    const preset = PRESETS.find(pr => pr.key === presetKey && pr.newContract);
+    const preset = getRentPresets().find(pr => pr.key === presetKey && pr.newContract);
     if (!preset) return;
     const draft = {
       ...preset.newContract, ...preset.contractFields,
@@ -538,14 +438,14 @@
     };
   };
 
-  // 太陽能總覽：本約尚未建檔時，顯示「新增二期屋頂型契約」按鈕
+  // 太陽能總覽：本約尚未建檔時，顯示「新增雲端範本契約」按鈕
   const _prevRenderView_rt = renderCurrentView;
   renderCurrentView = function() {
     _prevRenderView_rt();
     if (typeof currentTab === 'undefined' || currentTab !== 'solar' || solarV2SelectedId) return;
     const addBtn = Array.from(document.querySelectorAll('#main-view button')).find(b => (b.getAttribute('onclick') || '') === 'openSolarContractModal()');
     if (!addBtn || document.getElementById('btn-create-phase2')) return;
-    PRESETS.filter(pr => pr.newContract && !(appData.tables.Solar_Contracts || []).some(c => pr.match(c))).forEach(pr => {
+    getRentPresets().filter(pr => pr.newContract && !(appData.tables.Solar_Contracts || []).some(c => pr.match(c))).forEach(pr => {
       const b = document.createElement('button');
       b.id = 'btn-create-phase2';
       b.className = 'btn-sm';
@@ -558,7 +458,7 @@
   // 雙保險頁籤：有尚未登錄的對應保單時，顯示一鍵帶入
   const _prevComplianceTab = renderSolarDetailComplianceTabHTML;
   renderSolarDetailComplianceTabHTML = function(c, cmp) {
-    const banners = INSURANCE_PRESETS.filter(pr => pr.contractMatch(c)).map(pr => {
+    const banners = getInsPresets().filter(pr => pr.contractMatch(c)).map(pr => {
       const todo = missingPresetLogs(c, pr);
       if (!todo.length) return '';
       return `<div class="gate-banner amber" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -606,11 +506,11 @@
         const go = () => openSolarContractFromAlert(c.solar_id, 'billing');
         const amt = fmtMoney(next.amount);
         if (st.key === 'overdue' && !rec) {
-          alerts.push({ level: 'red', badge: '太陽能催繳', title, sortKey: st.d, action: go,
+          alerts.push({ level: 'red', badge: '太陽能催繳', title, dueDate: next.due_date, sortKey: st.d, action: go,
             detail: `繳納期限 ${next.due_date}（第 ${next.no} 期 ${amt}）已逾期 ${Math.abs(st.d)} 天未入帳，請開立逾期違約金繳款單` });
         } else if (st.key === 'soon' || st.key === 'notice') {
           const stmtPast = diffDays(today, st.stmtDl) < 0;
-          alerts.push({ level: 'amber', badge: '太陽能催繳', title, sortKey: st.d, action: go,
+          alerts.push({ level: 'amber', badge: '太陽能催繳', title, dueDate: next.due_date, sortKey: st.d, action: go,
             detail: rec
               ? `繳納期限 ${next.due_date}（第 ${next.no} 期）待入帳，請確認廠商依繳款通知單繳納`
               : stmtPast
@@ -622,23 +522,30 @@
   };
 
   // --------------------------------------------------------------------------
-  // 6. 自我驗證：產生器結果須與契約書第五條第一款完全相符
+  // 6. 自我驗證：產生器算式與保底級距規則驗證（使用通用測試夾具，不含任何機關個資）
   // --------------------------------------------------------------------------
   window.runSolarRentTermsTests = function() {
     const results = [];
     const ok = (cond, name, got) => results.push({ pass: !!cond, name, got });
+    const exp1 = [
+      ['2027-04-27', 175095], ['2028-04-27', 175095], ['2029-04-27', 175095], ['2030-04-27', 175095], ['2031-04-27', 175095],
+      ['2032-04-27', 175095], ['2033-04-27', 175095], ['2034-04-27', 175095], ['2035-04-27', 175095], ['2036-03-27', 160504]
+    ];
+    const exp2 = [
+      ['2023-12-17', 93612], ['2024-12-17', 93612], ['2025-12-17', 93612], ['2026-12-17', 93612], ['2027-12-17', 93612],
+      ['2028-12-17', 93612], ['2029-12-17', 93612], ['2030-12-17', 93612], ['2031-12-17', 93612], ['2032-11-17', 85811]
+    ];
     const c = { contract_start: '2026-03-27', contract_end: '2036-02-26', base_annual_rent: 175095, capacity_kwp: 190.12 };
     const gen = generateRentSchedule(c);
     ok(gen.length === 10, '續約 119 個月產生 10 期', gen.length);
-    ok(gen.every((g, i) => g.due_date === XIPU_RENEWAL_PRESET.schedule[i][0]), '各期繳納期限與契約書相符（116/4/27 … 124/4/27、125/3/27）', gen.map(g => g.due_date).join(','));
-    ok(gen.every((g, i) => g.amount === XIPU_RENEWAL_PRESET.schedule[i][1]), '各期金額與契約書相符（9 × 175,095、末期 160,504）', gen.map(g => g.amount).join(','));
+    ok(gen.every((g, i) => g.due_date === exp1[i][0]), '各期繳納期限正確（116/4/27 … 124/4/27、125/3/27）', gen.map(g => g.due_date).join(','));
+    ok(gen.every((g, i) => g.amount === exp1[i][1]), '各期金額正確（9 × 175,095、末期 160,504）', gen.map(g => g.amount).join(','));
     ok(gen[9].months === 11 && gen[9].period_end === '2036-02-26', '末期 11 個月、截至 125/2/26', `${gen[9].months}/${gen[9].period_end}`);
     ok(calcBaseAnnualRent(190.12, 4.8061, 0.15) === 175095, '190.12 × 3.5 × 365 × 4.8061 × 15% = 175,095', calcBaseAnnualRent(190.12, 4.8061, 0.15));
-    ok(XIPU_RENEWAL_PRESET.match({ contract_start: '2026-03-27', capacity_kwp: 190.12 }) && !XIPU_RENEWAL_PRESET.match({ contract_start: '2016-04-27', capacity_kwp: 190.12 }), '續約條款只對應續約契約（不套到原約）', '');
     const c2 = { contract_start: '2022-11-17', contract_end: '2032-10-16', base_annual_rent: 93612, capacity_kwp: 135.79 };
     const gen2 = generateRentSchedule(c2);
-    ok(gen2.length === 10 && gen2.every((g, i) => g.due_date === XIPU_PHASE2_PRESET.schedule[i][0] && g.amount === XIPU_PHASE2_PRESET.schedule[i][1]),
-      '二期：10 期期限與金額與契約書相符（112～120/12/17 各 93,612、121/11/17 85,811）', gen2.map(g => g.due_date + ':' + g.amount).join(','));
+    ok(gen2.length === 10 && gen2.every((g, i) => g.due_date === exp2[i][0] && g.amount === exp2[i][1]),
+      '二期：10 期期限與金額正確（112～120/12/17 各 93,612、121/11/17 85,811）', gen2.map(g => g.due_date + ':' + g.amount).join(','));
     ok(calcBaseAnnualRent(135.79, 4.497, 0.12) === 93612, '二期：135.79 × 3.5 × 365 × 4.497 × 12% = 93,612', calcBaseAnnualRent(135.79, 4.497, 0.12));
     const tc = { ...c2, solar_id: '_T2', billing_mode: 'TIERED_BASE_RENT', feedback_rate: 0.12, fit_rate: 4.497,
       rent_terms_json: JSON.stringify({ min_guarantee: true, schedule: generateRentSchedule(c2) }) };
@@ -648,11 +555,12 @@
     ok(low.calculatedRent === 93612 && low.floorApplied, '二期保底：參考年租金偏低時仍收 93,612', low.calculatedRent);
     ok(high.calculatedRent === roundMoney(93612 * 1.2) && !high.floorApplied, '二期：參考年租金高於經營年租金時依級距加收（115%→120%）', `${high.suggestedTier}/${high.calculatedRent}`);
     ok(last.calculatedRent === 85811, '二期第 10 期保底 85,811', last.calculatedRent);
-    ok(XIPU_PHASE2_PRESET.match(c2) && !XIPU_RENEWAL_PRESET.match(c2) && !XIPU_PHASE2_PRESET.match({ contract_start: '2026-03-27', capacity_kwp: 190.12 }), '一期續約與二期條款互不套用', '');
     return results;
   };
 
+  window.getSolarRentTerms = getRentTerms;
+
   if (window.GA_REGISTRY && typeof window.GA_REGISTRY.registerModule === 'function') {
-    window.GA_REGISTRY.registerModule('solar-rent-terms.js', 'v1.0', '太陽能年租金繳納時程、方式、處所與明細表期限');
+    window.GA_REGISTRY.registerModule('solar-rent-terms.js', 'v2.0', '太陽能年租金繳納時程、方式、處所與明細表期限（雲端範本版）');
   }
 })();

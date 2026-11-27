@@ -1469,7 +1469,7 @@ buildAllAlerts = function() {
 // 載入完畢後立即重繪畫面啟用第二期模組
 renderCurrentView();
 // ----------------------------------------------------------------------------
-// 6. 外部《溪埔國中電費整理》Google 試算表一鍵連結同步介面
+// 6. 外部《年度電費整理》Google 試算表一鍵連結同步介面
 // ----------------------------------------------------------------------------
 const _baseRenderUtilitiesViewHTML = renderUtilitiesViewHTML;
 renderUtilitiesViewHTML = function() {
@@ -1481,7 +1481,7 @@ renderUtilitiesViewHTML = function() {
 };
 
 function openSyncExternalElecModal() {
-  openModal('🔄 連結並同步《溪埔國中電費整理》Google 試算表', `
+  openModal('🔄 連結並同步《年度電費整理》Google 試算表', `
     <div class="gate-banner green" style="margin-bottom:12px">
       <strong>運作方式：</strong>貼上你原本的 Google 試算表網址後，系統會自動抓取 <code>2017年</code>～<code>2026年</code>（含未來新年度分頁）的所有月度電費、度數、契約容量與最高需量。<br>
       日後你在原試算表登記新月份後，按一下即可更新，<strong>不會重複匯入，也不會覆蓋你填過的核銷狀態與查修備註</strong>。
@@ -1498,7 +1498,7 @@ function openSyncExternalElecModal() {
 
 async function runSyncExternalElec() {
   const sheetId = (document.getElementById('ext-elec-url')?.value || '').trim();
-  if (!sheetId) return toast('請貼上《溪埔國中電費整理》的 Google 試算表網址');
+  if (!sheetId) return toast('請貼上外部電費整理的 Google 試算表網址');
   saveConfig({ extElecUrl: sheetId });
   closeModal();
   toast('⏳ 正在從原電費試算表同步 2017～2026 年資料，請稍候...');

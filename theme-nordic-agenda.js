@@ -1002,8 +1002,8 @@
 
     const sideTop = document.createElement('div');
     sideTop.id = 'nordic-side-top';
-    const schoolName = (typeof appData !== 'undefined' && appData.schoolName) || (typeof appConfig !== 'undefined' && appConfig.schoolName) || '高雄市立溪埔國民中學';
-    const shortMark = schoolName.replace(/高雄市立|市立|縣立|國立/g, '').slice(0, 1) || '總';
+    const schoolName = (typeof appData !== 'undefined' && appData.schoolName) || (typeof appConfig !== 'undefined' && appConfig.schoolName) || '國民中小學總務處';
+    const shortMark = schoolName.replace(/^.{2,3}[市縣](立)?|國立/g, '').slice(0, 1) || '總';
 
     sideTop.innerHTML = `
       <div class="ns-brand">
@@ -1080,9 +1080,9 @@
     const btn = document.getElementById('btn-nordic-sidebar-toggle');
     if (btn) {
       btn.classList.toggle('is-collapsed', collapsed);
-      btn.setAttribute('aria-expanded', String(!collapsed));
-      btn.title = collapsed ? '展開左側選單' : '收合左側選單';
-      btn.innerHTML = collapsed ? '☰ 展開選單' : '☰ 收合選單';
+      btn.setAttribute('aria-expanded', String(isDesktop ? !collapsed : false));
+      btn.title = !isDesktop ? '開啟選單' : (collapsed ? '展開左側選單' : '收合左側選單');
+      btn.innerHTML = !isDesktop ? '☰ 選單' : (collapsed ? '☰ 展開選單' : '☰ 收合選單');
     }
     const calBtn = document.getElementById('btn-toggle-calendar');
     if (calBtn) {
@@ -1269,9 +1269,9 @@
   // 5. 頂部列與一屏鎖定狀態更新
   // --------------------------------------------------------------------------
   function syncOneScreenLock() {
-    const isDash = (typeof currentTab === 'undefined' || currentTab === 'dashboard') && window.innerWidth >= 1024;
-    document.documentElement.classList.toggle('nordic-one-screen', isDash);
-    document.body.classList.toggle('nordic-one-screen', isDash);
+    const isOneScreen = window.innerWidth >= 1024 && window.innerHeight >= 600;
+    document.documentElement.classList.toggle('nordic-one-screen', isOneScreen);
+    document.body.classList.toggle('nordic-one-screen', isOneScreen);
     syncSidebarState();
   }
 
@@ -1279,7 +1279,7 @@
     ensureNordicShell();
     syncOneScreenLock();
 
-    const schoolName = (typeof appData !== 'undefined' && appData.schoolName) || (typeof appConfig !== 'undefined' && appConfig.schoolName) || '高雄市立溪埔國民中學';
+    const schoolName = (typeof appData !== 'undefined' && appData.schoolName) || (typeof appConfig !== 'undefined' && appConfig.schoolName) || '國民中小學總務處';
     const sideTitle = document.getElementById('ns-school-title');
     if (sideTitle) sideTitle.textContent = schoolName;
 
@@ -1289,20 +1289,26 @@
 
     const tabTitles = {
       dashboard: '戰情總覽',
-      projects: '採購履約',
+      projects: '採購與工程履約',
+      'statutory-proc': '小額・綠優採台帳',
       'annual-gantt': '全校甘特圖',
       templates: '標案模板',
-      routines: '例行事務',
+      routines: '例行與續約',
       solar: '太陽能租賃',
-      utilities: '水電費監控'
+      utilities: '水電費監控',
+      'safety-wall': '校園法定安檢牆',
+      'venue-board': '場地與教室看板',
+      'asset-inv': '設備與耗材庫存'
     };
 
     const brand = document.querySelector('.topbar .brand');
     if (brand) {
       const pageTitle = tabTitles[typeof currentTab !== 'undefined' ? currentTab : 'dashboard'] || '總務行政戰情助理';
-      const isCollapsedDesktop = window.innerWidth >= 1024 && Boolean(prefs.sidebarCollapsed);
+      const isDesktop = window.innerWidth >= 1024;
+      const isCollapsedDesktop = isDesktop && Boolean(prefs.sidebarCollapsed);
+      const btnLbl = !isDesktop ? '☰ 選單' : (isCollapsedDesktop ? '☰ 展開選單' : '☰ 收合選單');
       brand.innerHTML = `
-        <button type="button" id="btn-nordic-sidebar-toggle" class="nt-sidebar-toggle ${isCollapsedDesktop ? 'is-collapsed' : ''}" aria-label="切換左側選單" aria-expanded="${!isCollapsedDesktop}" title="${isCollapsedDesktop ? '展開左側選單' : '收合左側選單'}" onclick="toggleNordicSidebar()">${isCollapsedDesktop ? '☰ 展開選單' : '☰ 收合選單'}</button>
+        <button type="button" id="btn-nordic-sidebar-toggle" class="nt-sidebar-toggle ${isCollapsedDesktop ? 'is-collapsed' : ''}" aria-label="切換左側選單" aria-expanded="${isDesktop ? !isCollapsedDesktop : false}" title="${!isDesktop ? '開啟選單' : (isCollapsedDesktop ? '展開左側選單' : '收合左側選單')}" onclick="toggleNordicSidebar()">${btnLbl}</button>
         <div>
           <div class="nt-greet-title">${esc(pageTitle)}</div>
           <div class="nt-greet-sub num-mono"><span id="school-title" style="display:none">${esc(schoolName)}</span><span id="today-roc">${esc(rocStr)}</span></div>

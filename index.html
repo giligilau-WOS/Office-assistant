@@ -279,7 +279,7 @@
   <!-- 頂部列 -->
   <div class="topbar">
     <div class="brand">
-      <span>🏫 <span id="school-title">高雄市立溪埔國民中學</span> 總務行政戰情助理</span>
+      <span>🏫 <span id="school-title">國民中小學總務處</span> 總務行政戰情助理</span>
       <small id="today-roc"></small>
     </div>
     <div class="top-actions">
@@ -304,7 +304,7 @@
     <button class="nav-tab" data-tab="templates" onclick="switchTab('templates')">🗂️ 標案模板</button>
     <button class="nav-tab" data-tab="routines" onclick="switchTab('routines')">🔁 例行事務</button>
     <button class="nav-tab" data-tab="upcoming" onclick="switchTab('upcoming')">🔧 設施與綠能 <span class="badge-soon">下階段</span></button>
-    <a class="nav-tab nav-tab-ext" href="./campus-3d.html" target="_blank" rel="noopener" title="另開新分頁開啟溪埔國中 3D 校舍模型（測試建置中）">🏫 3D 校舍模型 <span class="badge-beta">測試建置中</span> ↗</a>
+    <a class="nav-tab nav-tab-ext" href="./campus-3d.html" target="_blank" rel="noopener" title="開啟 3D 校舍數位雙生模型">🏫 3D 校舍模型 <span class="badge-beta">數位雙生</span> ↗</a>
   </div>
 
   <!-- 主內容容器 -->
@@ -354,8 +354,8 @@ let annualGanttFitW = 0; // 螢幕甘特圖依容器實寬繪製（0 = 列印用
 
 function loadConfig() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_CFG)) || { gasUrl: '', token: '', schoolName: '高雄市立溪埔國民中學' };
-  } catch { return { gasUrl: '', token: '', schoolName: '高雄市立溪埔國民中學' }; }
+    return JSON.parse(localStorage.getItem(STORAGE_CFG)) || { gasUrl: '', token: '', schoolName: '國民中小學總務處' };
+  } catch { return { gasUrl: '', token: '', schoolName: '國民中小學總務處' }; }
 }
 
 function saveConfig(cfg) {
@@ -365,7 +365,7 @@ function saveConfig(cfg) {
 
 function emptyData() {
   return {
-    schoolName: (appConfig && appConfig.schoolName) || '高雄市立溪埔國民中學',
+    schoolName: (appConfig && appConfig.schoolName) || '國民中小學總務處',
     serverTime: '',
     portals: DEFAULT_PORTALS.slice(),
     tables: {
@@ -2267,7 +2267,7 @@ function openSettingsModal() {
     <div class="form-grid">
       <div class="field full"><label>GAS Web App 網址（結尾為 /exec）</label><input id="cfg-url" type="url" value="${esc(appConfig.gasUrl || '')}" placeholder="https://script.google.com/macros/s/xxxx/exec"></div>
       <div class="field full"><label>通行金鑰（需與 Code.gs 的 API_TOKEN 一致）</label><input id="cfg-token" type="password" value="${esc(appConfig.token || '')}" placeholder="輸入自訂通行金鑰"></div>
-      <div class="field full"><label>學校名稱顯示</label><input id="cfg-school" type="text" value="${esc(appConfig.schoolName || '高雄市立溪埔國民中學')}"></div>
+      <div class="field full"><label>學校名稱顯示</label><input id="cfg-school" type="text" value="${esc(appConfig.schoolName || appData.schoolName || '國民中小學總務處')}"></div>
     </div>
     <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2284,7 +2284,7 @@ async function saveSettingsAndSync() {
   saveConfig({
     gasUrl: document.getElementById('cfg-url').value.trim(),
     token: document.getElementById('cfg-token').value.trim(),
-    schoolName: document.getElementById('cfg-school').value.trim() || '高雄市立溪埔國民中學'
+    schoolName: document.getElementById('cfg-school').value.trim() || '國民中小學總務處'
   });
   closeModal();
   await syncFromCloud(true);
@@ -2410,29 +2410,39 @@ renderHeaderAndPortals();
 renderCurrentView();
 syncFromCloud(false);
 </script>
+<script src="./ga-core-registry.js?v=1"></script>
 <script src="./eng-module.js?v=3"></script>
-<script src="./ops-module.js?v=3"></script>
+<script src="./ops-module.js?v=4"></script>
 <script src="./ux-upgrade.js?v=4"></script>
-<script src="./solar-v2.js?v=5"></script>
-<script src="./solar-rent-terms.js?v=7"></script>
+<script src="./solar-v2.js?v=6"></script>
+<script src="./solar-rent-terms.js?v=8"></script>
 <script src="./reliability-ux.js?v=2"></script>
 <script src="./dashboard-visuals.js?v=2"></script>
-<script src="./theme-nordic-agenda.js?v=3"></script>
+<script src="./theme-nordic-agenda.js?v=4"></script>
 <script src="./layout-theme-switcher.js?v=1"></script>
 <script src="./maint-schedule-helper.js?v=2"></script>
-<script src="./project-timeline-presets.js?v=3"></script>
+<script src="./project-timeline-presets.js?v=4"></script>
 <script src="./project-case-number.js?v=1"></script>
 <script src="./gantt-timeline.js?v=1"></script>
 <script src="./data-dedupe.js?v=1"></script>
-<script src="./ui-declutter.js?v=5"></script>
+<script src="./statutory-procurement.js?v=1"></script>
+<script src="./venue-classroom-board.js?v=1"></script>
+<script src="./doc-safety-assets.js?v=1"></script>
+<script src="./split-pane-views.js?v=1"></script>
+<script src="./ui-declutter.js?v=6"></script>
 <script>
 (function(){
   const miss = [
+    ['ga-core-registry.js', !!window.GA_CORE],
     ['eng-module.js', typeof calcEngineeringSummary === 'function'],
     ['ops-module.js', typeof renderUtilitiesViewHTML === 'function'],
     ['ux-upgrade.js', typeof describeDueRuleHuman === 'function'],
     ['solar-v2.js', typeof calcSolarBillV2 === 'function'],
-    ['reliability-ux.js', typeof retrySyncQueue === 'function']
+    ['reliability-ux.js', typeof retrySyncQueue === 'function'],
+    ['statutory-procurement.js', typeof window.calcStatutoryProcurementStats === 'function'],
+    ['venue-classroom-board.js', typeof window.checkVenueTimeConflict === 'function'],
+    ['doc-safety-assets.js', typeof window.openDocCopilotModal === 'function'],
+    ['split-pane-views.js', typeof window.openBatchRenewalModal === 'function']
   ].filter(x => !x[1]).map(x => x[0]);
   if (miss.length && !document.getElementById('sys-banners-host')) {
     const b = document.createElement('div');

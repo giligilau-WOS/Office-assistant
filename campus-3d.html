@@ -127,13 +127,18 @@
   <!-- Projected 3D Room Name Labels Layer -->
   <div id="labels-layer"></div>
 
-  <!-- Mobile Sidebar Toggle Button -->
-  <button id="panel-toggle-btn" class="fixed top-3 left-3 z-40 glass-panel rounded-xl px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-800/90 transition flex items-center gap-2">
-    <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-    <span class="hidden sm:inline">控制面板</span>
-  </button>
+  <!-- Top-Left Navigation & Control Panel Toggle -->
+  <div class="fixed top-3 left-3 z-40 flex items-center gap-2">
+    <a id="back-to-warroom-btn" href="./index.html" class="glass-panel rounded-xl px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/25 border border-amber-400/40 transition flex items-center gap-1.5 no-underline">
+      <span>←</span><span>返回總務戰情室</span>
+    </a>
+    <button id="panel-toggle-btn" class="glass-panel rounded-xl px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-800/90 transition flex items-center gap-2">
+      <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+      <span class="hidden sm:inline">控制面板</span>
+    </button>
+  </div>
 
   <!-- Top-Center Google Earth / 2D / Street View Mode Switcher Pill -->
   <div id="mode-switcher-bar" class="fixed top-3 left-1/2 -translate-x-1/2 z-40 glass-panel rounded-full p-1 flex items-center gap-1">
@@ -405,6 +410,7 @@
     </div>
     <p id="room-desc" class="mt-2.5 text-[12.5px] leading-[1.55] text-slate-300 line-clamp-3"></p>
     <button id="room-desc-more" class="self-start mt-0.5 text-[11px] text-sky-300 hover:text-sky-200" hidden>展開完整說明</button>
+    <div id="room-ga-live-box" class="mt-2.5 hidden rounded-xl bg-amber-950/60 border border-amber-400/40 p-2.5 text-[12px] text-amber-100 space-y-1"></div>
     <div id="room-gallery-wrap" class="mt-2.5" hidden>
       <div class="text-[11px] text-slate-400 mb-1">相關圖片（點圖放大）</div>
       <div id="room-gallery" class="flex gap-1.5 overflow-x-auto custom-scroll pb-1"></div>
@@ -4941,6 +4947,7 @@
         document.getElementById('room-elev').textContent = rm.building === 'site' ? '戶外・地面' : `${bld} +${rm.y.toFixed(2)} m`;
         document.getElementById('room-area').textContent = rm.area ? `約 ${rm.area} m²` : '—';
         document.getElementById('room-meta').textContent = rm.meta || '—';
+        renderRoomGaLiveStatus(rm);
         renderRoomGallery(rm.images || []);
         const card = document.getElementById('room-info-card');
         if (window.innerWidth >= 768 && window.innerWidth < 1280 && typeof mmExp !== 'undefined' && mmExp) document.getElementById('minimap-size-btn').click();
@@ -6834,6 +6841,67 @@
         renderer.render(scene, camera);
       }
 
+      function renderRoomGaLiveStatus(rm) {
+        const box = document.getElementById('room-ga-live-box');
+        if (!box) return;
+        try {
+          const raw = localStorage.getItem('ga_assistant_cache_v2');
+          if (!raw) { box.classList.add('hidden'); return; }
+          const cache = JSON.parse(raw);
+          const tables = cache.tables || {};
+          const kw = [rm.titleNoCode, rm.shortName, rm.name, rm.code].filter(Boolean).map(s => String(s).trim());
+          const lines = [];
+
+          (tables.Projects || []).filter(p => !['已結案', '廢標撤案'].includes(p.status)).forEach(p => {
+            const nm = String(p.project_name || '');
+            if (kw.some(k => k.length >= 2 && nm.includes(k)) || (/廁所/.test(rm.name) && /廁所/.test(nm)) || (/跑道|運動場/.test(rm.name) && /跑道/.test(nm))) {
+              lines.push(`🏗️ 標案列管：${nm}（${p.status}）`);
+            }
+          });
+
+          (tables.Solar_Contracts || []).filter(c => !['已屆滿', '已解約'].includes(c.status)).forEach(c => {
+            const bn = String(c.building_name || '');
+            if ((/風雨球場/.test(rm.name) && /風雨球場/.test(bn)) || (/廚房|食育/.test(rm.name) && /廚房/.test(bn)) || (/警衛/.test(rm.name) && /警衛/.test(bn))) {
+              lines.push(`☀️ 屋頂光電：${c.phase_label || c.solar_id}・${c.capacity_kwp} kWp（${c.status}）`);
+            }
+          });
+
+          (tables.Project_Responsibilities || []).filter(r => r.project_id === '__SYS_EXT__' && r.phase_name === 'VENUE_BOOKING' && !r.is_deleted).forEach(r => {
+            try {
+              const bk = JSON.parse(r.roles_matrix_json || '{}');
+              if (kw.some(k => k.length >= 2 && String(bk.space_name || '').includes(k))) {
+                lines.push(`🏟️ 短期借用：${bk.date} ${bk.start_time}-${bk.end_time} ${bk.borrower_unit}`);
+              }
+            } catch {}
+          });
+
+          if (lines.length) {
+            box.innerHTML = `<div class="font-bold text-amber-300">📊 總務戰情即時連動</div>` + lines.slice(0, 4).map(l => `<div>${l.replace(/</g, '&lt;')}</div>`).join('');
+            box.classList.remove('hidden');
+          } else {
+            box.classList.add('hidden');
+          }
+        } catch {
+          box.classList.add('hidden');
+        }
+      }
+
+      function focusRoomFromQuery() {
+        const params = new URLSearchParams(window.location.search);
+        const q = (params.get('room') || params.get('focus') || '').trim();
+        if (!q || !interactiveRoomMeshes.length) return;
+        const hit = interactiveRoomMeshes.find(z => {
+          const rm = z.userData.room || {};
+          return [rm.name, rm.shortName, rm.titleNoCode, rm.code].some(v => v && String(v).includes(q));
+        });
+        if (!hit) return;
+        selectRoom(hit);
+        const p = hit.position;
+        const sr = hit.userData.room;
+        if (sr.building === 'main' && (sr.floor === '1F' || sr.floor === '2F')) setActiveFloor(sr.floor);
+        flyToCamera([p.x + 14, p.y + 12, p.z + 19], [p.x, p.y, p.z], 750);
+      }
+
       function startApp() {
         applyFloorVisibility();
         updateModeButtonsUI();
@@ -6843,6 +6911,7 @@
           setTimeout(() => overlay.remove(), 550);
         }
         requestAnimationFrame(animate);
+        setTimeout(focusRoomFromQuery, 220);
       }
 
       if (document.readyState === 'complete') {

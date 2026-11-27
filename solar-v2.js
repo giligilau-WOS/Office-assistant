@@ -1125,38 +1125,38 @@ function printSingleSolarContractPDF(solarId) {
 
 async function seedD4Phase1Data() {
   ensureSolarV2Tables();
-  const sid = 'SOL-D4P1';
+  const sid = 'SOL-DEMO-01';
   const contractRec = {
-    solar_id: sid, building_name: 'D4教室暨D4風雨球場屋頂', phase_label: '一期', parent_contract_id: '', status: '併聯發電中',
-    buildings_json: JSON.stringify([{ name: 'D4教室', land_lot: '', permit_no: '', area: 970.31, voltage: '' }, { name: 'D4風雨球場', land_lot: '', permit_no: '', area: 460.8, voltage: '' }]),
-    lessee_vendor: '環球大宇宙太陽能工業有限公司／鄭玲玲／07-7338282',
-    vendor_name: '環球大宇宙太陽能工業有限公司', vendor_tax_id: '28929872', vendor_contact: '鄭玲玲', vendor_phone: '07-7338282', vendor_email: 'sun.s8282@msa.hinet.net', vendor_address: '',
-    guarantor_name: '鉅光科技工業有限公司', guarantor_tax_id: '22073218', guarantor_rep: '吳家慶', guarantor_phone: '0980-889269',
-    taipower_meter_no: '18-40-6486-03-1', taipower_contract_no: '18-PV-105-0128', shared_total_kwp: 325.91, capacity_kwp: 190.12, allocation_ratio: 58,
+    solar_id: sid, building_name: '教學大樓暨風雨球場屋頂（範例）', phase_label: '一期範例', parent_contract_id: '', status: '併聯發電中',
+    buildings_json: JSON.stringify([{ name: '教學大樓', land_lot: '', permit_no: '', area: 970, voltage: '' }, { name: '風雨球場', land_lot: '', permit_no: '', area: 460, voltage: '' }]),
+    lessee_vendor: '範例光電股份有限公司／王專員',
+    vendor_name: '範例光電股份有限公司', vendor_tax_id: '', vendor_contact: '王專員', vendor_phone: '', vendor_email: '', vendor_address: '',
+    guarantor_name: '範例連帶保證股份有限公司', guarantor_tax_id: '', guarantor_rep: '陳代表', guarantor_phone: '',
+    taipower_meter_no: '00-00-0000-00-0', taipower_contract_no: 'PV-DEMO-01', shared_total_kwp: 325.91, capacity_kwp: 190.12, allocation_ratio: 58,
     sales_mode: 'MIXED_WHEELING', billing_mode: 'TIERED_BASE_RENT', fit_rate: 4.8061, feedback_rate: 0.15, base_annual_rent: 175095, min_annual_feedback: 0,
-    billing_cycle: '年結', annual_due_month_day: '10-27', meter_cutoff_note: '抄表結算至 2026/03/31（原誤植屆滿日 2025/03/26 已更正）',
-    contract_start: '2016-04-27', contract_end: '2026-03-26', term_months: 119, renewal_deadline: '2025-12-26', notary_no: '114年度雄院民公吉字第1871號',
+    billing_cycle: '年結', annual_due_month_day: '10-27', meter_cutoff_note: '範例抄表結算備註',
+    contract_start: '2016-04-27', contract_end: '2026-03-26', term_months: 119, renewal_deadline: '2025-12-26', notary_no: '範例公證字第0001號',
     drive_folder_url: '', bond_method: '現金', deposit_amount: 350190, deposit_expiry: '', insurance_expiry: '', updated_at: nowStr(), is_deleted: false
   };
   const billRec = {
-    record_id: 'SR-D4P1-10', solar_id: sid, period_label: '第10期', period_start: '2025-09-01', period_end: '2026-03-31', period_months: 7,
+    record_id: 'SR-DEMO-10', solar_id: sid, period_label: '第10期', period_start: '2025-09-01', period_end: '2026-03-31', period_months: 7,
     monthly_details_json: JSON.stringify([
-      { source: 'WHEELING', label: '阿波羅電力7個月一期拆帳(58%)', unit_price: 5.27, line_loss: '', alloc_kwh: 121365, alloc_amount: 671566 },
-      { source: 'TAIPOWER', label: '114年12月台電餘電一期', unit_price: '', line_loss: '', alloc_kwh: 6324, alloc_amount: 31913 }
+      { source: 'WHEELING', label: '轉供售電拆帳範例(58%)', unit_price: 5.27, line_loss: '', alloc_kwh: 121365, alloc_amount: 671566 },
+      { source: 'TAIPOWER', label: '台電餘電結算範例', unit_price: '', line_loss: '', alloc_kwh: 6324, alloc_amount: 31913 }
     ]),
-    generation_kwh: 127689, taipower_revenue: 703479, expected_feedback: 105522, applied_tier_percent: 70, tier_clause_note: '契約第5條第2項第13款',
-    calculated_rent: 122567, overdue_penalty: 0, actual_feedback: 122567, payment_date: '2026-09-29', remittance_batch_no: '260929596113',
-    due_date: '2026-10-27', yield_per_kwp: 3.17, drive_file_url: '', maintenance_log: '第10期結算（阿波羅轉供＋台電餘電）', updated_at: nowStr(), is_deleted: false
+    generation_kwh: 127689, taipower_revenue: 703479, expected_feedback: 105522, applied_tier_percent: 70, tier_clause_note: '依契約級距條款',
+    calculated_rent: 122567, overdue_penalty: 0, actual_feedback: 122567, payment_date: '2026-09-29', remittance_batch_no: 'DEMO-BATCH-01',
+    due_date: '2026-10-27', yield_per_kwp: 3.17, drive_file_url: '', maintenance_log: '範例結算紀錄', updated_at: nowStr(), is_deleted: false
   };
   const bondTxs = [
-    { tx_id: 'BND-D4P1-01', solar_id: sid, tx_date: '2016-04-27', tx_type: 'DEPOSIT', amount: 350190, reason: '原始履約保證金繳納（2年基準年租金）', doc_no: '18-PV-105-0128', vendor_bank_account: '', receipt_url: '', updated_at: nowStr(), is_deleted: false },
-    { tx_id: 'BND-D4P1-02', solar_id: sid, tx_date: '2026-09-29', tx_type: 'REFUND', amount: -43774, reason: '滿119個月申請退還 1/8 履約保證金', doc_no: '(114)環字第1150929002號', vendor_bank_account: '彰化銀行鳳山分行 6520-01-892696-00', receipt_url: '', updated_at: nowStr(), is_deleted: false }
+    { tx_id: 'BND-DEMO-01', solar_id: sid, tx_date: '2016-04-27', tx_type: 'DEPOSIT', amount: 350190, reason: '原始履約保證金繳納（2年基準年租金）', doc_no: 'DEMO-DOC-01', vendor_bank_account: '', receipt_url: '', updated_at: nowStr(), is_deleted: false },
+    { tx_id: 'BND-DEMO-02', solar_id: sid, tx_date: '2026-09-29', tx_type: 'REFUND', amount: -43774, reason: '範例部分退還履約保證金', doc_no: 'DEMO-DOC-02', vendor_bank_account: '', receipt_url: '', updated_at: nowStr(), is_deleted: false }
   ];
   const amendLog = {
-    log_id: 'CMP-D4P1-01', solar_id: sid, log_type: 'AMENDMENT', doc_or_policy_no: '114年度雄院民公吉字第1871號',
+    log_id: 'CMP-DEMO-01', solar_id: sid, log_type: 'AMENDMENT', doc_or_policy_no: '範例公證字第0001號',
     effective_date: '2025-12-23', expiry_date: '',
     compliance_json: JSON.stringify({ change_end_date: true, old_end_date: '2025-03-26', new_end_date: '2026-03-26', new_renewal_deadline: '2025-12-26' }),
-    attachment_url: '', notes: '更正原誤植屆滿日 2025/03/26 → 2026/03/26（租期119個月，續租截止 2025/12/26）', updated_at: nowStr(), is_deleted: false
+    attachment_url: '', notes: '契約期間變更範例紀錄', updated_at: nowStr(), is_deleted: false
   };
 
   upsertLocal('Solar_Contracts', contractRec, 'solar_id');
