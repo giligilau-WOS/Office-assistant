@@ -961,6 +961,7 @@
 
   window.openCustomizeCardsModal = function() {
     const prefs = window.GA_CORE.getUiPrefs();
+    const acc = window.GA_CORE.getAccountingCloseInfo();
     const hiddenTiles = new Set(prefs.hiddenTiles || []);
     const hiddenTabs = new Set(prefs.hiddenTabs || []);
     const snoozedCnt = Object.keys(prefs.snoozedAlerts || {}).length;
@@ -969,6 +970,14 @@
     openModal('🎛️ 自訂首頁卡片與側欄模組（隱藏用不到的卡片）', `
       <div class="gate-banner amber" style="margin-bottom:12px;font-size:14px">
         💡 取消勾選您平時用不到的業務卡片或側邊欄功能，畫面會自動拉寬給常用業務，且設定會隨雲端試算表同步記憶，隨時可再打開！
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;margin-bottom:12px;border:1px solid var(--border-strong);border-radius:10px;background:#FFFDF7">
+        <div style="font-size:14px;font-weight:700;color:var(--text-primary)">
+          🏦 年度會計關帳日：<strong class="num-mono" style="color:var(--brand-primary)">民國 ${h(acc.rocWithWeekday)}</strong>
+          ${acc.hidden ? '<span class="tag tag-gray" style="margin-left:6px">頂部膠囊已隱藏</span>' : ''}
+        </div>
+        <button type="button" class="btn-xs btn-primary" onclick="openAccountingCloseModal()">✎ 修改關帳日</button>
       </div>
 
       <div style="font-size:15px;font-weight:800;color:var(--brand-primary);margin-bottom:6px">📌 首頁頂部「黃金業務指標卡」（可隱藏任意卡片）</div>
@@ -1016,8 +1025,147 @@
 
   window.gaResetCustomCards = async function() {
     closeModal();
-    await window.GA_CORE.updateUiPrefs({ hiddenTiles: [], hiddenTabs: [], snoozedAlerts: {}, dismissedPresets: [] });
+    await window.GA_CORE.updateUiPrefs({ hiddenTiles: [], hiddenTabs: [], snoozedAlerts: {}, dismissedPresets: [], hideAccountingPill: false });
     toast('↺ 已恢復全部卡片、選單與提醒顯示！');
+  };
+
+  // ---------------- 年度會計關帳日設定彈窗 ----------------
+  window.gaUpdateAccPreview = function(ymd) {
+    const box = document.getElementById('ga-acc-preview');
+    if (!box) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd || '')) {
+      box.innerHTML = '⚠️ 日期格式不正確，請輸入如 <strong>115/12/10</strong> 或由右側日曆選取。';
+      box.className = 'sp-sim-box is-danger';
+      return;
+    }
+    const tdy = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10);
+    const left = typeof diffDays === 'function' ? diffDays(tdy, ymd) : 0;
+    const leftDesc = left > 0
+      ? `距離今天倒數 <strong>${left}</strong> 天`
+      : left === 0
+      ? '<strong>今日即為會計關帳日！</strong>'
+      : `已過關帳日 ${Math.abs(left)} 天（結報收尾期）`;
+    box.className = 'sp-sim-box is-ok';
+    box.innerHTML = `📅 設定後關帳日：<strong class="num-mono">民國 ${h(roc(ymd, { withWeekday: true }))}</strong> ｜ ${leftDesc}`;
+  };
+
+  window.gaSyncAccRocToYmd = function(raw) {
+    const parsed = window.GA_CORE.parseFlexibleRocDate(raw);
+    if (parsed) {
+      const ymdEl = document.getElementById('ga-acc-ymd');
+      if (ymdEl) ymdEl.value = parsed;
+      window.gaUpdateAccPreview(parsed);
+    }
+  };
+
+  window.gaSyncAccYmdToRoc = function(ymd) {
+    const rocEl = document.getElementById('ga-acc-roc');
+    if (rocEl && ymd) rocEl.value = roc(ymd);
+    window.gaUpdateAccPreview(ymd);
+  };
+
+  window.gaPickAccPreset = function(md) {
+    const tdy = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10);
+    const y = Number(tdy.slice(0, 4));
+    const ymd = `${y}-${md}`;
+    const ymdEl = document.getElementById('ga-acc-ymd');
+    const rocEl = document.getElementById('ga-acc-roc');
+    if (ymdEl) ymdEl.value = ymd;
+    if (rocEl) rocEl.value = roc(ymd);
+    window.gaUpdateAccPreview(ymd);
+  };
+
+  window.openAccountingCloseModal = function() {
+    const acc = window.GA_CORE.getAccountingCloseInfo();
+    const routines = (appData?.tables?.Annual_Routines || []).filter(r => r.is_active !== false);
+    const decRenewals = routines.filter(r => /^12-/.test(String(r.due_rule || '')) && /續約|續租|招標|委外/.test(r.title || ''));
+    const presets = [
+      { md: '12-05', lbl: '12/05' },
+      { md: '12-10', lbl: '12/10' },
+      { md: '12-12', lbl: '12/12' },
+      { md: '12-15', lbl: '12/15（預設）' },
+      { md: '12-18', lbl: '12/18' },
+      { md: '12-20', lbl: '12/20' },
+      { md: '12-25', lbl: '12/25' }
+    ];
+
+    openModal('🏦 設定年度會計關帳日（請購／核銷截止倒數）', `
+      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:10px;line-height:1.5">
+        各校會計室每年公告之經費請購、小額核銷關帳截止日不同，您可直接點選常用日期或輸入公文通知日期（設定自動同步雲端試算表）：
+      </div>
+
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <span style="font-size:13px;font-weight:800;color:var(--brand-primary)">快速套用：</span>
+        ${presets.map(p => `<button type="button" class="btn-xs" onclick="gaPickAccPreset('${p.md}')">${p.lbl}</button>`).join('')}
+      </div>
+
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="field">
+          <label>民國日期輸入（例：115/12/10 或 1151210）</label>
+          <input id="ga-acc-roc" class="num-mono" type="text" value="${h(acc.rocCloseDate)}"
+                 placeholder="例：115/12/10" oninput="gaSyncAccRocToYmd(this.value)">
+        </div>
+        <div class="field">
+          <label>日曆選擇器</label>
+          <input id="ga-acc-ymd" class="num-mono" type="date" value="${h(acc.closeDate)}"
+                 onchange="gaSyncAccYmdToRoc(this.value)">
+        </div>
+      </div>
+
+      <div id="ga-acc-preview" class="sp-sim-box is-ok" style="margin-bottom:12px"></div>
+
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:#FFF;cursor:pointer;font-size:14px;font-weight:700;margin-bottom:10px">
+        <input type="checkbox" id="ga-acc-show-pill" ${acc.hidden ? '' : 'checked'} style="width:17px;height:17px">
+        <span>於頂部導覽列顯示「🏦 會計關帳倒數」提醒膠囊（關帳結報完畢後可取消勾選隱藏）</span>
+      </label>
+
+      ${decRenewals.length ? `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--bg-subtle);font-size:13.5px">
+          <span>📌 本校另有 <strong>${decRenewals.length}</strong> 件 12 月份下年度契約續約／招標例行待辦</span>
+          <button type="button" class="btn-xs" onclick="closeModal();switchTab('routines')">🔁 前往例行與續約 →</button>
+        </div>
+      ` : ''}
+    `, `
+      <button type="button" style="margin-right:auto" onclick="gaResetAccountingClose()">↺ 恢復預設 (12/15)</button>
+      <button type="button" onclick="closeModal()">取消</button>
+      <button type="button" class="btn-primary" onclick="gaSaveAccountingClose()">💾 儲存關帳日</button>
+    `);
+
+    window.gaUpdateAccPreview(acc.closeDate);
+  };
+
+  window.gaSaveAccountingClose = async function() {
+    const rocRaw = (document.getElementById('ga-acc-roc')?.value || '').trim();
+    const ymdRaw = (document.getElementById('ga-acc-ymd')?.value || '').trim();
+    const parsedFromRoc = window.GA_CORE.parseFlexibleRocDate(rocRaw);
+    const finalYmd = parsedFromRoc || (/^\d{4}-\d{2}-\d{2}$/.test(ymdRaw) ? ymdRaw : '');
+    if (!finalYmd) {
+      toast('⚠️ 請輸入有效的會計關帳日期（如 115/12/10）', true);
+      return;
+    }
+    const showPill = !!document.getElementById('ga-acc-show-pill')?.checked;
+    const md = finalYmd.slice(5, 10);
+    closeModal();
+    await window.GA_CORE.updateUiPrefs(
+      {
+        accountingCloseDate: finalYmd,
+        accountingCloseMd: md,
+        hideAccountingPill: !showPill
+      },
+      `已將年度會計關帳日更新為民國 ${roc(finalYmd)}`
+    );
+  };
+
+  window.gaResetAccountingClose = async function() {
+    closeModal();
+    await window.GA_CORE.updateUiPrefs(
+      {
+        accountingCloseDate: '',
+        accountingCloseMd: '12-15',
+        hideAccountingPill: false
+      },
+      '已恢復預設會計關帳日（每年 12/15）'
+    );
   };
 
   window.udMenuAction = function(act, ev) {
@@ -1040,6 +1188,7 @@
     }
     else if (act === 'doc-copilot' && typeof openDocCopilotModal === 'function') openDocCopilotModal();
     else if (act === 'batch-renewal' && typeof openBatchRenewalModal === 'function') openBatchRenewalModal();
+    else if (act === 'accounting-close') window.openAccountingCloseModal();
     else if (act === 'customize-cards') window.openCustomizeCardsModal();
     else if (act === 'settings' && typeof openSettingsModal === 'function') openSettingsModal();
     else if (act === 'portals' && typeof openPortalEditor === 'function') openPortalEditor();
@@ -1063,8 +1212,10 @@
   window.toggleUdSettingsMenu = function(ev) {
     if (ev) ev.stopPropagation();
     const syncTxt = (document.getElementById('sync-text')?.textContent || '').trim() || '本機模式';
+    const acc = window.GA_CORE.getAccountingCloseInfo();
     openMenu(ev.currentTarget, `
       <div style="padding:8px 10px;border-bottom:1px solid #E7DFD3;font-size:13px;color:#57534E;font-weight:700">雲端狀態：${h(syncTxt)}</div>
+      <button type="button" class="ud-item" onclick="udMenuAction('accounting-close', event)">🏦 設定年度會計關帳日（${h(acc.rocShort)}）</button>
       <button type="button" class="ud-item" onclick="udMenuAction('customize-cards', event)">🎛️ 自訂卡片與隱藏不用模組</button>
       <button type="button" class="ud-item" onclick="udMenuAction('settings', event)">🔌 雲端試算表連線與備份</button>
       <button type="button" class="ud-item" onclick="udMenuAction('cmd', event)">🔍 全域快速跳轉 (Ctrl+K)</button>
@@ -1202,7 +1353,7 @@
       searchInput.placeholder = '🔍 搜尋全站 (Ctrl+K)';
     }
 
-    // 學校雙曆制「總務節氣膠囊」
+    // 學校雙曆制「總務節氣膠囊」（年底會計關帳期點擊可直接修改關帳日）
     const season = window.GA_CORE.getSchoolSeasonHint();
     let seasonBtn = document.getElementById('ga-season-pill');
     if (!seasonBtn) {
@@ -1213,7 +1364,14 @@
       actions.prepend(seasonBtn);
     }
     seasonBtn.textContent = `${season.icon} ${season.text}`;
-    seasonBtn.onclick = () => switchTab(season.actionTab || 'routines');
+    seasonBtn.title = season.title || '點擊前往當季重點業務';
+    seasonBtn.onclick = () => {
+      if (season.actionType === 'accounting-close') {
+        window.openAccountingCloseModal();
+      } else {
+        switchTab(season.actionTab || 'routines');
+      }
+    };
 
     if (!document.getElementById('btn-ud-customize')) {
       const b = document.createElement('button');

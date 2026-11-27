@@ -468,6 +468,9 @@
       hiddenTabs: Array.isArray(src.hiddenTabs) ? src.hiddenTabs : [],
       snoozedAlerts: (src.snoozedAlerts && typeof src.snoozedAlerts === 'object') ? src.snoozedAlerts : {},
       dismissedPresets: Array.isArray(src.dismissedPresets) ? src.dismissedPresets : [],
+      accountingCloseDate: typeof src.accountingCloseDate === 'string' ? src.accountingCloseDate : '',
+      accountingCloseMd: typeof src.accountingCloseMd === 'string' && /^\d{2}-\d{2}$/.test(src.accountingCloseMd) ? src.accountingCloseMd : '12-15',
+      hideAccountingPill: !!src.hideAccountingPill,
       updated_at: src.updated_at || ''
     };
   }
@@ -633,23 +636,67 @@
   }
 
   // --------------------------------------------------------------------------
-  // 5. 學校雙曆制「總務節氣膠囊」計算器
+  // 5. 學校雙曆制「總務節氣膠囊」與可自訂年度會計關帳日計算器
   // --------------------------------------------------------------------------
+  function getAccountingCloseInfo(today = null) {
+    const tdy = today || (typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10));
+    const [y] = tdy.split('-').map(Number);
+    const prefs = getUiPrefs();
+    const savedYmd = String(prefs.accountingCloseDate || '').trim();
+    const savedMd = String(prefs.accountingCloseMd || '12-15').trim();
+    let closeDate = `${y}-${/^\d{2}-\d{2}$/.test(savedMd) ? savedMd : '12-15'}`;
+    let hasExplicitYmd = false;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(savedYmd) && typeof diffDays === 'function') {
+      const d = diffDays(tdy, savedYmd);
+      if (d >= -30 && d <= 330) {
+        closeDate = savedYmd;
+        hasExplicitYmd = true;
+      }
+    }
+
+    const left = typeof diffDays === 'function' ? diffDays(tdy, closeDate) : 0;
+    const isCustom = closeDate !== `${y}-12-15` || hasExplicitYmd;
+    return {
+      today: tdy,
+      closeDate,
+      rocCloseDate: formatRocDate(closeDate),
+      rocShort: formatRocDate(closeDate, { noYear: true }),
+      rocWithWeekday: formatRocDate(closeDate, { withWeekday: true }),
+      daysLeft: left,
+      isCustom,
+      hidden: !!prefs.hideAccountingPill
+    };
+  }
+
   function getSchoolSeasonHint(today = null) {
     const tdy = today || (typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10));
-    const [y, m, d] = tdy.split('-').map(Number);
+    const [, m, d] = tdy.split('-').map(Number);
     const md = m * 100 + d;
     const routines = (appData?.tables?.Annual_Routines || []).filter(r => r.is_active !== false);
+    const acc = getAccountingCloseInfo(tdy);
 
-    if (md >= 1115 && md <= 1228) {
+    const inAccWindow = !acc.hidden && (
+      (md >= 1101 && md <= 1231) ||
+      (acc.isCustom && acc.daysLeft >= -10 && acc.daysLeft <= 60)
+    );
+
+    if (inAccWindow) {
       const decRenewals = routines.filter(r => /^12-/.test(String(r.due_rule || '')) && /續約|續租|招標|委外/.test(r.title || ''));
-      const closeDate = `${y}-12-15`;
-      const left = typeof diffDays === 'function' ? diffDays(tdy, closeDate) : 0;
-      const countTxt = decRenewals.length ? `・${decRenewals.length} 件下年度續約待辦` : '';
+      const leftTxt = acc.daysLeft > 0
+        ? `倒數 ${acc.daysLeft} 天`
+        : acc.daysLeft === 0
+        ? '今日關帳'
+        : '結報收尾';
       return {
         icon: '🏦',
-        text: left >= 0 ? `會計關帳倒數 ${left} 天${countTxt}` : `年底會計結報收尾期${countTxt}`,
-        actionTab: 'routines'
+        text: `會計關帳 ${acc.rocShort}（${leftTxt}）✎`,
+        title: `本年度會計關帳日：民國 ${acc.rocWithWeekday}${decRenewals.length ? `｜另有 ${decRenewals.length} 件下年度續約待辦` : ''}（點擊可修改關帳日）`,
+        actionType: 'accounting-close',
+        actionTab: 'routines',
+        closeDate: acc.closeDate,
+        daysLeft: acc.daysLeft,
+        renewalCount: decRenewals.length
       };
     }
     if ((md >= 120 && md <= 218) || (md >= 805 && md <= 831)) {
@@ -671,7 +718,7 @@
     if (typeof openModal !== 'function') return;
     openModal('🔍 全域快速搜尋與指令跳轉 (Ctrl+K)', `
       <div class="field" style="margin-bottom:12px">
-        <input id="ga-cmd-input" type="text" placeholder="輸入標案名稱、例行業務、教室編號（如 101、風雨球場）、小額採購或功能名稱..."
+        <input id="ga-cmd-input" type="text" placeholder="輸入標案名稱、例行業務、教室編號（如 101、風雨球場）、會計關帳日或功能名稱..."
           style="font-size:16px;padding:10px 14px;border:2px solid #7C4A21;border-radius:10px"
           oninput="window.GA_CORE.renderCommandResults(this.value)">
       </div>
@@ -685,6 +732,7 @@
     const box = document.getElementById('ga-cmd-results');
     if (!box) return;
     const q = String(qRaw || '').trim().toLowerCase();
+    const acc = getAccountingCloseInfo();
     const items = [
       { tag: '導覽', title: '📊 戰情總覽（07暖沙雙層黃金艙）', act: "closeModal();switchTab('dashboard')" },
       { tag: '導覽', title: '🏛️ 上網招標採購履約（15萬以上公開取得／公開招標）', act: "closeModal();switchTab('projects')" },
@@ -692,6 +740,7 @@
       { tag: '導覽', title: '🏟️ 場地與教室借用看板（卡片式空間時段）', act: "closeModal();switchTab('venue-board')" },
       { tag: '導覽', title: '🛡️ 校園法定安檢合規證照牆', act: "closeModal();switchTab('safety-wall')" },
       { tag: '導覽', title: '📦 設備履歷與耗材安全庫存', act: "closeModal();switchTab('asset-inv')" },
+      { tag: '設定', title: `🏦 設定年度會計關帳日（目前：民國 ${acc.rocCloseDate}）`, act: "closeModal();if(window.openAccountingCloseModal)openAccountingCloseModal()" },
       { tag: '設定', title: '🎛️ 自訂首頁業務卡片與隱藏不用模組', act: "closeModal();if(window.openCustomizeCardsModal)openCustomizeCardsModal()" },
       { tag: '助手', title: '📝 開啟公文簽呈／驗收紀錄／催辦草稿助手', act: "closeModal();if(window.openDocCopilotModal)openDocCopilotModal()" },
       { tag: '精靈', title: '⚡ 開啟年末維護／委外契約批次續約精靈', act: "closeModal();if(window.openBatchRenewalModal)openBatchRenewalModal()" }
@@ -754,6 +803,7 @@
     clearSnoozedAlerts,
     pushUndoAction,
     triggerUndo,
+    getAccountingCloseInfo,
     getSchoolSeasonHint,
     openCommandPalette,
     renderCommandResults,
@@ -763,6 +813,6 @@
   };
 
   if (window.GA_REGISTRY && typeof window.GA_REGISTRY.registerModule === 'function') {
-    window.GA_REGISTRY.registerModule('ga-core-registry.js', 'v2.1', '核心插槽註冊器、招標與小額分流器、卡片自訂記憶與復原底座');
+    window.GA_REGISTRY.registerModule('ga-core-registry.js', 'v2.2', '核心插槽註冊器、招標與小額分流器、可自訂會計關帳日與復原底座');
   }
 })();
