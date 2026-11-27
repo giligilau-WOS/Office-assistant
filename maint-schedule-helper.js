@@ -33,7 +33,7 @@
     .msh-chip {
       min-height: 26px !important;
       padding: 2px 9px !important;
-      font-size: 11.5px !important;
+      font-size: 12px !important;
       border-radius: 999px !important;
       border: 1px solid #CBD5E1 !important;
       background: #FFFFFF !important;
@@ -89,14 +89,14 @@
       width: 100%;
     }
     .msh-roc-tag {
-      font-size: 11px;
+      font-size: 12px;
       color: #64748B;
       text-align: right;
       white-space: nowrap;
       font-variant-numeric: tabular-nums;
     }
     .msh-badge-mode {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
       padding: 2px 7px;
       border-radius: 99px;
@@ -185,7 +185,7 @@
       margin: 2px 4px 0 0;
       padding: 1px 6px;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 12px;
       background: #FEF3C7;
       color: #92400E;
       font-weight: 600;
@@ -389,7 +389,7 @@
         <button type="button" class="msh-chip" onclick="mshApplyQuickDuration(6)">半年 (6個月)</button>
         <button type="button" class="msh-chip" onclick="mshApplyQuickDuration(12)">1 年 (12個月)</button>
         <button type="button" class="msh-chip" onclick="mshApplyQuickDuration(24)">2 年 (24個月)</button>
-        <select id="msh-split-mode" style="padding:3px 7px;border:1px solid #CBD5E1;border-radius:6px;font-size:11.5px;margin-left:auto" onchange="mshChangeWizardSplitMode(this.value)">
+        <select id="msh-split-mode" style="padding:3px 7px;border:1px solid #CBD5E1;border-radius:6px;font-size:12px;margin-left:auto" onchange="mshChangeWizardSplitMode(this.value)">
           <option value="auto">自動智慧切分（整月對齊月底）</option>
           <option value="even">純平均天數切分</option>
         </select>
@@ -710,7 +710,7 @@
                 <td><strong>${esc(t.stage_name)}</strong></td>
                 <td><input id="msh-bs-${idx}" type="date" value="${esc(t.plan_start || '')}"></td>
                 <td><input id="msh-be-${idx}" type="date" value="${esc(t.plan_end || '')}" onchange="const r=document.getElementById('msh-br-${idx}');if(r)r.textContent='${''}'+(this.value?this.value.replace(/^(\\d{4})-/,(_,y)=>(Number(y)-1911)+'/').replace('-','/'):'-')"></td>
-                <td class="num-mono" id="msh-br-${idx}" style="color:var(--muted);font-size:11.5px">${esc(mshFmtShortRoc(t.plan_end))}</td>
+                <td class="num-mono" id="msh-br-${idx}" style="color:var(--muted);font-size:12px">${esc(mshFmtShortRoc(t.plan_end))}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -1022,7 +1022,7 @@
 
     if (spec.project.project_name && spec.project.project_name !== p.project_name) {
       addRow('標案名稱', p.project_name, spec.project.project_name, {
-        extraHtml: `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin-left:8px;cursor:pointer"><input type="checkbox" id="msh-imp-sync-name" checked> 同步更新名稱</label>`
+        extraHtml: `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;margin-left:8px;cursor:pointer"><input type="checkbox" id="msh-imp-sync-name" checked> 同步更新名稱</label>`
       });
     } else {
       addRow('標案名稱', p.project_name, p.project_name);
@@ -1061,7 +1061,7 @@
               <span>
                 <strong>${esc(rt.title)}</strong>（${esc(rt.recurrence_type)}・規則 <code>${esc(rt.due_rule)}</code>）
                 ${dup ? '<span class="tag tag-gray">已存在，略過重複建立</span>' : '<span class="tag tag-blue">將自動建立</span>'}
-                ${rt.note ? `<div style="color:#475569;font-size:11.5px;margin-top:2px">${esc(rt.note)}</div>` : ''}
+                ${rt.note ? `<div style="color:#475569;font-size:12px;margin-top:2px">${esc(rt.note)}</div>` : ''}
               </span>
             </label>
           `;
@@ -1091,7 +1091,7 @@
       <div class="msh-diff-box">
         <div class="msh-diff-hd">
           <span>📋 各期履約排程、請款金額與專屬查核預覽（共 ${spec.periods.length} 期；現有階段 ${curPeriodTasks.length} 期／請款 ${curBillings.length} 筆）</span>
-          <span style="font-size:11.5px;font-weight:600">加總：${fmtMoney(spec.sum_amount)}</span>
+          <span style="font-size:12px;font-weight:600">加總：${fmtMoney(spec.sum_amount)}</span>
         </div>
         <div style="max-height:230px;overflow-y:auto">
           <table class="msh-diff-table">

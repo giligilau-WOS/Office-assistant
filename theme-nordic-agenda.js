@@ -280,7 +280,7 @@
       line-height: 1.25;
     }
     .ns-sub {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--muted);
     }
 
@@ -330,7 +330,7 @@
       height: 17px;
       padding: 0 5px;
       border-radius: 999px;
-      font-size: 10.5px !important;
+      font-size: 12px !important;
       font-weight: 700;
       background: #E2E8F0;
       color: #475569;
@@ -366,7 +366,7 @@
     .ncal-nav button {
       min-height: 22px !important;
       padding: 1px 6px !important;
-      font-size: 11px !important;
+      font-size: 12px !important;
       border-radius: 5px;
       border: 1px solid var(--cal-sand-border);
       background: #FFFFFF;
@@ -377,7 +377,7 @@
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       text-align: center;
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 700;
       color: #78716C;
       margin-bottom: 2px;
@@ -398,7 +398,7 @@
       align-items: center;
       justify-content: center;
       gap: 1px;
-      font-size: 11px !important;
+      font-size: 12px !important;
       font-weight: 500;
       color: #334155;
       cursor: pointer;
@@ -430,14 +430,14 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 11px;
+      font-size: 12px;
       color: var(--primary);
       font-weight: 700;
     }
     .ncal-filter-bar button {
       min-height: 22px !important;
       padding: 1px 6px !important;
-      font-size: 10.5px !important;
+      font-size: 12px !important;
       background: #FFFFFF !important;
       border: 1px solid #CBD5E1 !important;
     }
@@ -456,7 +456,7 @@
     }
     #nordic-sidebar .portal-bar > span {
       width: 100%;
-      font-size: 10.5px !important;
+      font-size: 12px !important;
       font-weight: 700 !important;
       color: #94A3B8 !important;
       padding: 0 4px 2px !important;
@@ -467,7 +467,7 @@
       border: 1px solid #E5E9F0 !important;
       border-radius: 6px !important;
       padding: 3px 7px !important;
-      font-size: 11px !important;
+      font-size: 12px !important;
       font-weight: 500;
       min-height: 24px !important;
     }
@@ -484,7 +484,7 @@
       border: 1px solid var(--border) !important;
       min-height: 24px !important;
       padding: 1px 7px !important;
-      font-size: 10.5px !important;
+      font-size: 12px !important;
       border-radius: 6px !important;
     }
     #nordic-sidebar .portal-mobile-toggle { display: none !important; }
@@ -503,7 +503,7 @@
       border: 1px solid var(--border) !important;
       border-radius: 7px !important;
       padding: 5px 9px !important;
-      font-size: 11.5px !important;
+      font-size: 12px !important;
       font-weight: 600;
     }
     .ns-footer .sync-pill.is-synced { background: #ECFDF5 !important; border-color: #A7F3D0 !important; color: #065F46 !important; }
@@ -534,7 +534,7 @@
       line-height: 1.2;
     }
     .nt-greet-sub {
-      font-size: 11.5px;
+      font-size: 12px;
       color: var(--muted);
     }
     .nt-mobile-menu-btn {
@@ -669,7 +669,7 @@
       overflow: hidden;
     }
     .nordic-top-ribbon .ops-mini-card > div:first-child > div:first-child {
-      font-size: 11.5px !important;
+      font-size: 12px !important;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -684,7 +684,7 @@
     .nordic-top-ribbon .ops-mini-card .item-meta { display: none !important; }
     .nordic-top-ribbon .ops-mini-card button,
     .nordic-top-ribbon .ops-mini-card .tag {
-      font-size: 11px !important;
+      font-size: 12px !important;
       padding: 2px 8px !important;
       min-height: 24px !important;
       flex-shrink: 0;
@@ -806,19 +806,19 @@
       border-radius: 9px !important;
       font-size: 12.5px !important;
     }
-    .item-meta { font-size: 11.5px !important; color: var(--muted) !important; margin-top: 2px; }
+    .item-meta { font-size: 12px !important; color: var(--muted) !important; margin-top: 2px; }
     .prog-pill {
       background: rgba(255, 255, 255, 0.94) !important;
       border: 1px solid #DCE3EC !important;
       color: #1E293B !important;
       font-family: "IBM Plex Mono", monospace;
-      font-size: 11px !important;
+      font-size: 12px !important;
       font-weight: 700 !important;
       padding: 1px 7px !important;
       border-radius: 999px !important;
     }
 
-    .tag { border-radius: 5px !important; padding: 1px 6px !important; font-size: 11px !important; font-weight: 600 !important; }
+    .tag { border-radius: 5px !important; padding: 1px 6px !important; font-size: 12px !important; font-weight: 600 !important; }
     .tag-red { background: #FEE2E2 !important; color: #B91C1C !important; }
     .tag-amber { background: #FEF3C7 !important; color: #B45309 !important; }
     .tag-green { background: #DCFCE7 !important; color: #047857 !important; }
@@ -837,7 +837,7 @@
     .nordic-seg button {
       min-height: 24px !important;
       padding: 2px 8px !important;
-      font-size: 11.5px !important;
+      font-size: 12px !important;
       font-weight: 600 !important;
       border: none !important;
       background: transparent !important;
@@ -855,14 +855,14 @@
     .rtn-step-chip {
       display: inline-flex; align-items: center; gap: 5px;
       background: rgba(255, 255, 255, 0.94); border: 1px solid #DCE3EC;
-      border-radius: 6px; padding: 3px 7px; font-size: 11.5px; color: #334155; cursor: pointer;
+      border-radius: 6px; padding: 3px 7px; font-size: 12px; color: #334155; cursor: pointer;
     }
     .rtn-step-chip.done { color: #94A3B8; text-decoration: line-through; }
     .rtn-step-chip input { accent-color: var(--primary); }
 
     /* 8 號時間軸視圖 */
     .tl-group-lbl {
-      font-size: 11px; font-weight: 700; color: var(--muted);
+      font-size: 12px; font-weight: 700; color: var(--muted);
       margin: 8px 0 6px; display: flex; align-items: center; gap: 8px;
     }
     .tl-group-lbl:first-child { margin-top: 0; }
@@ -887,7 +887,7 @@
     .tone-blue .tl-date-anchor { border-right-color: #1E3A5F; }
     .tone-green .tl-date-anchor { border-right-color: #059669; }
     .tl-date-md { font-size: 14px; font-weight: 800; color: var(--text); line-height: 1.15; }
-    .tl-date-sub { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+    .tl-date-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
     .tl-body { min-width: 0; }
     .tl-title { font-size: 12.5px; font-weight: 700; color: var(--text); margin-top: 2px; line-height: 1.35; }
 
@@ -910,7 +910,7 @@
     .memo-quick-extra.collapsed { display: none !important; }
     .memo-date-chips { display: flex; gap: 4px; flex-wrap: wrap; }
     .memo-date-chip {
-      min-height: 22px !important; padding: 1px 7px !important; font-size: 10.5px !important;
+      min-height: 22px !important; padding: 1px 7px !important; font-size: 12px !important;
       border-radius: 99px !important; background: #FFFFFF !important; border: 1px solid #DCE3EC !important; color: #475569 !important;
     }
     .memo-item.done { opacity: 0.72; }
@@ -1660,12 +1660,12 @@
         toggleBtn.id = 'nordic-memo-toggle-btn';
         toggleBtn.type = 'button';
         toggleBtn.className = 'btn-xs';
-        toggleBtn.style.cssText = 'min-height:26px!important;white-space:nowrap;padding:2px 8px;font-size:11.5px';
+        toggleBtn.style.cssText = 'min-height:26px!important;white-space:nowrap;padding:2px 8px;font-size:12px';
         toggleBtn.textContent = prefs.memoExpanded ? '收合選項' : '＋ 期限／分類';
         toggleBtn.onclick = () => window.toggleNordicMemoExtra();
         bar.appendChild(toggleBtn);
         if (addBtn) {
-          addBtn.style.cssText = 'min-height:26px!important;white-space:nowrap;padding:2px 12px;font-size:11.5px';
+          addBtn.style.cssText = 'min-height:26px!important;white-space:nowrap;padding:2px 12px;font-size:12px';
           addBtn.textContent = '＋ 記錄';
           bar.appendChild(addBtn);
         }

@@ -14,7 +14,7 @@
     .eng-subtabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
     .eng-kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:12px; }
     .eng-stat { background:#fff; border:1px solid var(--border); border-radius:8px; padding:9px 12px; }
-    .eng-stat .lbl { font-size:11.5px; color:var(--muted); font-weight:600; }
+    .eng-stat .lbl { font-size:12px; color:var(--muted); font-weight:600; }
     .eng-stat .val { font-size:18px; font-weight:800; margin-top:2px; }
     .gate-banner { padding:9px 12px; border-radius:8px; margin-bottom:12px; font-size:13px; border:1px solid; }
     .gate-banner.red { background:#fef2f2; border-color:#fecaca; color:#991b1b; }
@@ -23,13 +23,13 @@
     .filter-bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
     .pill-btn { padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid var(--border); background:#fff; }
     .pill-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-    .role-badge { display:inline-block; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700; }
+    .role-badge { display:inline-block; padding:1px 6px; border-radius:4px; font-size:12px; font-weight:700; }
     .role-do { background:#dbeafe; color:#1d4ed8; }
     .role-rev { background:#fef3c7; color:#b45309; }
     .role-app { background:#d1fae5; color:#047857; }
     .role-ref { background:#f1f5f9; color:#475569; }
     .doc-chips { display:flex; gap:4px; flex-wrap:wrap; }
-    .doc-chip { font-size:11px; padding:1px 5px; border-radius:4px; border:1px solid #cbd5e1; color:#64748b; }
+    .doc-chip { font-size:12px; padding:1px 5px; border-radius:4px; border:1px solid #cbd5e1; color:#64748b; }
     .doc-chip.ok { background:#d1fae5; border-color:#6ee7b7; color:#065f46; font-weight:700; }
     @media (max-width: 1100px) { .eng-kpi-row { grid-template-columns:repeat(2,1fr); } }
     @media print {
@@ -1550,7 +1550,7 @@ printSingleProjectPDF = function(projectId) {
         <div style="font-size:12px;color:#475569">${esc(appData.schoolName)} ｜ 標案進度與財務甘特圖管制表</div>
         <h2 style="margin:2px 0 0;font-size:18px">${esc(p.project_name)}</h2>
       </div>
-      <div style="text-align:right;font-size:11.5px;color:#475569">
+      <div style="text-align:right;font-size:12px;color:#475569">
         <div>案號：${esc(typeof formatProjectCaseNo === 'function' ? formatProjectCaseNo(p) : p.project_id)} ｜ 狀態：<strong>${esc(p.status)}</strong></div>
         <div>列印日期：${todayStr()}</div>
       </div>
