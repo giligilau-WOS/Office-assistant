@@ -574,11 +574,113 @@
       min-height: 0;
       padding: 10px 12px;
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
       overflow-y: auto;
       align-content: start;
     }
+    @media (max-height: 700px) {
+      .saf-card-grid { padding: 8px 10px; gap: 7px; }
+    }
+    .saf-cert-card {
+      border: 1px solid var(--border-subtle);
+      border-left: 5px solid #0D9488;
+      border-radius: 12px;
+      padding: 10px 13px;
+      background: #FFFFFF;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+    @media (max-height: 700px) {
+      .saf-cert-card { padding: 6px 10px; gap: 3px; }
+    }
+    .saf-cert-card:hover {
+      border-color: var(--border-strong);
+      box-shadow: 0 4px 12px rgba(28, 25, 23, 0.06);
+    }
+    .saf-cert-card.tone-teal { border-left-color: #0D9488; background: #FFFFFF; }
+    .saf-cert-card.tone-amber { border-left-color: #D97706; background: #FFFDF7; }
+    .saf-cert-card.tone-red { border-left-color: #DC2626; background: #FFFDFD; }
+    .saf-cert-card.tone-gray { border-left-color: #A8A29E; background: #FCFBF9; }
+    .saf-cert-card.is-selected {
+      outline: 2px solid var(--brand-primary);
+      background: #FFFBF4;
+      box-shadow: 0 6px 16px rgba(124, 74, 33, 0.13);
+    }
+    .saf-card-r1 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .saf-card-title {
+      font-size: var(--fs-base);
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.3;
+      min-width: 0;
+      flex: 1 1 auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    @media (max-width: 1420px) {
+      .saf-card-title { font-size: 14.5px; }
+    }
+    .saf-card-r2 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .saf-law-pill {
+      font-size: var(--fs-xs) !important;
+      font-weight: 800;
+      color: var(--brand-primary);
+      background: var(--brand-soft);
+      padding: 2px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .saf-cycle-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+    .saf-card-r3 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 9px;
+      border-radius: 7px;
+      background: var(--bg-subtle);
+      font-size: var(--fs-xs) !important;
+      color: var(--text-secondary);
+      min-width: 0;
+    }
+    .saf-card-r4 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px dashed var(--border-subtle);
+      padding-top: 5px;
+      margin-top: auto;
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
     .vb-space-card {
       border: 1px solid var(--border-subtle);
       border-top: 4px solid #10B981;
@@ -595,7 +697,7 @@
     .vb-space-card.state-locked { border-top-color: #D97706; background: #FFFDF7; }
     .vb-space-card.is-selected { outline: 2px solid var(--brand-primary); box-shadow: 0 4px 14px rgba(124, 74, 33, 0.12); }
     .vb-card-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-    .vb-floor-pill { font-size: 12px; font-weight: 800; color: var(--brand-primary); background: var(--brand-soft); padding: 2px 7px; border-radius: 6px; }
+    .vb-floor-pill { font-size: 12px; font-weight: 800; color: var(--brand-primary); background: var(--brand-soft); padding: 2px 7px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
     .vb-card-title { font-size: var(--fs-base); font-weight: 800; color: var(--text-primary); }
     .vb-slot-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
     .vb-slot-pill { text-align: center; font-size: 12px; font-weight: 700; padding: 2px 4px; border-radius: 6px; }
@@ -696,6 +798,9 @@
       .vb-card-grid, .saf-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       #ga-war-room, .ga-split-shell { height: auto; overflow: visible; }
       .spv-chk-row { grid-template-columns: 24px 1fr; }
+    }
+    @media (max-width: 640px) {
+      .vb-card-grid, .saf-card-grid { grid-template-columns: 1fr !important; }
     }
   `;
 
