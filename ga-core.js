@@ -280,6 +280,13 @@
     installed = true;
     // 已註冊之視圖：以單一函式取代該分頁的 HTML 產生器（避免殭屍 DOM）
     if (views.dashboard && typeof views.dashboard.render === 'function') renderDashboardHTML = () => views.dashboard.render();
+    // 其他分頁：def.generator 指定該分頁的 HTML 產生器名稱，render(prev, ...args) 取得原產生器以便組合
+    Object.entries(views).forEach(([tab, def]) => {
+      if (tab === 'dashboard' || !def || !def.generator || typeof def.render !== 'function') return;
+      const prev = window[def.generator];
+      if (typeof prev !== 'function') return;
+      window[def.generator] = function(...args) { return def.render(prev, ...args); };
+    });
     const prevRender = renderCurrentView;
     renderCurrentView = function() {
       const tab = currentTabSafe();

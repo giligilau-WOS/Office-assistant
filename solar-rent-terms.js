@@ -54,6 +54,7 @@
   }
 
   window.generateRentSchedule = generateRentSchedule;
+  window.getRentTerms = getRentTerms;
 
   // ------------------------------------------------------------------
   // 儲存位置：
