@@ -14,7 +14,7 @@
     .sol-acc summary{padding:8px 12px;background:#f8fafc;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none;font-size:13.5px}
     .sol-acc[open] summary{border-bottom:1px solid var(--border);background:#eff6ff;color:#1e3a8a}
     .sol-acc-bd{padding:11px 12px}
-    .roc-hint{font-size:11.5px;color:#2563eb;font-weight:600;margin-top:2px}
+    .roc-hint{font-size:12px;color:#2563eb;font-weight:600;margin-top:2px}
     .sol-detail-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
     .sol-subrow{display:grid;grid-template-columns:1.8fr 1.1fr 1.1fr .9fr .9fr 28px;gap:5px;align-items:center;margin-bottom:5px}
     .sol-month-row{display:grid;grid-template-columns:1.1fr 1fr .8fr .7fr .9fr .9fr 28px;gap:5px;align-items:center;margin-bottom:5px}
@@ -634,8 +634,8 @@ openSolarContractModal = function(solarId = '') {
     <details class="sol-acc" open>
       <summary><span>3. 共錶分攤與計費參數</span><small style="color:var(--muted)">電號分群／5%級距制／基準年租金</small></summary>
       <div class="sol-acc-bd"><div class="form-grid">
-        <div class="field"><label>台電電號（共錶分群鍵）</label><input id="sv2-meter" type="text" value="${esc(c.taipower_meter_no || '')}" placeholder="18-40-6486-03-1"></div>
-        <div class="field"><label>台電契約編號</label><input id="sv2-tpno" type="text" value="${esc(c.taipower_contract_no || '')}" placeholder="18-PV-105-0128"></div>
+        <div class="field"><label>台電電號（共錶分群鍵）</label><input id="sv2-meter" type="text" value="${esc(c.taipower_meter_no || '')}" placeholder="00-00-0000-00-0"></div>
+        <div class="field"><label>台電契約編號</label><input id="sv2-tpno" type="text" value="${esc(c.taipower_contract_no || '')}" placeholder="00-PV-000-0000"></div>
         <div class="field"><label>共錶併聯總容量（kWp）</label><input id="sv2-shared-kwp" type="number" step="0.01" value="${esc(c.shared_total_kwp || c.capacity_kwp || '')}" oninput="recalcSolarFormFields('ratio')"></div>
         <div class="field"><label>本約標租容量（kWp）*</label><input id="sv2-kwp" type="number" step="0.01" value="${esc(c.capacity_kwp || '')}" oninput="recalcSolarFormFields('both')"></div>
         <div class="field"><label>共錶分攤比例（%，預設自動算可手調）</label><input id="sv2-ratio" type="number" step="0.1" value="${esc(c.allocation_ratio || 100)}"></div>
@@ -905,7 +905,7 @@ function openSharedMeterBatchModal(presetMeterNo = '') {
       <div class="field"><label>期別名稱 *</label><input id="smb-lbl" value="第10期"></div>
       <div class="field"><label>計費起日</label><input id="smb-s1" type="date" value="${todayStr().slice(0,4)}-01-01"></div>
       <div class="field"><label>計費迄日</label><input id="smb-s2" type="date" value="${todayStr()}"></div>
-      <div class="field"><label>民間轉供共錶總度數（如阿波羅）</label><input id="smb-wkwh" type="number" value="0" oninput="previewSharedMeterSplit()"></div>
+      <div class="field"><label>民間轉供共錶總度數</label><input id="smb-wkwh" type="number" value="0" oninput="previewSharedMeterSplit()"></div>
       <div class="field"><label>轉供未稅單價（元／度，自動＋5%稅）</label><input id="smb-wprice" type="number" step="0.01" value="5.27" oninput="previewSharedMeterSplit()"></div>
       <div class="field"><label>台電餘電共錶總度數</label><input id="smb-tkwh" type="number" value="0" oninput="previewSharedMeterSplit()"></div>
       <div class="field"><label>台電餘電共錶含稅總金額</label><input id="smb-tamt" type="number" value="0" oninput="previewSharedMeterSplit()"></div>
@@ -1129,31 +1129,31 @@ async function seedD4Phase1Data() {
   const contractRec = {
     solar_id: sid, building_name: 'D4教室暨D4風雨球場屋頂', phase_label: '一期', parent_contract_id: '', status: '併聯發電中',
     buildings_json: JSON.stringify([{ name: 'D4教室', land_lot: '', permit_no: '', area: 970.31, voltage: '' }, { name: 'D4風雨球場', land_lot: '', permit_no: '', area: 460.8, voltage: '' }]),
-    lessee_vendor: '環球大宇宙太陽能工業有限公司／鄭玲玲／07-7338282',
-    vendor_name: '環球大宇宙太陽能工業有限公司', vendor_tax_id: '28929872', vendor_contact: '鄭玲玲', vendor_phone: '07-7338282', vendor_email: 'sun.s8282@msa.hinet.net', vendor_address: '',
-    guarantor_name: '鉅光科技工業有限公司', guarantor_tax_id: '22073218', guarantor_rep: '吳家慶', guarantor_phone: '0980-889269',
-    taipower_meter_no: '18-40-6486-03-1', taipower_contract_no: '18-PV-105-0128', shared_total_kwp: 325.91, capacity_kwp: 190.12, allocation_ratio: 58,
+    lessee_vendor: '範例光電股份有限公司／聯絡人／00-0000000',
+    vendor_name: '範例光電股份有限公司', vendor_tax_id: '00000000', vendor_contact: '聯絡人', vendor_phone: '00-0000000', vendor_email: 'vendor@example.com', vendor_address: '',
+    guarantor_name: '範例保證廠商有限公司', guarantor_tax_id: '00000000', guarantor_rep: '負責人', guarantor_phone: '0900-000000',
+    taipower_meter_no: '00-00-0000-00-0', taipower_contract_no: '00-PV-000-0000', shared_total_kwp: 325.91, capacity_kwp: 190.12, allocation_ratio: 58,
     sales_mode: 'MIXED_WHEELING', billing_mode: 'TIERED_BASE_RENT', fit_rate: 4.8061, feedback_rate: 0.15, base_annual_rent: 175095, min_annual_feedback: 0,
     billing_cycle: '年結', annual_due_month_day: '10-27', meter_cutoff_note: '抄表結算至 2026/03/31（原誤植屆滿日 2025/03/26 已更正）',
-    contract_start: '2016-04-27', contract_end: '2026-03-26', term_months: 119, renewal_deadline: '2025-12-26', notary_no: '114年度雄院民公吉字第1871號',
+    contract_start: '2016-04-27', contract_end: '2026-03-26', term_months: 119, renewal_deadline: '2025-12-26', notary_no: '（範例）公證字號',
     drive_folder_url: '', bond_method: '現金', deposit_amount: 350190, deposit_expiry: '', insurance_expiry: '', updated_at: nowStr(), is_deleted: false
   };
   const billRec = {
     record_id: 'SR-D4P1-10', solar_id: sid, period_label: '第10期', period_start: '2025-09-01', period_end: '2026-03-31', period_months: 7,
     monthly_details_json: JSON.stringify([
-      { source: 'WHEELING', label: '阿波羅電力7個月一期拆帳(58%)', unit_price: 5.27, line_loss: '', alloc_kwh: 121365, alloc_amount: 671566 },
+      { source: 'WHEELING', label: '轉供售電7個月一期拆帳(58%)', unit_price: 5.27, line_loss: '', alloc_kwh: 121365, alloc_amount: 671566 },
       { source: 'TAIPOWER', label: '114年12月台電餘電一期', unit_price: '', line_loss: '', alloc_kwh: 6324, alloc_amount: 31913 }
     ]),
     generation_kwh: 127689, taipower_revenue: 703479, expected_feedback: 105522, applied_tier_percent: 70, tier_clause_note: '契約第5條第2項第13款',
-    calculated_rent: 122567, overdue_penalty: 0, actual_feedback: 122567, payment_date: '2026-09-29', remittance_batch_no: '260929596113',
-    due_date: '2026-10-27', yield_per_kwp: 3.17, drive_file_url: '', maintenance_log: '第10期結算（阿波羅轉供＋台電餘電）', updated_at: nowStr(), is_deleted: false
+    calculated_rent: 122567, overdue_penalty: 0, actual_feedback: 122567, payment_date: '2026-09-29', remittance_batch_no: '',
+    due_date: '2026-10-27', yield_per_kwp: 3.17, drive_file_url: '', maintenance_log: '第10期結算（轉供＋台電餘電）', updated_at: nowStr(), is_deleted: false
   };
   const bondTxs = [
-    { tx_id: 'BND-D4P1-01', solar_id: sid, tx_date: '2016-04-27', tx_type: 'DEPOSIT', amount: 350190, reason: '原始履約保證金繳納（2年基準年租金）', doc_no: '18-PV-105-0128', vendor_bank_account: '', receipt_url: '', updated_at: nowStr(), is_deleted: false },
-    { tx_id: 'BND-D4P1-02', solar_id: sid, tx_date: '2026-09-29', tx_type: 'REFUND', amount: -43774, reason: '滿119個月申請退還 1/8 履約保證金', doc_no: '(114)環字第1150929002號', vendor_bank_account: '彰化銀行鳳山分行 6520-01-892696-00', receipt_url: '', updated_at: nowStr(), is_deleted: false }
+    { tx_id: 'BND-D4P1-01', solar_id: sid, tx_date: '2016-04-27', tx_type: 'DEPOSIT', amount: 350190, reason: '原始履約保證金繳納（2年基準年租金）', doc_no: '00-PV-000-0000', vendor_bank_account: '', receipt_url: '', updated_at: nowStr(), is_deleted: false },
+    { tx_id: 'BND-D4P1-02', solar_id: sid, tx_date: '2026-09-29', tx_type: 'REFUND', amount: -43774, reason: '滿119個月申請退還 1/8 履約保證金', doc_no: '（範例）來文字號', vendor_bank_account: '', receipt_url: '', updated_at: nowStr(), is_deleted: false }
   ];
   const amendLog = {
-    log_id: 'CMP-D4P1-01', solar_id: sid, log_type: 'AMENDMENT', doc_or_policy_no: '114年度雄院民公吉字第1871號',
+    log_id: 'CMP-D4P1-01', solar_id: sid, log_type: 'AMENDMENT', doc_or_policy_no: '（範例）公證字號',
     effective_date: '2025-12-23', expiry_date: '',
     compliance_json: JSON.stringify({ change_end_date: true, old_end_date: '2025-03-26', new_end_date: '2026-03-26', new_renewal_deadline: '2025-12-26' }),
     attachment_url: '', notes: '更正原誤植屆滿日 2025/03/26 → 2026/03/26（租期119個月，續租截止 2025/12/26）', updated_at: nowStr(), is_deleted: false

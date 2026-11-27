@@ -873,7 +873,7 @@ function renderUtilitiesViewHTML() {
                 ${g.budget > 0 ? `（預估${g.budget - g.projected >= 0 ? '結餘 ' + fmtMoney(g.budget - g.projected) : '短缺 ' + fmtMoney(g.projected - g.budget)}）` : ''}
               </div>
               <div class="mini-bar-wrap"><div class="mini-bar" style="width:${Math.min(100, g.projPct)}%;background:${barCol}"></div></div>
-              <div class="item-meta" style="margin-top:4px;font-size:11px">📐 ${esc(g.modeLabel)}</div>
+              <div class="item-meta" style="margin-top:4px;font-size:12px">📐 ${esc(g.modeLabel)}</div>
             </div>
           `;
         }).join('')}</div>` : `<div class="empty-state">尚未建立水電錶主檔，無法統計預算。<br><button class="btn-sm btn-primary" style="margin-top:8px" onclick="seedDefaultSchoolMeters()">⚡ 一鍵建立校園常用 4 顆水電錶範本</button></div>`}

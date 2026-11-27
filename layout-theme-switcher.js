@@ -98,7 +98,7 @@
     }
     .lsp-hd strong { font-size: 14px; font-weight: 800; }
     .lsp-sec-title {
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 700;
       color: #64748B;
       letter-spacing: 0.4px;
@@ -135,7 +135,7 @@
       box-shadow: 0 0 0 2px rgba(30, 58, 95, 0.12);
     }
     .lsp-opt-title { font-size: 12.5px; font-weight: 700; line-height: 1.25; }
-    .lsp-opt-desc { font-size: 10.5px; color: #64748B; margin-top: 2px; line-height: 1.2; }
+    .lsp-opt-desc { font-size: 12px; color: #64748B; margin-top: 2px; line-height: 1.2; }
 
     /* 版面微型示意圖 */
     .lsp-wire {
@@ -172,7 +172,7 @@
       justify-content: space-between;
       padding-top: 9px;
       border-top: 1px solid #E5E9F0;
-      font-size: 11px;
+      font-size: 12px;
       color: #64748B;
     }
 

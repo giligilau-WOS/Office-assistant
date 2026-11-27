@@ -233,7 +233,7 @@
     .tab-cnt-badge {
       display: inline-flex; align-items: center; justify-content: center;
       padding: 0 6px; min-width: 20px; height: 18px; border-radius: 999px;
-      font-family: "IBM Plex Mono", monospace; font-size: 11px !important; font-weight: 700;
+      font-family: "IBM Plex Mono", monospace; font-size: 12px !important; font-weight: 700;
       background: #E7E4DC; color: #44403C; margin-left: 4px;
     }
     .tab-cnt-badge.red { background: #FEE2E2; color: #B91C1C; }
@@ -446,11 +446,11 @@
     /* 筆電較矮視窗在一屏適配下的微調 */
     @media (min-width: 960px) and (max-height: 820px) {
       body.dash-lock .brand-title-row { font-size: 15.5px; }
-      body.dash-lock .brand-sub-row { font-size: 11.5px; }
+      body.dash-lock .brand-sub-row { font-size: 12px; }
       body.dash-lock .radar-mini-grid { gap: 5px; margin-bottom: 5px; }
       body.dash-lock .radar-stat-box { padding: 3px 6px; }
       body.dash-lock .radar-stat-box .num { font-size: 15px; }
-      body.dash-lock .rtn-step-chip { padding: 2px 6px; font-size: 11.5px; }
+      body.dash-lock .rtn-step-chip { padding: 2px 6px; font-size: 12px; }
     }
 
     /* 列印 PDF 時還原純白正式公文格式 */

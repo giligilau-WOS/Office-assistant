@@ -189,10 +189,8 @@
   };
 
   // 標案詳情頁：偵測到重複階段時於頁首提醒
-  const _prevRenderView_dd = renderCurrentView;
-  renderCurrentView = function() {
-    _prevRenderView_dd();
-    if (typeof currentTab === 'undefined' || currentTab !== 'projects' || !selectedProjectId) return;
+  window.GA_CORE.onAfterRender(tab => {
+    if (tab !== 'projects' || !selectedProjectId) return;
     const main = document.getElementById('main-view');
     if (!main || document.getElementById('dd-banner')) return;
     const groups = findDuplicates({ projectId: selectedProjectId });
@@ -205,7 +203,7 @@
     div.innerHTML = `<span>⚠️ 此標案有 <strong>${n}</strong> 個重複階段（${groups.length} 個階段名稱重複出現），完成率與死線提醒可能重複計算</span>
       <button class="btn-sm btn-danger" onclick="openDedupeModal({ projectId: '${esc(selectedProjectId)}' })">檢視並清理</button>`;
     main.prepend(div);
-  };
+  });
 
   if (window.GA_REGISTRY && typeof window.GA_REGISTRY.registerModule === 'function') {
     window.GA_REGISTRY.registerModule('data-dedupe.js', 'v1.0', '重複資料檢查與清理（確認後軟刪除）');

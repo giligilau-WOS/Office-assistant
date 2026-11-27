@@ -92,10 +92,8 @@
   };
 
   // 標案詳情頁：於「編輯基本資料」旁加入「更改案號」
-  const _prevRenderView_cn = renderCurrentView;
-  renderCurrentView = function() {
-    _prevRenderView_cn();
-    if (typeof currentTab === 'undefined' || currentTab !== 'projects' || !selectedProjectId) return;
+  window.GA_CORE.onAfterRender(tab => {
+    if (tab !== 'projects' || !selectedProjectId) return;
     if (document.getElementById('btn-change-caseno')) return;
     const editBtn = Array.from(document.querySelectorAll('#main-view button')).find(b => (b.getAttribute('onclick') || '').startsWith('openEditProjectModal('));
     if (!editBtn) return;
@@ -105,7 +103,7 @@
     b.textContent = '🔢 更改案號';
     b.onclick = () => window.openChangeCaseNoModal(selectedProjectId);
     editBtn.insertAdjacentElement('afterend', b);
-  };
+  });
 
   if (window.GA_REGISTRY && typeof window.GA_REGISTRY.registerModule === 'function') {
     window.GA_REGISTRY.registerModule('project-case-number.js', 'v1.0', '標案案號更正（連動子資料）');

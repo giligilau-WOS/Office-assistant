@@ -49,18 +49,18 @@
       .gt-row.gt-stage .gt-name { background:#FCFDFE; padding-left:34px; font-size:12.5px; color:#334155; }
       .gt-name .gt-tog { border:none !important; background:transparent !important; box-shadow:none !important; padding:2px 4px !important; min-height:0 !important; cursor:pointer; color:#475569; font-size:12px; flex-shrink:0; }
       .gt-name .gt-pname { font-weight:700; font-size:13.5px; color:#1D4ED8; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-      .gt-name .gt-meta { font-size:11.5px; color:#64748B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .gt-name .gt-meta { font-size:12px; color:#64748B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .gt-name .gt-sname { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .gt-track { position:relative; flex-shrink:0; }
       .gt-head { position:sticky; top:0; z-index:8; background:#F8FAFC; }
       .gt-head .gt-name { background:#F1F5F9; z-index:9; font-weight:700; font-size:13px; color:#334155; }
       .gt-head .gt-row { min-height:26px; }
       .gt-head .gt-row > .gt-name, .gt-head .gt-row > .gt-track { border-bottom:1px solid var(--border,#E2E8F0); }
-      .gt-today-tag { position:absolute; top:3px; transform:translateX(-50%); background:#DC2626; color:#fff; font-size:11px; font-weight:700; padding:1px 6px; border-radius:4px; white-space:nowrap; z-index:3; pointer-events:none; }
+      .gt-today-tag { position:absolute; top:3px; transform:translateX(-50%); background:#DC2626; color:#fff; font-size:12px; font-weight:700; padding:1px 6px; border-radius:4px; white-space:nowrap; z-index:3; pointer-events:none; }
       .gt-cell { position:absolute; top:0; bottom:0; border-left:1px solid #E2E8F0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#334155; overflow:hidden; white-space:nowrap; }
       .gt-cell.gt-year { justify-content:flex-start; padding-left:0; font-size:13px; color:#1E3A5F; border-left:2px solid #94A3B8; overflow:visible; }
       .gt-cell.gt-year span { position:sticky; left:${NAME_W + 8}px; padding:0 8px; }
-      .gt-cell.gt-load { font-weight:600; color:#64748B; font-size:11.5px; }
+      .gt-cell.gt-load { font-weight:600; color:#64748B; font-size:12px; }
       .gt-cell.gt-load.hot { background:#FEF3C7; color:#B45309; font-weight:800; }
       .gt-grid { position:absolute; top:0; bottom:0; width:1px; background:#F1F5F9; pointer-events:none; }
       .gt-grid.yr { background:#CBD5E1; }
@@ -292,17 +292,18 @@
   window.toggleGanttClosed = v => { st.showClosed = !!v; savePrefs(); renderCurrentView(); };
 
   // 重繪前記住捲動位置；重繪後還原（第一次進入則捲到今天）
-  const _prevRenderView_gt = renderCurrentView;
-  renderCurrentView = function() {
+  // 透過 GA_CORE 插槽：重繪前記住捲動位置，重繪後還原（不覆寫 renderCurrentView）
+  window.GA_CORE.onBeforeRender(() => {
     const el = scroller();
     if (el && st.scrollLeft === null) { st.scrollLeft = el.scrollLeft; st.scrollTop = el.scrollTop; }
-    _prevRenderView_gt();
-    if (typeof currentTab === 'undefined' || currentTab !== 'annual-gantt') { st.scrollLeft = null; st.lastKey = ''; return; }
+  });
+  window.GA_CORE.onAfterRender(tab => {
+    if (tab !== 'annual-gantt') { st.scrollLeft = null; st.lastKey = ''; return; }
     const nel = scroller(); if (!nel) return;
     if (st.lastKey !== 'shown') { st.lastKey = 'shown'; window.scrollGanttToday(); }
     else if (st.scrollLeft !== null) { nel.scrollLeft = st.scrollLeft; nel.scrollTop = st.scrollTop; }
     st.scrollLeft = null;
-  };
+  });
 
   // 年度 PDF：改列「當年有任何工作」的標案（不再只看會計年度）
   window.projectsActiveInRocYear = function(rocYear) {

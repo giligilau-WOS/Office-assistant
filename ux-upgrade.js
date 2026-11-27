@@ -93,7 +93,7 @@
       body.dash-lock .alert-item,
       body.dash-lock .routine-item,
       body.dash-lock .memo-item { padding: 6px 8px; margin-bottom: 5px; font-size: 12.5px; }
-      body.dash-lock .item-meta { font-size: 11px; margin-top: 2px; }
+      body.dash-lock .item-meta { font-size: 12px; margin-top: 2px; }
       body.dash-lock .dash-grid ::-webkit-scrollbar { width: 5px; height: 5px; }
       body.dash-lock .dash-grid ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
     }
@@ -102,7 +102,7 @@
       body.dash-lock .topbar { padding: 4px 12px; }
       body.dash-lock .brand { font-size: 14px; }
       body.dash-lock .portal-bar { padding: 2px 12px; }
-      body.dash-lock .portal-chip { padding: 2px 7px; font-size: 11px; }
+      body.dash-lock .portal-chip { padding: 2px 7px; font-size: 12px; }
       body.dash-lock .nav-tab { padding: 5px 10px; font-size: 12px; }
       body.dash-lock #main-view { padding: 5px 10px 7px; }
       body.dash-lock .kpi-grid, body.dash-lock .ops-strip { margin-bottom: 5px; gap: 6px; }
