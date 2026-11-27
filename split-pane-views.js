@@ -21,14 +21,60 @@
   const smart = raw => window.GA_CORE.formatSmartTitle(raw);
 
   const spvState = {
-    projFilter: 'ACTIVE', // ACTIVE | ALL | 工程 | 勞務 | 財物
+    projFilter: 'TENDER', // TENDER | MICRO | 工程 | 勞務 | 財物 | ALL
     projPage: 1,
     previewProjId: '',
     stageByProject: {},
     rtnMode: 'SPLIT',     // SPLIT | MATRIX
-    rtnBucket: 'SOON',    // SOON | DAYS30 | RENEWAL | ALL
+    rtnBucket: 'SOON',    // SOON | DAYS30 | RENEWAL | ALL | INACTIVE
     rtnSelectedId: '',
-    solarActiveId: ''
+    solarActiveId: '',
+    ganttTrackFilter: 'TENDER' // TENDER | MICRO | ALL
+  };
+
+  window.spvDismissPreset = async function(presetId, label = '範本提示') {
+    const prefs = window.GA_CORE.getUiPrefs();
+    if (prefs.dismissedPresets.includes(presetId)) return;
+    await window.GA_CORE.updateUiPrefs(
+      { dismissedPresets: [...prefs.dismissedPresets, presetId] },
+      `已隱藏「${label}」提示按鈕`
+    );
+  };
+
+  window.toggleProjectTrack = async function(projectId) {
+    const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+    if (!p) return;
+    const prevFlagsJson = p.flags_json;
+    const wasMicro = window.GA_CORE.isMicroPurchaseProject(p);
+    const nextTrack = wasMicro ? 'TENDER' : 'MICRO';
+    const flg = { ...parseJSON(p.flags_json, {}), proc_track: nextTrack };
+    if (nextTrack === 'MICRO') delete flg.exclude_from_sp_ledger;
+    p.flags_json = JSON.stringify(flg);
+    p.updated_at = nowStr();
+    persistCache();
+    renderCurrentView();
+    await pushToCloud({ action: 'upsert', table: 'Projects', record: p });
+    const labelTxt = nextTrack === 'MICRO' ? '🔧 小額分期契約' : '🏛️ 上網招標案';
+    window.GA_CORE.pushUndoAction(`已將「${smart(p.project_name).cleanTitle}」改列為 ${labelTxt}`, async () => {
+      p.flags_json = prevFlagsJson;
+      p.updated_at = nowStr();
+      persistCache();
+      renderCurrentView();
+      await pushToCloud({ action: 'upsert', table: 'Projects', record: p });
+    });
+  };
+
+  window.spvOpenTenderWizard = function() {
+    if (typeof openProjectWizard !== 'function') return;
+    openProjectWizard();
+    setTimeout(() => {
+      const tierEl = document.getElementById('wiz-tier');
+      if (tierEl && tierEl.value === '小額(15萬以下)') {
+        tierEl.value = '未達(15-150萬)';
+        if (typeof refreshWizardAwardOptions === 'function') refreshWizardAwardOptions('最低標');
+        if (typeof refreshWizardProjectId === 'function') refreshWizardProjectId();
+      }
+    }, 50);
   };
 
   // ==========================================================================
@@ -126,9 +172,17 @@
       .filter(p => !q || `${p.project_name} ${p.project_id} ${p.vendor_name || ''} ${p.procurement_type || ''}`.toLowerCase().includes(q))
       .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
 
-    let filtered = all;
-    if (spvState.projFilter === 'ACTIVE') filtered = all.filter(p => !['已結案', '廢標撤案'].includes(p.status));
-    else if (['工程', '勞務', '財物'].includes(spvState.projFilter)) filtered = all.filter(p => p.procurement_type === spvState.projFilter);
+    const activeAll = all.filter(p => !['已結案', '廢標撤案'].includes(p.status));
+    const tenderActive = activeAll.filter(p => window.GA_CORE.isFormalTenderProject(p));
+    const microActive = activeAll.filter(p => window.GA_CORE.isMicroPurchaseProject(p));
+
+    let filtered = tenderActive;
+    if (spvState.projFilter === 'TENDER') filtered = tenderActive;
+    else if (spvState.projFilter === 'MICRO') filtered = microActive;
+    else if (spvState.projFilter === 'ALL') filtered = all;
+    else if (['工程', '勞務', '財物'].includes(spvState.projFilter)) {
+      filtered = tenderActive.filter(p => p.procurement_type === spvState.projFilter);
+    }
 
     const pageSize = window.innerHeight < 710 ? 5 : 7;
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -142,27 +196,31 @@
     const curTasks = curP ? getProjectTasks(curP.project_id) : [];
     const curProg = curP ? calcProjectProgress(curP.project_id) : null;
     const curFlg = curP ? parseJSON(curP.flags_json, {}) : {};
+    const curIsMicro = curP ? window.GA_CORE.isMicroPurchaseProject(curP) : false;
     const linkedP = curFlg.linked_project_id ? (appData.tables.Projects || []).find(x => x.project_id === curFlg.linked_project_id) : null;
 
     return `
       <div class="ga-split-shell">
         <div class="vb-top-bar">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span style="font-size:18px;font-weight:800;color:var(--brand-primary,#7C4A21)">📋 採購與工程履約控管總覽</span>
+            <span style="font-size:18px;font-weight:800;color:var(--brand-primary,#7C4A21)">🏛️ 上網招標與採購履約工作台</span>
             <div class="sp-tabs">
               ${[
-                ['ACTIVE', `執行中 (${all.filter(p => !['已結案', '廢標撤案'].includes(p.status)).length})`],
-                ['ALL', `全部 (${all.length})`],
+                ['TENDER', `🏛️ 上網招標案 (${tenderActive.length})`],
+                ['MICRO', `🔧 小額分期契約 (${microActive.length})`],
                 ['工程', '🏗️ 工程'],
-                ['勞務', '🤝 勞務／維護'],
-                ['財物', '📦 財物']
+                ['勞務', '🤝 勞務'],
+                ['財物', '📦 財物'],
+                ['ALL', `📚 含結案全部 (${all.length})`]
               ].map(([k, lbl]) => `<button type="button" class="sp-tab ${spvState.projFilter === k ? 'active' : ''}" onclick="spvSetProjFilter('${k}')">${lbl}</button>`).join('')}
             </div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <button type="button" class="btn-sm" onclick="switchTab('statutory-proc')">🧾 小額・綠優採台帳</button>
+            <button type="button" class="btn-sm" onclick="switchTab('statutory-proc')">🧾 小額與綠優採台帳 →</button>
             <button type="button" class="btn-sm" onclick="switchTab('annual-gantt')">📅 全校甘特圖</button>
-            <button type="button" class="btn-sm btn-primary" onclick="openProjectWizard()">＋ 開新標案</button>
+            ${spvState.projFilter === 'MICRO'
+              ? `<button type="button" class="btn-sm btn-primary" onclick="if(window.spOpenMicroProjectWizard)spOpenMicroProjectWizard();else openProjectWizard()">＋ 開小額分期契約</button>`
+              : `<button type="button" class="btn-sm btn-primary" onclick="spvOpenTenderWizard()">＋ 開新上網招標案</button>`}
           </div>
         </div>
 
@@ -170,7 +228,11 @@
           <!-- 左欄：標案分頁清單 -->
           <section class="panel ga-pane">
             <div class="sp-filter-bar" style="border-top:none;border-bottom:1px solid var(--border-subtle,#E7DFD3)">
-              <span style="font-size:14px;font-weight:700;color:var(--text-secondary,#44403C)">點選任一標案於右側預覽階段，雙擊或按「進入工作台」開啟雙欄檢核</span>
+              <span style="font-size:13.5px;font-weight:700;color:var(--text-secondary,#44403C)">
+                ${spvState.projFilter === 'MICRO'
+                  ? '🔧 目前顯示 15 萬以下小額逕洽／分期維護契約（已與上網招標案分流，並自動連動小額綠優採台帳）'
+                  : '🏛️ 預設僅顯示需上網公告之正式招標案（15 萬以上公開取得／公開招標），零星小額採購不混入干擾'}
+              </span>
               <div class="sp-pager num-mono">
                 <button type="button" class="btn-xs" ${spvState.projPage <= 1 ? 'disabled' : ''} onclick="spvSetProjPage(${spvState.projPage - 1})">◀</button>
                 <span>${spvState.projPage} / ${totalPages}</span>
@@ -182,6 +244,7 @@
                 const sm = smart(p.project_name);
                 const prog = calcProjectProgress(p.project_id);
                 const flg = parseJSON(p.flags_json, {});
+                const isMicro = window.GA_CORE.isMicroPurchaseProject(p);
                 const isSel = curP && curP.project_id === p.project_id;
                 const caseNo = typeof formatProjectCaseNo === 'function' ? formatProjectCaseNo(p) : p.project_id;
                 return `
@@ -191,9 +254,10 @@
                        title="${h(sm.fullTitle)}">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                        <span class="tag ${isMicro ? 'tag-amber' : 'tag-blue'}">${isMicro ? '🔧 小額契約' : '🏛️ 上網招標'}</span>
                         <span class="tag tag-gray num-mono">${h(caseNo)}</span>
                         ${sm.yearBadge ? `<span class="tag tag-amber num-mono">${h(sm.yearBadge)}年</span>` : ''}
-                        <span class="tag tag-blue">${h(p.procurement_type)}</span>
+                        <span class="tag tag-gray">${h(p.procurement_type)}・${h(p.award_method || p.threshold_tier || '')}</span>
                         ${flg.linked_project_id ? '<span class="tag tag-green">🔗 母子連動</span>' : ''}
                       </div>
                       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
@@ -204,11 +268,11 @@
                     <div style="font-size:16px;font-weight:800;color:var(--text-primary,#1C1917);margin-top:5px">${h(sm.cleanTitle)}</div>
                     <div class="item-meta" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13.5px">
                       <span>當前階段：<strong>${h(prog.currentStage)}</strong>（檢核 ${prog.doneChecks}/${prog.totalChecks}）</span>
-                      <span class="num-mono">預算 ${fmtMoney(p.budget_amount)}${p.grant_deadline ? `｜<strong style="color:#DC2626">死線 ${roc(p.grant_deadline)}</strong>` : ''}</span>
+                      <span class="num-mono">${p.award_amount ? `決標 ${fmtMoney(p.award_amount)}` : `預算 ${fmtMoney(p.budget_amount)}`}${p.grant_deadline ? `｜<strong style="color:#DC2626">死線 ${roc(p.grant_deadline)}</strong>` : ''}</span>
                     </div>
                   </div>
                 `;
-              }).join('') : '<div class="empty-state">目前沒有符合篩選條件的標案。</div>'}
+              }).join('') : `<div class="empty-state">目前「${spvState.projFilter === 'MICRO' ? '小額分期契約' : '上網招標案'}」分類下沒有符合條件的案件。</div>`}
             </div>
           </section>
 
@@ -216,20 +280,25 @@
           <section class="panel ga-pane">
             ${curP ? `
               <div class="panel-hd">
-                <h3>🔍 標案快覽：${h(smart(curP.project_name).cleanTitle)}</h3>
+                <h3>🔍 案件快覽：${h(smart(curP.project_name).cleanTitle)}</h3>
                 <button type="button" class="btn-sm btn-primary" onclick="openProjectDetail('${h(curP.project_id)}')">開啟雙欄檢核台 →</button>
               </div>
               <div class="ga-pane-scroll" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px">
                 <div style="padding:10px 12px;border-radius:10px;background:var(--bg-subtle,#FAF6F0);border:1px solid var(--border-subtle,#E7DFD3)">
                   <div style="font-size:13.5px;color:var(--text-secondary,#44403C)">法定全銜：<strong>${h(curP.project_name)}</strong></div>
                   <div class="item-meta" style="font-size:13.5px;margin-top:4px">
+                    屬性：<strong>${curIsMicro ? '🔧 小額採購／逕洽契約' : '🏛️ 上網招標標案'}</strong>（${h(curP.threshold_tier || '-')}・${h(curP.award_method || '-')}）
+                  </div>
+                  <div class="item-meta" style="font-size:13.5px;margin-top:3px">
                     預算 <strong>${fmtMoney(curP.budget_amount)}</strong> ｜ 決標 <strong>${curP.award_amount ? fmtMoney(curP.award_amount) : '尚未決標'}</strong> ｜ 廠商 <strong>${h(curP.vendor_name || '待決標')}</strong>
                   </div>
                   ${linkedP ? `<div style="margin-top:6px"><button type="button" class="btn-xs" onclick="openProjectDetail('${h(linkedP.project_id)}')">🔗 跳至關聯案：${h(smart(linkedP.project_name).cleanTitle)} →</button></div>` : ''}
                   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
                     <button type="button" class="btn-xs" onclick="openDocCopilotModal({tplId:'REQ_SIGN',title:'${h(curP.project_name)}',vendor:'${h(curP.vendor_name || '')}',amount:'${h(curP.award_amount || curP.budget_amount || '')}',dueDate:'${h(curP.orig_end_date || '')}'})">📝 產生簽呈／驗收稿</button>
-                    <button type="button" class="btn-xs" onclick="openLinkProjectModal('${h(curP.project_id)}')">🔗 設定母子關聯案</button>
+                    <button type="button" class="btn-xs" onclick="openLinkProjectModal('${h(curP.project_id)}')">🔗 母子關聯</button>
+                    <button type="button" class="btn-xs" onclick="toggleProjectTrack('${h(curP.project_id)}')" title="一鍵切換此案屬於「上網招標案」或「小額分期契約」">${curIsMicro ? '⇄ 改列上網招標案' : '⇄ 改列小額契約'}</button>
                     <button type="button" class="btn-xs" onclick="openEditProjectModal('${h(curP.project_id)}')">✎ 編輯主檔</button>
+                    <button type="button" class="btn-xs" style="color:#B91C1C" onclick="deleteProject('${h(curP.project_id)}')">🗑️ 刪除案件</button>
                   </div>
                 </div>
 
@@ -275,12 +344,15 @@
     const showMaintScheduleTools = !!flg.is_maintenance || p.procurement_type === '勞務';
     const eng = (isEng && typeof calcEngineeringSummary === 'function') ? calcEngineeringSummary(projectId) : null;
     const linkedP = flg.linked_project_id ? (appData.tables.Projects || []).find(x => x.project_id === flg.linked_project_id) : null;
+    const isMicro = window.GA_CORE.isMicroPurchaseProject(p);
+    const uiPrefs = window.GA_CORE.getUiPrefs();
 
-    // 雲端核定期程範本檢查
+    // 雲端核定期程範本檢查（支援使用者按 ✕ 隱藏提示）
     const cloudPresets = window.GA_CORE.getCloudPresets('PROJECT_TIMELINE');
     const matchedPreset = cloudPresets.find(pr => typeof pr.match === 'function' && pr.match(p));
+    const presetDismissKey = matchedPreset ? `PRJ:${matchedPreset.key}:${p.project_id}` : '';
     let showPresetBtn = false;
-    if (matchedPreset && Array.isArray(matchedPreset.stages)) {
+    if (matchedPreset && Array.isArray(matchedPreset.stages) && !uiPrefs.dismissedPresets.includes(presetDismissKey)) {
       const existingNames = new Set(tasks.map(t => String(t.stage_name || '').replace(/\s+/g, '')));
       const missingCnt = matchedPreset.stages.filter(s => !existingNames.has(String(s.name || '').replace(/\s+/g, ''))).length;
       showPresetBtn = missingCnt > 0;
@@ -305,7 +377,6 @@
       const rawLegacy = _legacyRenderProjectDetail(projectId);
       const tmp = document.createElement('div');
       tmp.innerHTML = rawLegacy;
-      // 移除舊版頂部返回列、案頭卡與 subtabs 列，只取下方子頁籤主體
       const subtabEl = tmp.querySelector('.eng-subtabs') || Array.from(tmp.children).find(el => el.innerHTML && el.innerHTML.includes('selectedProjectSubtab'));
       if (subtabEl) {
         let next = subtabEl.nextElementSibling;
@@ -328,6 +399,7 @@
         <div class="spv-proj-header">
           <div style="display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap">
             <button type="button" class="btn-sm" onclick="selectedProjectId=null;renderCurrentView()">← 返回清單</button>
+            <span class="tag ${isMicro ? 'tag-amber' : 'tag-blue'}" style="cursor:pointer" title="點此切換「上網招標案」或「小額分期契約」分類" onclick="toggleProjectTrack('${h(p.project_id)}')">${isMicro ? '🔧 小額契約 ⇄' : '🏛️ 上網招標 ⇄'}</span>
             <span class="tag tag-gray num-mono">${h(caseNo)}</span>
             <span class="tag tag-blue">${h(p.procurement_type)}・${h(p.status)}</span>
             <h2 style="margin:0;font-size:18px;font-weight:800;color:var(--text-primary,#1C1917)" title="${h(p.project_name)}">${h(sm.cleanTitle)}</h2>
@@ -338,12 +410,19 @@
 
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span class="num-mono" style="font-size:14px;font-weight:800;color:var(--brand-accent,#0D9488);margin-right:4px">進度 ${prog.pct}% (${prog.doneChecks}/${prog.totalChecks})</span>
-            ${showPresetBtn ? `<button type="button" class="btn-sm btn-primary" onclick="openTimelinePresetModal('${h(p.project_id)}','${h(matchedPreset.key)}')">📅 匯入核定期程</button>` : ''}
+            ${showPresetBtn ? `
+              <span style="display:inline-flex;align-items:center;gap:3px">
+                <button type="button" class="btn-sm btn-primary" onclick="openTimelinePresetModal('${h(p.project_id)}','${h(matchedPreset.key)}')">📅 匯入核定期程</button>
+                <button type="button" class="btn-xs" title="隱藏此期程提示" onclick="spvDismissPreset('${h(presetDismissKey)}','匯入核定期程')">✕</button>
+              </span>
+            ` : ''}
             <button type="button" class="btn-sm" onclick="openDocCopilotModal({tplId:'REQ_SIGN',title:'${h(p.project_name)}',vendor:'${h(p.vendor_name || '')}',amount:'${h(p.award_amount || p.budget_amount || '')}',dueDate:'${h(p.orig_end_date || '')}'})">📝 公文草稿</button>
             <button type="button" class="btn-sm" onclick="openEditProjectModal('${h(p.project_id)}')">✎ 基本資料</button>
             ${showMaintScheduleTools && typeof openBatchScheduleModal === 'function' ? `<button type="button" class="btn-sm" onclick="openBatchScheduleModal('${h(p.project_id)}')">📅 期程推估</button>` : ''}
             ${showMaintScheduleTools && typeof openImportMaintSpecModal === 'function' ? `<button type="button" class="btn-sm" onclick="openImportMaintSpecModal('${h(p.project_id)}')">📥 匯入分期</button>` : ''}
+            ${typeof openSaveAsTemplateModal === 'function' ? `<button type="button" class="btn-sm" onclick="openSaveAsTemplateModal('${h(p.project_id)}')">🗂️ 存模板</button>` : ''}
             <button type="button" class="btn-sm" onclick="printSingleProjectPDF('${h(p.project_id)}')">🖨️ 甘特PDF</button>
+            <button type="button" class="btn-sm" style="color:#B91C1C" title="刪除此標案與所屬檢核項目" onclick="deleteProject('${h(p.project_id)}')">🗑️ 刪除</button>
           </div>
         </div>
 
@@ -371,7 +450,7 @@
         ${selectedProjectSubtab === 'checklist' ? `
           <!-- 主體：左 290px 階段導覽樹 × 右單一階段 16px 特大字檢核工作台 -->
           <div class="ga-split-body" style="grid-template-columns: 295px minmax(0, 1fr)">
-            <aside class="panel ga-pane" aria-label="標案階段導覽樹">
+            <aside class="panel ga-pane" aria-label="標案階段導覽樹（支援鍵盤上下鍵切換）">
               <div class="ga-pane-scroll" style="padding:8px">
                 ${tasks.map((t, i) => {
                   const items = parseJSON(t.checklist_json, []);
@@ -417,8 +496,8 @@
                     </div>
 
                     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                      <button type="button" class="btn-xs" ${prevT ? '' : 'disabled'} onclick="${prevT ? `spvSelectStage('${h(p.project_id)}','${h(prevT.task_id)}')` : ''}">◀ 上一階段</button>
-                      <button type="button" class="btn-xs" ${nextT ? '' : 'disabled'} onclick="${nextT ? `spvSelectStage('${h(p.project_id)}','${h(nextT.task_id)}')` : ''}">下一階段 ▶</button>
+                      <button type="button" class="btn-xs" ${prevT ? '' : 'disabled'} title="鍵盤 ↑ 上一階段" onclick="${prevT ? `spvSelectStage('${h(p.project_id)}','${h(prevT.task_id)}')` : ''}">◀ 上一階段</button>
+                      <button type="button" class="btn-xs" ${nextT ? '' : 'disabled'} title="鍵盤 ↓ 下一階段" onclick="${nextT ? `spvSelectStage('${h(p.project_id)}','${h(nextT.task_id)}')` : ''}">下一階段 ▶</button>
                       <select aria-label="階段狀態" style="padding:5px 8px;border:1px solid var(--border-strong,#D6CBB9);border-radius:8px;font-size:14px;font-weight:700"
                               onchange="updateTaskField('${h(curTask.task_id)}','status',this.value)">
                         ${['未開始', '進行中', '缺件卡關', '已完成'].map(s => `<option value="${s}" ${curTask.status === s ? 'selected' : ''}>${s}</option>`).join('')}
@@ -458,6 +537,24 @@
     `;
   };
 
+  // 鍵盤 ↑ / ↓ 快速切換標案階段（不干擾輸入框或彈窗）
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    if (typeof currentTab === 'undefined' || currentTab !== 'projects' || !selectedProjectId || selectedProjectSubtab !== 'checklist') return;
+    const tag = (e.target?.tagName || '').toUpperCase();
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || e.target?.isContentEditable) return;
+    if (document.getElementById('modal-backdrop')?.classList.contains('open')) return;
+    const tasks = getProjectTasks(selectedProjectId);
+    if (tasks.length < 2) return;
+    const curId = spvState.stageByProject[selectedProjectId];
+    const idx = tasks.findIndex(t => t.task_id === curId);
+    const nextIdx = e.key === 'ArrowDown' ? Math.min(tasks.length - 1, idx + 1) : Math.max(0, idx - 1);
+    if (nextIdx >= 0 && nextIdx !== idx) {
+      e.preventDefault();
+      window.spvSelectStage(selectedProjectId, tasks[nextIdx].task_id);
+    }
+  });
+
   // ==========================================================================
   // 3. 例行與續約：雙欄執行台 ↔ 1～12 月負荷矩陣 ＋ ⚡ 年末批次續約開案精靈
   // ==========================================================================
@@ -468,6 +565,52 @@
   };
   window.spvSetRtnMode = function(m) { spvState.rtnMode = m; renderCurrentView(); };
   window.spvSetRtnBucket = function(b) { spvState.rtnBucket = b; renderCurrentView(); };
+
+  window.spvToggleRoutineActive = async function(routineId) {
+    const r = (appData.tables.Annual_Routines || []).find(x => x.routine_id === routineId);
+    if (!r) return;
+    const prev = r.is_active !== false;
+    r.is_active = !prev;
+    r.updated_at = nowStr();
+    persistCache();
+    renderCurrentView();
+    await pushToCloud({ action: 'upsert', table: 'Annual_Routines', record: r });
+    window.GA_CORE.pushUndoAction(
+      r.is_active ? `已恢復啟用「${r.title}」` : `已暫停通知「${r.title}」`,
+      async () => {
+        r.is_active = prev;
+        r.updated_at = nowStr();
+        persistCache();
+        renderCurrentView();
+        await pushToCloud({ action: 'upsert', table: 'Annual_Routines', record: r });
+      }
+    );
+  };
+
+  window.spvQuickAddRoutineStep = async function(routineId) {
+    const inp = document.getElementById('spv-rtn-step-in');
+    const txt = (inp?.value || '').trim();
+    if (!txt) return;
+    const r = (appData.tables.Annual_Routines || []).find(x => x.routine_id === routineId);
+    if (!r) return;
+    const prevNote = r.note || '';
+    const parsed = typeof parseRoutineNoteStructured === 'function' ? parseRoutineNoteStructured(prevNote) : { steps: [] };
+    const nextNum = (parsed.steps?.length || 0) + 1;
+    const line = `${nextNum}. ${txt}`;
+    r.note = prevNote ? `${prevNote}\n${line}` : line;
+    r.updated_at = nowStr();
+    if (inp) inp.value = '';
+    persistCache();
+    renderCurrentView();
+    await pushToCloud({ action: 'upsert', table: 'Annual_Routines', record: r });
+    window.GA_CORE.pushUndoAction(`已新增步驟「${txt.slice(0, 16)}」`, async () => {
+      r.note = prevNote;
+      r.updated_at = nowStr();
+      persistCache();
+      renderCurrentView();
+      await pushToCloud({ action: 'upsert', table: 'Annual_Routines', record: r });
+    });
+  };
 
   function isRenewalRoutine(r) {
     return /續約|續租|維護|保養|委外|招標|開口契約/.test(`${r.title || ''} ${r.category || ''} ${r.note || ''}`)
@@ -481,18 +624,21 @@
       .map(r => ({ r, sch: computeRoutineSchedule(r) }))
       .sort((a, b) => a.sch.diffDays - b.sch.diffDays);
 
-    openModal(`⚡ 年末維護／委外契約批次續約開案精靈（預開 ${nextRocYear} 年度標案）`, `
+    openModal(`⚡ 年末維護／委外契約批次續約開案精靈（預開 ${nextRocYear} 年度契約）`, `
       <div class="gate-banner amber" style="margin-bottom:12px;font-size:14px">
-        💡 每年 11～12 月總務處常同時面臨多筆年度維護／清潔／機電／保全／飲水機契約到期。勾選下方項目後，一鍵即可批次建立 <strong>${nextRocYear} 年度採購標案草稿與標準履約檢核階段</strong>，免逐案重填！
+        💡 每年 11～12 月總務處常同時面臨多筆年度維護／清潔／機電／保全／飲水機契約到期。勾選下方項目並選擇分流屬性，即可一鍵批次建立草稿與標準檢核階段！
       </div>
       <div class="form-grid" style="margin-bottom:10px">
         <div class="field">
-          <label>新開標案目標會計年度（民國）</label>
+          <label>新開契約會計年度（民國）</label>
           <input id="brw-year" type="number" value="${nextRocYear}">
         </div>
         <div class="field">
-          <label>預設履約起迄區間</label>
-          <input id="brw-range" type="text" readonly value="${nextRocYear}/01/01 ～ ${nextRocYear}/12/31（全年度開口／維護契約）">
+          <label>採購分流歸屬（避免小額與上網招標混放）</label>
+          <select id="brw-track">
+            <option value="MICRO">🔧 小額分期契約（15萬以下逕洽・歸入小額台帳）</option>
+            <option value="TENDER">🏛️ 上網招標案（15～150萬公開取得／公開招標）</option>
+          </select>
         </div>
       </div>
       <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border-subtle,#E7DFD3);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px">
@@ -508,12 +654,14 @@
       </div>
     `, `
       <button type="button" onclick="closeModal()">取消</button>
-      <button type="button" class="btn-primary" ${candidates.length ? '' : 'disabled'} onclick="executeBatchRenewal()">⚡ 一鍵批次建立下年度標案</button>
+      <button type="button" class="btn-primary" ${candidates.length ? '' : 'disabled'} onclick="executeBatchRenewal()">⚡ 一鍵批次建立下年度案件</button>
     `);
   };
 
   window.executeBatchRenewal = async function() {
     const targetFy = Number(document.getElementById('brw-year')?.value) || (new Date().getFullYear() - 1911 + 1);
+    const track = document.getElementById('brw-track')?.value || 'MICRO';
+    const isTender = track === 'TENDER';
     const adYear = targetFy + 1911;
     const checkedIds = [...document.querySelectorAll('.brw-chk:checked')].map(el => el.value);
     if (!checkedIds.length) return toast('請至少勾選 1 項續約業務');
@@ -531,13 +679,15 @@
 
     const newProjects = [];
     const newTasks = [];
+    const tierVal = isTender ? '未達(15-150萬)' : '小額(15萬以下)';
+    const pmVal = isTender ? '公開取得報價單或企劃書' : '逕行採購';
+    const awVal = isTender ? '最低標' : '逕洽';
 
     checkedIds.forEach((rid, idx) => {
       const r = (appData.tables.Annual_Routines || []).find(x => x.routine_id === rid);
       if (!r) return;
       const cleanBase = r.title.replace(/^\d{2,3}\s*年度?/, '').replace(/續約|重新招標|招標作業/g, '').trim() || r.title;
       const projName = `${targetFy}年度${cleanBase}`;
-      // 避免重複建立同名標案
       if ((appData.tables.Projects || []).some(p => p.project_name === projName && p.status !== '廢標撤案')) return;
 
       const pid = `PRJ-${String(pSeq + idx + 1).padStart(4, '0')}`;
@@ -548,16 +698,16 @@
         fiscal_year: targetFy,
         project_name: projName,
         procurement_type: '勞務',
-        threshold_tier: '小額(15萬以下)',
-        procurement_method: '逕行採購',
-        award_method: '最低標',
+        threshold_tier: tierVal,
+        procurement_method: pmVal,
+        award_method: awVal,
         budget_amount: '',
         award_amount: '',
         vendor_name: '',
         start_date: startDate,
         orig_end_date: endDate,
         status: '籌備中',
-        flags_json: JSON.stringify({ is_maintenance: true, maint_periods: 4, from_routine_id: rid }),
+        flags_json: JSON.stringify({ is_maintenance: true, maint_periods: 4, from_routine_id: rid, proc_track: track }),
         updated_at: nowStr(),
         is_deleted: false
       };
@@ -565,7 +715,7 @@
       upsertLocal('Projects', projRec, 'project_id');
 
       const builtStages = typeof buildStandardStages === 'function'
-        ? buildStandardStages({ type: '勞務', tier: '小額(15萬以下)', startDate, endDate, flags: { is_maintenance: true, maint_periods: 4 } })
+        ? buildStandardStages({ type: '勞務', tier: tierVal, startDate, endDate, flags: { is_maintenance: true, maint_periods: 4 } })
         : [];
       builtStages.forEach(st => {
         tSeq++;
@@ -587,6 +737,7 @@
       return;
     }
     persistCache();
+    spvState.projFilter = isTender ? 'TENDER' : 'MICRO';
     switchTab('projects');
     await pushToCloud({
       action: 'batchUpsert',
@@ -595,27 +746,33 @@
         { table: 'Project_Tasks', records: newTasks }
       ]
     });
-    toast(`🎉 已成功批次建立 ${newProjects.length} 件 ${targetFy} 年度續約標案草稿！`);
+    toast(`🎉 已建立 ${newProjects.length} 件 ${targetFy} 年度${isTender ? '上網招標案' : '小額分期契約'}草稿！`);
   };
 
   function renderSplitRoutinesHTML() {
     const q = (document.getElementById('global-search')?.value || '').trim().toLowerCase();
-    const all = (appData.tables.Annual_Routines || [])
+    const rawRoutines = (appData.tables.Annual_Routines || [])
+      .filter(r => !q || `${r.title} ${r.category} ${r.note || ''}`.toLowerCase().includes(q));
+    const all = rawRoutines
       .filter(r => r.is_active !== false)
-      .filter(r => !q || `${r.title} ${r.category} ${r.note || ''}`.toLowerCase().includes(q))
       .map(r => ({ ...r, sch: computeRoutineSchedule(r) }))
       .sort((a, b) => a.sch.diffDays - b.sch.diffDays);
+    const inactiveList = rawRoutines
+      .filter(r => r.is_active === false)
+      .map(r => ({ ...r, sch: computeRoutineSchedule(r) }));
 
     const renewalList = all.filter(isRenewalRoutine);
     let shown = all;
     if (spvState.rtnBucket === 'SOON') shown = all.filter(r => r.sch.diffDays <= 14 || r.sch.isVisible);
     else if (spvState.rtnBucket === 'DAYS30') shown = all.filter(r => r.sch.diffDays >= 0 && r.sch.diffDays <= 30);
     else if (spvState.rtnBucket === 'RENEWAL') shown = renewalList;
+    else if (spvState.rtnBucket === 'INACTIVE') shown = inactiveList;
 
-    if (!spvState.rtnSelectedId || !all.some(r => r.routine_id === spvState.rtnSelectedId)) {
-      spvState.rtnSelectedId = shown[0]?.routine_id || all[0]?.routine_id || '';
+    const poolForSelect = spvState.rtnBucket === 'INACTIVE' ? inactiveList : all;
+    if (!spvState.rtnSelectedId || ![...all, ...inactiveList].some(r => r.routine_id === spvState.rtnSelectedId)) {
+      spvState.rtnSelectedId = shown[0]?.routine_id || poolForSelect[0]?.routine_id || '';
     }
-    const cur = all.find(r => r.routine_id === spvState.rtnSelectedId) || null;
+    const cur = [...all, ...inactiveList].find(r => r.routine_id === spvState.rtnSelectedId) || null;
     const parsedNote = (cur && typeof parseRoutineNoteStructured === 'function')
       ? parseRoutineNoteStructured(cur.note || '')
       : { steps: [], files: [], plainNote: cur?.note || '' };
@@ -682,13 +839,15 @@
                   <button type="button" class="sp-tab ${spvState.rtnBucket === 'DAYS30' ? 'active' : ''}" onclick="spvSetRtnBucket('DAYS30')">🟡 30日內預告</button>
                   <button type="button" class="sp-tab ${spvState.rtnBucket === 'RENEWAL' ? 'active' : ''}" onclick="spvSetRtnBucket('RENEWAL')">🏦 續約與招標 (${renewalList.length})</button>
                   <button type="button" class="sp-tab ${spvState.rtnBucket === 'ALL' ? 'active' : ''}" onclick="spvSetRtnBucket('ALL')">📚 全部列管 (${all.length})</button>
+                  ${inactiveList.length ? `<button type="button" class="sp-tab ${spvState.rtnBucket === 'INACTIVE' ? 'active' : ''}" onclick="spvSetRtnBucket('INACTIVE')">⏸️ 已停用 (${inactiveList.length})</button>` : ''}
                 </div>
               </div>
               <div class="ga-pane-scroll" style="padding:10px 12px;display:flex;flex-direction:column;gap:8px">
                 ${shown.length ? shown.map(r => {
                   const d = r.sch.diffDays;
-                  const tagCls = d < 0 ? 'tag-red' : d <= 7 ? 'tag-amber' : 'tag-blue';
-                  const relTxt = d < 0 ? `逾期 ${Math.abs(d)} 天` : d === 0 ? '今日截止' : `剩 ${d} 天`;
+                  const isPaused = r.is_active === false;
+                  const tagCls = isPaused ? 'tag-gray' : d < 0 ? 'tag-red' : d <= 7 ? 'tag-amber' : 'tag-blue';
+                  const relTxt = isPaused ? '⏸️ 已停用' : d < 0 ? `逾期 ${Math.abs(d)} 天` : d === 0 ? '今日截止' : `剩 ${d} 天`;
                   const isSel = cur && cur.routine_id === r.routine_id;
                   return `
                     <div class="spv-list-card ${isSel ? 'is-selected' : ''}" onclick="selectSplitRoutine('${h(r.routine_id)}')">
@@ -698,7 +857,11 @@
                           <span class="tag tag-gray">${h(r.category || '例行')}</span>
                           <span class="item-meta num-mono" style="margin:0">應辦日 ${roc(r.sch.dueDate)}（${h(r.recurrence_type)}）</span>
                         </div>
-                        <button type="button" class="btn-xs btn-success" onclick="event.stopPropagation();markRoutineDone('${h(r.routine_id)}','${h(r.sch.cycle)}')">✓ 完成打卡</button>
+                        <div style="display:flex;gap:5px;align-items:center">
+                          ${isPaused
+                            ? `<button type="button" class="btn-xs btn-primary" onclick="event.stopPropagation();spvToggleRoutineActive('${h(r.routine_id)}')">▶️ 啟用</button>`
+                            : `<button type="button" class="btn-xs btn-success" onclick="event.stopPropagation();markRoutineDone('${h(r.routine_id)}','${h(r.sch.cycle)}')">✓ 完成打卡</button>`}
+                        </div>
                       </div>
                       <div style="font-size:16px;font-weight:800;color:var(--text-primary,#1C1917);margin-top:5px">${h(r.title)}</div>
                     </div>
@@ -710,9 +873,13 @@
             <!-- 右欄：選中例行事項 SOP 作業步驟與傳送門 -->
             <section class="panel ga-pane">
               ${cur ? `
-                <div class="panel-hd">
+                <div class="panel-hd" style="flex-wrap:wrap;gap:6px">
                   <h3>📌 作業細節：${h(cur.title)}</h3>
-                  <button type="button" class="btn-xs" onclick="openRoutineModal('${h(cur.routine_id)}')">✎ 編輯設定</button>
+                  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button type="button" class="btn-xs" onclick="openRoutineModal('${h(cur.routine_id)}')">✎ 編輯設定</button>
+                    <button type="button" class="btn-xs" onclick="spvToggleRoutineActive('${h(cur.routine_id)}')" title="不需刪除即可暫停或恢復此例行提醒">${cur.is_active === false ? '▶️ 恢復啟用' : '⏸️ 停用通知'}</button>
+                    <button type="button" class="btn-xs" style="color:#B91C1C" onclick="deleteRoutine('${h(cur.routine_id)}')" title="刪除此例行項目（支援 8 秒復原）">🗑️ 刪除</button>
+                  </div>
                 </div>
                 <div class="ga-pane-scroll" style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
                   <div style="padding:10px 12px;border-radius:10px;background:var(--bg-subtle,#FAF6F0);border:1px solid var(--border-subtle,#E7DFD3)">
@@ -720,16 +887,20 @@
                     <div class="item-meta" style="font-size:13.5px;margin-top:4px">規則說明：${h(typeof describeDueRuleHuman === 'function' ? describeDueRuleHuman(cur) : cur.due_rule)} ｜ 上次完成：${h(cur.last_done_cycle || '尚無紀錄')}</div>
                   </div>
 
-                  ${parsedNote.steps && parsedNote.steps.length ? `
-                    <div>
-                      <div style="font-size:14.5px;font-weight:800;color:var(--brand-primary,#7C4A21);margin-bottom:6px">✅ 標準作業步驟（SOP）</div>
-                      ${parsedNote.steps.map((st, idx) => `
-                        <div style="padding:8px 10px;border:1px solid var(--border-subtle,#E7DFD3);border-radius:8px;background:#fff;margin-bottom:6px;font-size:15px">
-                          <strong>${idx + 1}.</strong> ${h(typeof st === 'string' ? st : st.text || '')}
-                        </div>
-                      `).join('')}
+                  <div>
+                    <div style="font-size:14.5px;font-weight:800;color:var(--brand-primary,#7C4A21);margin-bottom:6px">✅ 標準作業步驟（SOP）</div>
+                    ${parsedNote.steps && parsedNote.steps.length ? parsedNote.steps.map((st, idx) => `
+                      <div style="padding:8px 10px;border:1px solid var(--border-subtle,#E7DFD3);border-radius:8px;background:#fff;margin-bottom:6px;font-size:15px">
+                        <strong>${idx + 1}.</strong> ${h(typeof st === 'string' ? st : st.text || '')}
+                      </div>
+                    `).join('') : '<div class="item-meta" style="margin-bottom:6px">尚無標準步驟，可於下方直接輸入新增：</div>'}
+                    <div style="display:flex;gap:6px;margin-top:6px">
+                      <input id="spv-rtn-step-in" type="text" placeholder="快速新增一步驟（例如：至環教網上傳成果照片）按 Enter..."
+                             style="flex:1;padding:6px 10px;border:1px solid var(--border-strong,#D6CBB9);border-radius:8px;font-size:13.5px"
+                             onkeydown="if(event.key==='Enter') spvQuickAddRoutineStep('${h(cur.routine_id)}')">
+                      <button type="button" class="btn-xs btn-primary" onclick="spvQuickAddRoutineStep('${h(cur.routine_id)}')">＋加步驟</button>
                     </div>
-                  ` : ''}
+                  </div>
 
                   ${parsedNote.plainNote ? `
                     <div style="padding:10px 12px;border-radius:10px;background:#FFFBEB;border:1px solid #FDE68A;font-size:14.5px;line-height:1.55">
@@ -741,7 +912,7 @@
                     <button type="button" class="btn-primary" onclick="markRoutineDone('${h(cur.routine_id)}','${h(cur.sch.cycle)}')">✓ 標記本期（${h(cur.sch.cycle)}）已完成</button>
                     ${cur.portal_url ? `<a href="${h(cur.portal_url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;padding:8px 14px;border-radius:8px;border:1px solid var(--border-strong,#D6CBB9);background:#fff;color:#1C1917;font-weight:700;text-decoration:none;font-size:14px">🌐 前往申報網站 ↗</a>` : ''}
                     <button type="button" class="btn-sm" onclick="openDocCopilotModal({tplId:'REQ_SIGN',title:'${h(cur.title)}',dueDate:'${h(cur.sch.dueDate)}'})">📝 簽呈／催辦草稿</button>
-                    ${typeof openRoutineQuickPurchase === 'function' ? `<button type="button" class="btn-sm" onclick="openRoutineQuickPurchase('${h(cur.routine_id)}')">📋 轉開採購標案</button>` : ''}
+                    ${typeof openRoutineQuickPurchase === 'function' ? `<button type="button" class="btn-sm" onclick="openRoutineQuickPurchase('${h(cur.routine_id)}')">📋 轉開採購案</button>` : ''}
                   </div>
                 </div>
               ` : '<div class="empty-state">請選擇左側例行項目</div>'}
@@ -815,8 +986,9 @@
     spvState.solarActiveId = activeId;
     const curC = contracts.find(c => c.solar_id === activeId) || null;
 
+    const uiPrefs = window.GA_CORE.getUiPrefs();
     const rentPresets = window.GA_CORE.getCloudPresets('SOLAR_RENT')
-      .filter(pr => pr.newContract && !contracts.some(c => pr.match(c)));
+      .filter(pr => pr.newContract && !contracts.some(c => pr.match(c)) && !uiPrefs.dismissedPresets.includes(`SOLAR:${pr.key}`));
 
     let rightDetailHTML = '';
     if (curC) {
@@ -847,6 +1019,7 @@
             <button type="button" class="btn-xs" onclick="openDocCopilotModal({tplId:'VENDOR_NUDGE',title:'${h(curC.building_name)}（${h(curC.phase_label || curC.solar_id)}）',vendor:'${h(curC.vendor_name || '')}',amount:'${h(curC.base_annual_rent || '')}'})">📲 複製廠商催辦詞</button>
             <button type="button" class="btn-xs" onclick="openSolarContractModal('${h(curC.solar_id)}')">✎ 編輯主檔</button>
             <button type="button" class="btn-xs" onclick="printSingleSolarContractPDF('${h(curC.solar_id)}')">🖨️ 本約PDF</button>
+            ${typeof deleteSolarContractV2 === 'function' ? `<button type="button" class="btn-xs" style="color:#B91C1C" title="刪除此租賃契約" onclick="deleteSolarContractV2('${h(curC.solar_id)}')">🗑️ 刪除契約</button>` : ''}
           </div>
         </div>
         <div class="sp-filter-bar" style="border-top:none;border-bottom:1px solid var(--border-subtle,#E7DFD3)">
@@ -896,7 +1069,12 @@
             <div class="sp-gauge-val num-mono">${alerts.length} <small>項提醒</small></div>
             <div class="sp-gauge-sub" style="display:flex;gap:6px;flex-wrap:wrap">
               <button type="button" class="btn-xs" onclick="openSharedMeterBatchModal()">⚡ 共錶拆帳</button>
-              ${rentPresets.map(pr => `<button type="button" class="btn-xs" onclick="openCreatePresetContract('${h(pr.key)}')">📄 新增${h(pr.label)}</button>`).join('')}
+              ${rentPresets.map(pr => `
+                <span style="display:inline-flex;align-items:center;gap:2px">
+                  <button type="button" class="btn-xs" onclick="openCreatePresetContract('${h(pr.key)}')">📄 新增${h(pr.label)}</button>
+                  <button type="button" class="btn-xs" title="隱藏此範本提示" onclick="spvDismissPreset('SOLAR:${h(pr.key)}','${h(pr.label)}')">✕</button>
+                </span>
+              `).join('')}
             </div>
           </div>
         </div>
@@ -1068,11 +1246,42 @@
   renderSolarViewHTML = renderSplitSolarHTML;
   renderUtilitiesViewHTML = renderSplitUtilitiesHTML;
 
-  // 確保甘特圖與模板頁亦包覆於 100dvh 零外層捲動容器內
+  window.spvSetGanttTrack = function(tf) {
+    spvState.ganttTrackFilter = tf;
+    renderCurrentView();
+  };
+
+  // 確保甘特圖與模板頁亦包覆於 100dvh 零外層捲動容器內，並支援甘特圖「上網招標 vs 小額契約」一鍵分流
   if (typeof renderAnnualGanttHTML === 'function') {
     const _origGantt = renderAnnualGanttHTML;
     renderAnnualGanttHTML = function() {
-      return `<div class="ga-split-shell"><div class="panel ga-pane"><div class="ga-pane-scroll" style="padding:12px">${_origGantt()}</div></div></div>`;
+      const origProjs = (appData.tables && appData.tables.Projects) || [];
+      const tenderList = origProjs.filter(p => window.GA_CORE.isFormalTenderProject(p));
+      const microList = origProjs.filter(p => window.GA_CORE.isMicroPurchaseProject(p));
+      let bodyHTML = '';
+      try {
+        if (spvState.ganttTrackFilter === 'TENDER') appData.tables.Projects = tenderList;
+        else if (spvState.ganttTrackFilter === 'MICRO') appData.tables.Projects = microList;
+        bodyHTML = _origGantt();
+      } finally {
+        if (appData.tables) appData.tables.Projects = origProjs;
+      }
+      return `
+        <div class="ga-split-shell">
+          <div class="vb-top-bar">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-size:18px;font-weight:800;color:var(--brand-primary,#7C4A21)">📅 全校跨案甘特圖排程</span>
+              <div class="sp-tabs">
+                <button type="button" class="sp-tab ${spvState.ganttTrackFilter === 'TENDER' ? 'active' : ''}" onclick="spvSetGanttTrack('TENDER')">🏛️ 只看上網招標案 (${tenderList.length})</button>
+                <button type="button" class="sp-tab ${spvState.ganttTrackFilter === 'MICRO' ? 'active' : ''}" onclick="spvSetGanttTrack('MICRO')">🔧 只看小額契約 (${microList.length})</button>
+                <button type="button" class="sp-tab ${spvState.ganttTrackFilter === 'ALL' ? 'active' : ''}" onclick="spvSetGanttTrack('ALL')">📚 全部顯示 (${origProjs.length})</button>
+              </div>
+            </div>
+            <button type="button" class="btn-sm" onclick="switchTab('projects')">← 返回標案工作台</button>
+          </div>
+          <div class="panel ga-pane"><div class="ga-pane-scroll" style="padding:12px">${bodyHTML}</div></div>
+        </div>
+      `;
     };
   }
   if (typeof renderTemplatesHTML === 'function') {
@@ -1083,6 +1292,6 @@
   }
 
   if (window.GA_REGISTRY && typeof window.GA_REGISTRY.registerModule === 'function') {
-    window.GA_REGISTRY.registerModule('split-pane-views.js', 'v2.0', '全業務子分頁 100dvh 左右雙欄工作台升級');
+    window.GA_REGISTRY.registerModule('split-pane-views.js', 'v2.1', '全業務子分頁 100dvh 左右雙欄工作台升級（招標與小額分流＋卡片刪除復原）');
   }
 })();

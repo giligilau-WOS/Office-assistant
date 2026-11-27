@@ -21,7 +21,9 @@
   const dashState = {
     alertBucket: 'URGENT7', // URGENT7 | DAYS30 | ALL
     alertPage: 1,
-    projPage: 1
+    projTrack: 'TENDER',    // TENDER | MICRO
+    projPage: 1,
+    showDoneMemos: false
   };
 
   // --------------------------------------------------------------------------
@@ -235,8 +237,8 @@
       white-space: nowrap;
     }
     #global-search {
-      width: 215px !important;
-      min-width: 170px !important;
+      width: 200px !important;
+      min-width: 155px !important;
       background: #FFFFFF !important;
       color: #1C1917 !important;
       border: 1px solid var(--border-strong) !important;
@@ -263,6 +265,7 @@
       flex: 0 0 auto;
     }
     .ga-tile {
+      position: relative;
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-top: 4px solid var(--brand-accent);
@@ -285,6 +288,32 @@
     .ga-tile.tone-amber { border-top-color: #D97706; }
     .ga-tile.tone-teal { border-top-color: var(--brand-accent); }
     .ga-tile.tone-walnut { border-top-color: var(--brand-primary); }
+
+    .ga-card-dismiss {
+      width: 22px;
+      height: 22px;
+      padding: 0 !important;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle) !important;
+      background: #FFFFFF !important;
+      color: #78716C !important;
+      font-size: var(--fs-xs) !important;
+      font-weight: 800;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.65;
+      flex-shrink: 0;
+      transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+    .ga-tile:hover .ga-card-dismiss,
+    .ga-card-dismiss:hover {
+      opacity: 1;
+      color: #DC2626 !important;
+      border-color: #FCA5A5 !important;
+    }
 
     .ga-tile-hd {
       display: flex;
@@ -703,10 +732,111 @@
     m.style.left = `${Math.round(Math.max(12, Math.min(r.right - w, window.innerWidth - w - 12)))}px`;
   }
 
+  const TOP_TILE_DEFS = [
+    { key: 'projects', label: '🏗️ 上網招標案（15萬以上公開取得／公開招標）' },
+    { key: 'statutory-proc', label: '🧾 小額與綠優採（15萬以下逕洽／§14／綠採／優採）' },
+    { key: 'routines', label: '🔁 例行與續約（年度固定應辦與契約續約）' },
+    { key: 'solar', label: '☀️ 光電與水電（回饋金應收與水電異常監控）' },
+    { key: 'safety-wall', label: '🛡️ 法定安檢牆（校園安全申報證照列管）' },
+    { key: 'venue-board', label: '🏟️ 場地與教室（短期租借卡片看板）' }
+  ];
+
+  const SIDEBAR_CUSTOM_DEFS = [
+    { key: 'annual-gantt', label: '📅 全校甘特圖' },
+    { key: 'projects', label: '🏛️ 招標採購履約' },
+    { key: 'statutory-proc', label: '🧾 小額與綠優採' },
+    { key: 'templates', label: '🗂️ 標案模板' },
+    { key: 'routines', label: '🔁 例行與續約' },
+    { key: 'solar', label: '☀️ 太陽能租賃' },
+    { key: 'utilities', label: '⚡ 水電費監控' },
+    { key: 'safety-wall', label: '🛡️ 法定安檢牆' },
+    { key: 'venue-board', label: '🏟️ 場地與教室' },
+    { key: 'asset-inv', label: '📦 設備與耗材' },
+    { key: 'campus-3d', label: '🏫 3D 校舍雙生外部連結' }
+  ];
+
+  window.gaHideTopTile = async function(tileKey, titleLabel, ev) {
+    if (ev) ev.stopPropagation();
+    const prefs = window.GA_CORE.getUiPrefs();
+    if (prefs.hiddenTiles.includes(tileKey)) return;
+    await window.GA_CORE.updateUiPrefs(
+      { hiddenTiles: [...prefs.hiddenTiles, tileKey] },
+      `已隱藏「${titleLabel}」指標卡（可於「🎛️ 自訂卡片」隨時開啟）`
+    );
+  };
+
+  window.openCustomizeCardsModal = function() {
+    const prefs = window.GA_CORE.getUiPrefs();
+    const hiddenTiles = new Set(prefs.hiddenTiles || []);
+    const hiddenTabs = new Set(prefs.hiddenTabs || []);
+    const snoozedCnt = Object.keys(prefs.snoozedAlerts || {}).length;
+    const dismissedCnt = (prefs.dismissedPresets || []).length;
+
+    openModal('🎛️ 自訂首頁卡片與側欄模組（隱藏用不到的卡片）', `
+      <div class="gate-banner amber" style="margin-bottom:12px;font-size:14px">
+        💡 取消勾選您平時用不到的業務卡片或側邊欄功能，畫面會自動拉寬給常用業務，且設定會隨雲端試算表同步記憶，隨時可再打開！
+      </div>
+
+      <div style="font-size:15px;font-weight:800;color:var(--brand-primary);margin-bottom:6px">📌 首頁頂部「黃金業務指標卡」（可隱藏任意卡片）</div>
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px;margin-bottom:14px">
+        ${TOP_TILE_DEFS.map(t => `
+          <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:#fff;cursor:pointer;font-size:14px;font-weight:700">
+            <input type="checkbox" class="ga-cust-tile" value="${h(t.key)}" ${hiddenTiles.has(t.key) ? '' : 'checked'} style="width:17px;height:17px">
+            <span>${h(t.label)}</span>
+          </label>
+        `).join('')}
+      </div>
+
+      <div style="font-size:15px;font-weight:800;color:var(--brand-primary);margin-bottom:6px">🧭 左側邊欄「功能模組選單」（隱藏不常用分頁）</div>
+      <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px;margin-bottom:10px">
+        ${SIDEBAR_CUSTOM_DEFS.map(s => `
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:#fff;cursor:pointer;font-size:13.5px;font-weight:700">
+            <input type="checkbox" class="ga-cust-tab" value="${h(s.key)}" ${hiddenTabs.has(s.key) ? '' : 'checked'} style="width:16px;height:16px">
+            <span>${h(s.label)}</span>
+          </label>
+        `).join('')}
+      </div>
+
+      ${(snoozedCnt || dismissedCnt) ? `
+        <div style="font-size:13px;color:var(--text-muted);padding-top:6px;border-top:1px dashed var(--border-subtle)">
+          目前另有 ${snoozedCnt} 筆暫緩提醒、${dismissedCnt} 個已略過範本提示（點左下「恢復全部預設」可一併還原）。
+        </div>
+      ` : ''}
+    `, `
+      <button type="button" style="margin-right:auto" onclick="gaResetCustomCards()">↺ 恢復全部預設顯示</button>
+      <button type="button" onclick="closeModal()">取消</button>
+      <button type="button" class="btn-primary" onclick="gaSaveCustomCards()">💾 儲存顯示設定</button>
+    `);
+  };
+
+  window.gaSaveCustomCards = async function() {
+    const hiddenTiles = [...document.querySelectorAll('.ga-cust-tile')].filter(el => !el.checked).map(el => el.value);
+    const hiddenTabs = [...document.querySelectorAll('.ga-cust-tab')].filter(el => !el.checked).map(el => el.value);
+    closeModal();
+    if (typeof currentTab !== 'undefined' && hiddenTabs.includes(currentTab)) {
+      switchTab('dashboard');
+    }
+    await window.GA_CORE.updateUiPrefs({ hiddenTiles, hiddenTabs });
+    toast('🎛️ 已更新卡片與側欄顯示偏好！');
+  };
+
+  window.gaResetCustomCards = async function() {
+    closeModal();
+    await window.GA_CORE.updateUiPrefs({ hiddenTiles: [], hiddenTabs: [], snoozedAlerts: {}, dismissedPresets: [] });
+    toast('↺ 已恢復全部卡片、選單與提醒顯示！');
+  };
+
   window.udMenuAction = function(act, ev) {
     if (ev) ev.stopPropagation();
     closeMenu();
-    if (act === 'new-project' && typeof openProjectWizard === 'function') openProjectWizard();
+    if (act === 'new-tender') {
+      if (typeof window.spvOpenTenderWizard === 'function') window.spvOpenTenderWizard();
+      else if (typeof openProjectWizard === 'function') openProjectWizard();
+    }
+    else if (act === 'new-micro-contract') {
+      if (typeof window.spOpenMicroProjectWizard === 'function') window.spOpenMicroProjectWizard();
+      else switchTab('statutory-proc');
+    }
     else if (act === 'new-stat-proc') switchTab('statutory-proc');
     else if (act === 'new-venue') switchTab('venue-board');
     else if (act === 'new-routine' && typeof openRoutineModal === 'function') openRoutineModal('');
@@ -716,6 +846,7 @@
     }
     else if (act === 'doc-copilot' && typeof openDocCopilotModal === 'function') openDocCopilotModal();
     else if (act === 'batch-renewal' && typeof openBatchRenewalModal === 'function') openBatchRenewalModal();
+    else if (act === 'customize-cards') window.openCustomizeCardsModal();
     else if (act === 'settings' && typeof openSettingsModal === 'function') openSettingsModal();
     else if (act === 'portals' && typeof openPortalEditor === 'function') openPortalEditor();
     else if (act === 'calendar' && typeof window.toggleNordicCalendar === 'function') window.toggleNordicCalendar();
@@ -726,8 +857,9 @@
   window.toggleUdNewMenu = function(ev) {
     if (ev) ev.stopPropagation();
     openMenu(ev.currentTarget, `
-      <button type="button" class="ud-item" onclick="udMenuAction('new-project', event)">📋 開新採購／工程標案</button>
-      <button type="button" class="ud-item" onclick="udMenuAction('new-stat-proc', event)">🧾 記一筆小額／綠採／優採</button>
+      <button type="button" class="ud-item" onclick="udMenuAction('new-tender', event)">🏛️ 開新上網招標標案（15萬以上）</button>
+      <button type="button" class="ud-item" onclick="udMenuAction('new-micro-contract', event)">🔧 開新小額分期契約（15萬以下）</button>
+      <button type="button" class="ud-item" onclick="udMenuAction('new-stat-proc', event)">🧾 記一筆零星小額／綠採／優採</button>
       <button type="button" class="ud-item" onclick="udMenuAction('new-venue', event)">🏟️ 登記場地／教室短期借用</button>
       <button type="button" class="ud-item" onclick="udMenuAction('new-routine', event)">🔁 新增固定例行事務</button>
       <button type="button" class="ud-item" onclick="udMenuAction('batch-renewal', event)">⚡ 年末批次續約開案精靈</button>
@@ -739,6 +871,7 @@
     const syncTxt = (document.getElementById('sync-text')?.textContent || '').trim() || '本機模式';
     openMenu(ev.currentTarget, `
       <div style="padding:8px 10px;border-bottom:1px solid #E7DFD3;font-size:13px;color:#57534E;font-weight:700">雲端狀態：${h(syncTxt)}</div>
+      <button type="button" class="ud-item" onclick="udMenuAction('customize-cards', event)">🎛️ 自訂卡片與隱藏不用模組</button>
       <button type="button" class="ud-item" onclick="udMenuAction('settings', event)">🔌 雲端試算表連線與備份</button>
       <button type="button" class="ud-item" onclick="udMenuAction('cmd', event)">🔍 全域快速跳轉 (Ctrl+K)</button>
       <button type="button" class="ud-item" onclick="udMenuAction('portals', event)">🔗 常用公務傳送門管理</button>
@@ -762,9 +895,9 @@
         { tab: 'dashboard', label: '📊 戰情總覽' },
         { tab: 'annual-gantt', label: '📅 全校甘特圖' }
       ]},
-      { group: '🏗️ 採購與工程', items: [
-        { tab: 'projects', label: '📋 採購履約' },
-        { tab: 'statutory-proc', label: '🧾 小額・綠優採' },
+      { group: '🏛️ 採購與工程', items: [
+        { tab: 'projects', label: '🏛️ 招標採購履約' },
+        { tab: 'statutory-proc', label: '🧾 小額與綠優採' },
         { tab: 'templates', label: '🗂️ 標案模板' }
       ]},
       { group: '⚡ 設施與安檢', items: [
@@ -781,9 +914,10 @@
 
     if (!nav.dataset.gaGrouped) {
       nav.innerHTML = '';
-      specs.forEach(sec => {
+      specs.forEach((sec, gIdx) => {
         const gEl = document.createElement('div');
         gEl.className = 'ga-nav-group-lbl';
+        gEl.dataset.groupIdx = String(gIdx);
         gEl.textContent = sec.group;
         nav.appendChild(gEl);
 
@@ -792,6 +926,7 @@
           b.type = 'button';
           b.className = 'nav-tab';
           b.dataset.tab = it.tab;
+          b.dataset.groupIdx = String(gIdx);
           b.textContent = it.label;
           b.onclick = () => switchTab(it.tab);
           nav.appendChild(b);
@@ -800,6 +935,7 @@
 
       const link3d = document.createElement('a');
       link3d.className = 'nav-tab nav-tab-ext';
+      link3d.dataset.extKey = 'campus-3d';
       link3d.href = './campus-3d.html';
       link3d.title = '開啟 3D 校舍數位雙生模型';
       link3d.innerHTML = '🏫 3D 校舍雙生 ↗';
@@ -808,9 +944,35 @@
     }
 
     const cur = (typeof currentTab !== 'undefined' && currentTab) || 'dashboard';
+    const hiddenTabs = new Set((window.GA_CORE.getUiPrefs().hiddenTabs) || []);
+
     nav.querySelectorAll('.nav-tab[data-tab]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.tab === cur);
+      const t = btn.dataset.tab;
+      btn.classList.toggle('active', t === cur);
+      const shouldHide = t !== 'dashboard' && t !== cur && hiddenTabs.has(t);
+      btn.classList.toggle('ud-hide', shouldHide);
     });
+
+    const ext3d = nav.querySelector('[data-ext-key="campus-3d"]');
+    if (ext3d) ext3d.classList.toggle('ud-hide', hiddenTabs.has('campus-3d'));
+
+    nav.querySelectorAll('.ga-nav-group-lbl').forEach(gEl => {
+      const gIdx = gEl.dataset.groupIdx;
+      const visibleInGroup = [...nav.querySelectorAll(`.nav-tab[data-group-idx="${gIdx}"]`)].some(b => !b.classList.contains('ud-hide'));
+      gEl.classList.toggle('ud-hide', !visibleInGroup);
+    });
+
+    // 同步修正側邊欄「招標採購履約」數字徽章，僅計算上網招標案（不混入小額契約）
+    const prjTabBtn = nav.querySelector('.nav-tab[data-tab="projects"]');
+    if (prjTabBtn && typeof appData !== 'undefined' && appData?.tables?.Projects) {
+      const tenderCnt = (appData.tables.Projects || [])
+        .filter(p => !['已結案', '廢標撤案'].includes(p.status) && window.GA_CORE.isFormalTenderProject(p)).length;
+      const badgeEl = prjTabBtn.querySelector('.tab-cnt-badge');
+      if (badgeEl) {
+        badgeEl.textContent = String(tenderCnt);
+        badgeEl.style.display = tenderCnt > 0 ? '' : 'none';
+      }
+    }
 
     // 矮視窗 (<780px) 自動將側欄完整月曆收斂為單行按鈕，確保側欄零溢出
     const calHost = document.getElementById('nordic-side-calendar');
@@ -859,6 +1021,15 @@
     seasonBtn.textContent = `${season.icon} ${season.text}`;
     seasonBtn.onclick = () => switchTab(season.actionTab || 'routines');
 
+    if (!document.getElementById('btn-ud-customize')) {
+      const b = document.createElement('button');
+      b.id = 'btn-ud-customize';
+      b.type = 'button';
+      b.title = '自訂首頁卡片與隱藏用不到的模組';
+      b.textContent = '🎛️ 自訂卡片';
+      b.onclick = () => window.openCustomizeCardsModal();
+      actions.appendChild(b);
+    }
     if (!document.getElementById('btn-ud-copilot')) {
       const b = document.createElement('button');
       b.id = 'btn-ud-copilot';
@@ -885,6 +1056,7 @@
       actions.appendChild(b);
     }
 
+    actions.appendChild(document.getElementById('btn-ud-customize'));
     actions.appendChild(document.getElementById('btn-ud-copilot'));
     actions.appendChild(document.getElementById('btn-ud-new'));
     actions.appendChild(document.getElementById('btn-ud-settings'));
@@ -894,8 +1066,8 @@
     if (crumb) {
       const map = {
         dashboard: '戰情總覽',
-        projects: selectedProjectId ? '標案雙欄檢核台' : '採購與工程',
-        'statutory-proc': '小額・綠優採三軌台帳',
+        projects: selectedProjectId ? '標案雙欄檢核台' : '上網招標與採購履約',
+        'statutory-proc': '小額與綠優採三軌台帳',
         routines: '例行與續約工作台',
         solar: '太陽能租賃管理',
         utilities: '水電費預算監控',
@@ -915,7 +1087,16 @@
   // --------------------------------------------------------------------------
   window.gaSetAlertBucket = function(b) { dashState.alertBucket = b; dashState.alertPage = 1; renderCurrentView(); };
   window.gaSetAlertPage = function(p) { dashState.alertPage = Math.max(1, p); renderCurrentView(); };
+  window.gaSetDashProjTrack = function(tr) { dashState.projTrack = tr; dashState.projPage = 1; renderCurrentView(); };
   window.gaSetDashProjPage = function(p) { dashState.projPage = Math.max(1, p); renderCurrentView(); };
+  window.gaToggleDoneMemos = function() { dashState.showDoneMemos = !dashState.showDoneMemos; renderCurrentView(); };
+
+  window.gaSnoozeAlert = async function(idx, ev) {
+    if (ev) ev.stopPropagation();
+    const a = (window._gaUnifiedAlerts || [])[idx];
+    if (!a) return;
+    await window.GA_CORE.snoozeAlertByKey(a.alertKey, a.cleanTitle, 7);
+  };
 
   window.gaRunAlert = function(idx) {
     const a = (window._gaUnifiedAlerts || [])[idx];
@@ -933,6 +1114,8 @@
   function buildTopSixTiles(unifiedAlerts) {
     const t = appData.tables || {};
     const activeProjects = (t.Projects || []).filter(p => !['已結案', '廢標撤案'].includes(p.status));
+    const tenderActive = activeProjects.filter(p => window.GA_CORE.isFormalTenderProject(p));
+    const microActive = activeProjects.filter(p => window.GA_CORE.isMicroPurchaseProject(p));
     const routines = (t.Annual_Routines || []).filter(r => r.is_active !== false);
     const activeSolar = (t.Solar_Contracts || []).filter(c => !['已屆滿', '已期滿', '已解約'].includes(c.status));
     const meters = (t.Utilities_Meters || []).filter(m => m.is_active !== false);
@@ -948,7 +1131,7 @@
     const energyAlerts = unifiedAlerts.filter(a => (a.module === 'solar' || a.module === 'util') && a.tier <= 1);
 
     const spTile = window.GA_CORE.getModule('statutory-proc')?.getSummaryTile?.(appData) || {
-      kpi: '0', unit: '筆小額', tone: 'teal', subText: '§14・綠採・優採三軌控管'
+      kpi: String(microActive.length), unit: '筆小額', tone: 'teal', subText: '§14・綠採・優採三軌控管'
     };
     const safTile = window.GA_CORE.getModule('safety-wall')?.getSummaryTile?.(appData) || {
       kpi: '8/8', unit: '項合規', tone: 'teal', subText: '八大法定安檢集中列管'
@@ -959,24 +1142,27 @@
 
     return [
       {
+        key: 'projects',
         tab: 'projects',
         tone: projAlerts.some(a => a.tier === 0) ? 'red' : projAlerts.length ? 'amber' : 'walnut',
-        icon: '🏗️', title: '採購與工程',
+        icon: '🏛️', title: '上網招標案',
         badge: projAlerts.length ? `${projAlerts.length} 急件` : '進度正常',
         badgeCls: projAlerts.length ? 'tag-red' : 'tag-green',
-        kpi: String(activeProjects.length), unit: '件執行中',
-        sub: activeProjects[0] ? `重點：${smart(activeProjects[0].project_name).cleanTitle}` : '點擊新增或檢視標案'
+        kpi: String(tenderActive.length), unit: '件上網招標',
+        sub: tenderActive[0] ? `重點：${smart(tenderActive[0].project_name).cleanTitle}` : `小額契約 ${microActive.length} 件已分流`
       },
       {
+        key: 'statutory-proc',
         tab: 'statutory-proc',
         tone: spTile.tone || 'teal',
-        icon: '🧾', title: '小額・綠優採',
-        badge: spTile.redCount ? '需注意' : '法規監控',
+        icon: '🧾', title: '小額與綠優採',
+        badge: spTile.redCount ? '需注意' : '小額專帳',
         badgeCls: spTile.redCount ? 'tag-red' : spTile.amberCount ? 'tag-amber' : 'tag-green',
         kpi: spTile.kpi, unit: spTile.unit,
         sub: spTile.subText
       },
       {
+        key: 'routines',
         tab: 'routines',
         tone: rtnNext && rtnNext.s.diffDays < 0 ? 'red' : rtnNext && rtnNext.s.diffDays <= 7 ? 'amber' : 'teal',
         icon: '🔁', title: '例行與續約',
@@ -986,6 +1172,7 @@
         sub: rtnNext ? `最近：${rtnNext.r.title}` : '含年末批次續約精靈'
       },
       {
+        key: 'solar',
         tab: 'solar',
         tone: energyAlerts.some(a => a.tier === 0) ? 'red' : energyAlerts.length ? 'amber' : 'teal',
         icon: '☀️', title: '光電與水電',
@@ -995,6 +1182,7 @@
         sub: energyAlerts[0] ? energyAlerts[0].cleanTitle : `水電監控 ${meters.length} 錶號（點此管理）`
       },
       {
+        key: 'safety-wall',
         tab: 'safety-wall',
         tone: safTile.tone || 'teal',
         icon: '🛡️', title: '法定安檢牆',
@@ -1004,6 +1192,7 @@
         sub: safTile.subText
       },
       {
+        key: 'venue-board',
         tab: 'venue-board',
         tone: vbTile.tone || 'teal',
         icon: '🏟️', title: '場地與教室',
@@ -1017,7 +1206,9 @@
 
   function renderWarRoomDashboardHTML() {
     const q = (document.getElementById('global-search')?.value || '').trim().toLowerCase();
-    const allAlerts = window.GA_CORE.computeUnifiedUrgency()
+    const rawUnified = window.GA_CORE.computeUnifiedUrgency();
+    const snoozedList = rawUnified._snoozedList || [];
+    const allAlerts = rawUnified
       .filter(a => !q || `${a.badge} ${a.fullTitle} ${a.actionHint}`.toLowerCase().includes(q));
     window._gaUnifiedAlerts = allAlerts;
 
@@ -1041,42 +1232,61 @@
     if (dashState.alertPage > alertPages) dashState.alertPage = alertPages;
     const pagedAlerts = activeList.slice((dashState.alertPage - 1) * alertPerPage, dashState.alertPage * alertPerPage);
 
-    // 中欄：執行中標案
-    const activeProjects = ((appData.tables && appData.tables.Projects) || [])
+    // 中欄：嚴格分流「🏛️ 上網招標標案」vs「🔧 小額分期契約」，預設只顯示上網招標案！
+    const allActiveProjects = ((appData.tables && appData.tables.Projects) || [])
       .filter(p => !['已結案', '廢標撤案'].includes(p.status))
       .filter(p => !q || `${p.project_name} ${p.project_id} ${p.vendor_name || ''}`.toLowerCase().includes(q));
+    const tenderProjs = allActiveProjects.filter(p => window.GA_CORE.isFormalTenderProject(p));
+    const microProjs = allActiveProjects.filter(p => window.GA_CORE.isMicroPurchaseProject(p));
+    const trackProjs = dashState.projTrack === 'MICRO' ? microProjs : tenderProjs;
+
     const projPerPage = vh < 700 ? 3 : vh < 860 ? 4 : 5;
-    const projPages = Math.max(1, Math.ceil(activeProjects.length / projPerPage));
+    const projPages = Math.max(1, Math.ceil(trackProjs.length / projPerPage));
     if (dashState.projPage > projPages) dashState.projPage = projPages;
-    const pagedProjs = activeProjects.slice((dashState.projPage - 1) * projPerPage, dashState.projPage * projPerPage);
+    const pagedProjs = trackProjs.slice((dashState.projPage - 1) * projPerPage, dashState.projPage * projPerPage);
 
-    // 右欄：抬頭交辦便利貼（保留 #memo-input / #memo-tag / #memo-prio 相容性）
-    const openMemos = ((appData.tables && appData.tables.Quick_Memos) || [])
-      .filter(m => !m.is_done)
+    // 右欄：抬頭交辦便利貼（保留 #memo-input / #memo-tag / #memo-prio 相容性，並補齊 ✕ 刪除與已完成檢視）
+    const allMemos = ((appData.tables && appData.tables.Quick_Memos) || [])
       .filter(m => !q || `${m.content} ${m.source_tag || ''}`.toLowerCase().includes(q));
+    const openMemos = allMemos.filter(m => !m.is_done);
+    const doneMemos = allMemos.filter(m => m.is_done);
+    const shownMemos = dashState.showDoneMemos ? doneMemos : openMemos;
 
-    const tiles = buildTopSixTiles(allAlerts);
+    const uiPrefs = window.GA_CORE.getUiPrefs();
+    const hiddenTiles = new Set(uiPrefs.hiddenTiles || []);
+    const allTiles = buildTopSixTiles(allAlerts);
+    const visibleTiles = allTiles.filter(t => !hiddenTiles.has(t.key));
 
     return `
       <div id="ga-war-room">
-        <!-- 上層 Zone Top：六大業務黃金健康卡 -->
-        <section class="ga-top-tiles" aria-label="六大業務黃金指標">
-          ${tiles.map(t => `
-            <div class="ga-tile tone-${h(t.tone)}" role="button" tabindex="0"
-                 onclick="switchTab('${h(t.tab)}')" onkeydown="if(event.key==='Enter')switchTab('${h(t.tab)}')">
-              <div class="ga-tile-hd">
-                <span>${t.icon} ${h(t.title)}</span>
-                <span class="tag ${t.badgeCls}">${h(t.badge)}</span>
+        <!-- 上層 Zone Top：可自訂／隱藏之業務黃金健康卡 -->
+        ${visibleTiles.length ? `
+          <section class="ga-top-tiles" aria-label="業務黃金指標" style="grid-template-columns: repeat(${visibleTiles.length}, minmax(0, 1fr))">
+            ${visibleTiles.map(t => `
+              <div class="ga-tile tone-${h(t.tone)}" role="button" tabindex="0"
+                   onclick="switchTab('${h(t.tab)}')" onkeydown="if(event.key==='Enter')switchTab('${h(t.tab)}')">
+                <div class="ga-tile-hd">
+                  <span>${t.icon} ${h(t.title)}</span>
+                  <span style="display:inline-flex;align-items:center;gap:4px">
+                    <span class="tag ${t.badgeCls}">${h(t.badge)}</span>
+                    <button type="button" class="ga-card-dismiss" title="隱藏此卡片（可隨時復原）" onclick="gaHideTopTile('${h(t.key)}','${h(t.title)}',event)">✕</button>
+                  </span>
+                </div>
+                <div class="ga-tile-kpi num-mono">${h(t.kpi)}<small>${h(t.unit)}</small></div>
+                <div class="ga-tile-sub" title="${h(t.sub)}">${h(t.sub)}</div>
               </div>
-              <div class="ga-tile-kpi num-mono">${h(t.kpi)}<small>${h(t.unit)}</small></div>
-              <div class="ga-tile-sub" title="${h(t.sub)}">${h(t.sub)}</div>
-            </div>
-          `).join('')}
-        </section>
+            `).join('')}
+          </section>
+        ` : `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-radius:10px;background:var(--bg-subtle);border:1px dashed var(--border-strong);flex:0 0 auto">
+            <span style="font-size:13.5px;color:var(--text-secondary)">已隱藏頂部業務指標卡，將最大空間留給下方三欄工作區</span>
+            <button type="button" class="btn-xs" onclick="openCustomizeCardsModal()">🎛️ 恢復或自訂卡片</button>
+          </div>
+        `}
 
         <!-- 下層 5 : 4 : 3 黃金比例三欄執行艙 -->
         <div class="ga-deck-grid">
-          <!-- 左欄 (5/12)：近期必辦佇列（依真實剩餘天數排序） -->
+          <!-- 左欄 (5/12)：近期必辦佇列（依真實剩餘天數排序＋支援暫緩隱藏） -->
           <section class="ga-col-panel" aria-label="近期必辦佇列">
             <div class="ga-col-hd">
               <h3>🚨 近期必辦佇列</h3>
@@ -1100,7 +1310,10 @@
                         ${a.yearBadge ? `<span class="tag tag-gray num-mono">${h(a.yearBadge)}</span>` : ''}
                         <span class="num-mono" style="font-size:13px;font-weight:800;color:${a.tier === 0 ? '#DC2626' : '#7C4A21'}">${h(a.relLabel)}${a.rocDue ? `（${h(a.rocDue)}）` : ''}</span>
                       </div>
-                      <button type="button" class="btn-xs" onclick="copyAlertSnippet(${origIdx}, event)" title="一鍵複製禮貌催辦訊息或簽呈草稿">📋 催辦／簽呈</button>
+                      <div style="display:inline-flex;align-items:center;gap:4px;flex-shrink:0">
+                        <button type="button" class="btn-xs" onclick="copyAlertSnippet(${origIdx}, event)" title="一鍵複製禮貌催辦訊息或簽呈草稿">📋 催辦</button>
+                        <button type="button" class="ga-card-dismiss" onclick="gaSnoozeAlert(${origIdx}, event)" title="暫緩隱藏此提醒 7 天（支援 8 秒復原）">✕</button>
+                      </div>
                     </div>
                     <div class="ga-alert-title">${h(a.cleanTitle)}</div>
                     <div class="ga-alert-hint">👉 ${h(a.actionHint)}</div>
@@ -1114,7 +1327,11 @@
             </div>
 
             <div class="ga-col-ft num-mono">
-              <span style="font-size:12.5px;color:var(--text-muted)">依真實剩餘天數與法定硬死線自動排序</span>
+              <span style="font-size:12.5px;color:var(--text-muted)">
+                ${snoozedList.length
+                  ? `🔕 已暫緩 ${snoozedList.length} 筆提醒 <button type="button" class="btn-xs" style="padding:1px 6px;margin-left:4px" onclick="window.GA_CORE.clearSnoozedAlerts()">恢復</button>`
+                  : '依真實剩餘天數與法定死線排序'}
+              </span>
               <div class="sp-pager">
                 <button type="button" class="btn-xs" ${dashState.alertPage <= 1 ? 'disabled' : ''} onclick="gaSetAlertPage(${dashState.alertPage - 1})">◀</button>
                 <span>${dashState.alertPage} / ${alertPages}</span>
@@ -1123,13 +1340,13 @@
             </div>
           </section>
 
-          <!-- 中欄 (4/12)：執行中標案與母子勾稽 -->
-          <section class="ga-col-panel" aria-label="執行中標案與里程碑">
+          <!-- 中欄 (4/12)：上網招標標案 vs 小額契約清晰分流 -->
+          <section class="ga-col-panel" aria-label="上網招標與小額契約分流">
             <div class="ga-col-hd">
-              <h3>🏗️ 執行中標案 (${activeProjects.length})</h3>
-              <div style="display:flex;gap:6px">
-                <button type="button" class="btn-xs" onclick="switchTab('utilities')">⚡ 水電帳單</button>
-                <button type="button" class="btn-xs btn-primary" onclick="switchTab('projects')">全部標案 →</button>
+              <h3>${dashState.projTrack === 'MICRO' ? '🔧 小額契約' : '🏛️ 上網招標'}</h3>
+              <div class="sp-tabs">
+                <button type="button" class="sp-tab ${dashState.projTrack === 'TENDER' ? 'active' : ''}" onclick="gaSetDashProjTrack('TENDER')">🏛️ 上網招標 (${tenderProjs.length})</button>
+                <button type="button" class="sp-tab ${dashState.projTrack === 'MICRO' ? 'active' : ''}" onclick="gaSetDashProjTrack('MICRO')">🔧 小額契約 (${microProjs.length})</button>
               </div>
             </div>
 
@@ -1138,13 +1355,14 @@
                 const prog = calcProjectProgress(p.project_id);
                 const sm = smart(p.project_name);
                 const flg = parseJSON(p.flags_json, {});
+                const isMicro = window.GA_CORE.isMicroPurchaseProject(p);
                 return `
-                  <div class="ga-alert-card" style="border-left-color:var(--brand-primary)"
+                  <div class="ga-alert-card" style="border-left-color:${isMicro ? '#D97706' : 'var(--brand-primary)'}"
                        onclick="openProjectDetail('${h(p.project_id)}')" title="${h(sm.fullTitle)}">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
                       <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
                         ${sm.yearBadge ? `<span class="tag tag-amber num-mono">${h(sm.yearBadge)}</span>` : ''}
-                        <span class="tag tag-blue">${h(p.procurement_type)}</span>
+                        <span class="tag ${isMicro ? 'tag-amber' : 'tag-blue'}">${h(p.procurement_type)}・${h(p.award_method || p.threshold_tier || '')}</span>
                         ${flg.linked_project_id ? '<span class="tag tag-green">🔗 母子案</span>' : ''}
                       </div>
                       <span class="num-mono" style="font-size:15px;font-weight:900;color:var(--brand-accent)">${prog.pct}%</span>
@@ -1161,14 +1379,20 @@
                 `;
               }).join('') : `
                 <div class="empty-state" style="margin:auto 0">
-                  目前無進行中標案。<br>
-                  <button type="button" class="btn-sm btn-primary" style="margin-top:8px" onclick="openProjectWizard()">＋ 開新採購標案</button>
+                  ${dashState.projTrack === 'MICRO'
+                    ? `目前無進行中之小額分期契約。<br><button type="button" class="btn-sm btn-primary" style="margin-top:8px" onclick="switchTab('statutory-proc')">🧾 前往小額與綠優採台帳 →</button>`
+                    : `目前無進行中之上網招標標案。<br><button type="button" class="btn-sm btn-primary" style="margin-top:8px" onclick="if(window.spvOpenTenderWizard)spvOpenTenderWizard();else openProjectWizard()">＋ 開新上網招標案</button>`}
                 </div>
               `}
             </div>
 
             <div class="ga-col-ft num-mono">
-              <button type="button" class="btn-xs" onclick="switchTab('annual-gantt')">📅 全校跨案甘特圖</button>
+              <div style="display:flex;gap:5px">
+                ${dashState.projTrack === 'MICRO'
+                  ? `<button type="button" class="btn-xs btn-primary" onclick="switchTab('statutory-proc')">🧾 小額綠優採台帳 →</button>`
+                  : `<button type="button" class="btn-xs btn-primary" onclick="if(window.spvSetProjFilter)spvSetProjFilter('TENDER');switchTab('projects')">🏛️ 招標工作台 →</button>`}
+                <button type="button" class="btn-xs" onclick="switchTab('annual-gantt')">📅 甘特圖</button>
+              </div>
               <div class="sp-pager">
                 <button type="button" class="btn-xs" ${dashState.projPage <= 1 ? 'disabled' : ''} onclick="gaSetDashProjPage(${dashState.projPage - 1})">◀</button>
                 <span>${dashState.projPage} / ${projPages}</span>
@@ -1177,11 +1401,14 @@
             </div>
           </section>
 
-          <!-- 右欄 (3/12)：抬頭交辦便利貼（免點彈窗直接看、支援 Enter 秒存與 8 秒復原） -->
+          <!-- 右欄 (3/12)：抬頭交辦便利貼（支援 Enter 秒存、✕ 刪除與 8 秒復原） -->
           <section class="ga-col-panel" aria-label="抬頭交辦便利貼">
             <div class="ga-col-hd">
               <h3>📌 抬頭交辦 (${openMemos.length})</h3>
-              <button type="button" class="btn-xs" onclick="openBatchRenewalModal()" title="批次建立下年度續約標案">⚡ 續約精靈</button>
+              <div style="display:flex;gap:5px;align-items:center">
+                ${doneMemos.length ? `<button type="button" class="btn-xs ${dashState.showDoneMemos ? 'btn-primary' : ''}" onclick="gaToggleDoneMemos()">${dashState.showDoneMemos ? '返回待辦' : `已完成 (${doneMemos.length})`}</button>` : ''}
+                <button type="button" class="btn-xs" onclick="openBatchRenewalModal()" title="批次建立下年度續約標案">⚡ 續約</button>
+              </div>
             </div>
 
             <div style="padding:8px 12px;border-bottom:1px dashed var(--border-subtle);background:#FFFDF9;flex:0 0 auto">
@@ -1210,23 +1437,26 @@
             </div>
 
             <div class="ga-col-bd">
-              ${openMemos.length ? openMemos.map(m => `
+              ${shownMemos.length ? shownMemos.map(m => `
                 <div style="padding:8px 10px;border:1px solid var(--border-subtle);border-left:4px solid ${m.priority === '緊急' ? '#DC2626' : m.priority === '重要' ? '#D97706' : '#7C4A21'};border-radius:9px;background:#FFF">
-                  <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
-                    <input type="checkbox" style="width:17px;height:17px;margin-top:3px;flex-shrink:0"
+                  <div style="display:flex;gap:8px;align-items:flex-start">
+                    <input type="checkbox" ${m.is_done ? 'checked' : ''} style="width:17px;height:17px;margin-top:3px;flex-shrink:0;cursor:pointer"
                            onchange="toggleMemoDone('${h(m.memo_id)}', this.checked)">
                     <div style="flex:1;min-width:0">
-                      <div style="font-size:15px;font-weight:700;color:var(--text-primary);line-height:1.35">${h(m.content)}</div>
-                      <div class="item-meta" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+                      <div style="font-size:15px;font-weight:700;color:${m.is_done ? 'var(--text-muted)' : 'var(--text-primary)'};${m.is_done ? 'text-decoration:line-through;' : ''}line-height:1.35">${h(m.content)}</div>
+                      <div class="item-meta" style="display:flex;justify-content:space-between;align-items:center;gap:4px;margin-top:4px">
                         <span>${h(m.source_tag || '備忘')}${m.due_date ? `・限 ${roc(m.due_date, { noYear: true })}` : ''}</span>
-                        <button type="button" class="btn-xs" style="padding:2px 6px" onclick="event.preventDefault();convertMemoToProject('${h(m.memo_id)}')">轉標案</button>
+                        <span style="display:inline-flex;align-items:center;gap:4px">
+                          ${!m.is_done ? `<button type="button" class="btn-xs" style="padding:2px 6px" onclick="convertMemoToProject('${h(m.memo_id)}')">轉標案</button>` : ''}
+                          <button type="button" class="ga-card-dismiss" title="刪除此筆交辦（支援 8 秒復原）" onclick="deleteMemo('${h(m.memo_id)}')">✕</button>
+                        </span>
                       </div>
                     </div>
-                  </label>
+                  </div>
                 </div>
               `).join('') : `
                 <div class="empty-state" style="margin:auto 0;padding:16px 8px">
-                  ✓ 目前沒有未完成交辦事項。<br>上方輸入框按 Enter 即可隨手記！
+                  ${dashState.showDoneMemos ? '尚無已完成之交辦紀錄。' : '✓ 目前沒有未完成交辦事項。<br>上方輸入框按 Enter 即可隨手記！'}
                 </div>
               `}
             </div>
@@ -1240,26 +1470,40 @@
   renderDashboardHTML = renderWarRoomDashboardHTML;
 
   // --------------------------------------------------------------------------
-  // 5. 路由整合：支援 GA_CORE 註冊之新模組分頁渲染與自動重繪
+  // 5. 路由整合：支援 GA_CORE 註冊之新模組分頁渲染與內部捲軸位置保留
   // --------------------------------------------------------------------------
+  let _lastViewKey = '';
   const _prevRenderCurrentView = renderCurrentView;
   renderCurrentView = function() {
     const tab = (typeof currentTab !== 'undefined' && currentTab) || 'dashboard';
-    document.body.dataset.udTab = tab;
+    const projKey = (typeof selectedProjectId !== 'undefined' && selectedProjectId) ? selectedProjectId : '';
+    const curViewKey = `${tab}:${projKey}`;
+    const main = document.getElementById('main-view');
 
-    // 確保遺留之 #ud-legacy-dash 永遠不存在
+    // 同視圖重繪（如勾選檢核項、切換篩選）時保留左右面板捲動位置，杜絕跳回頂端
+    const savedScrolls = (main && curViewKey === _lastViewKey)
+      ? [...main.querySelectorAll('.ga-pane-scroll, .ga-col-bd, .vb-card-grid, .saf-card-grid')].map(el => el.scrollTop)
+      : null;
+    _lastViewKey = curViewKey;
+
+    document.body.dataset.udTab = tab;
     document.getElementById('ud-legacy-dash')?.remove();
 
     const regMod = window.GA_CORE.getModule(tab);
     if (regMod && typeof regMod.renderView === 'function') {
-      // 先觸發一次外殼同步（但跳過舊預設視圖產生）
-      const main = document.getElementById('main-view');
       _prevRenderCurrentView();
       document.getElementById('ud-legacy-dash')?.remove();
       if (main) regMod.renderView(main);
     } else {
       _prevRenderCurrentView();
       document.getElementById('ud-legacy-dash')?.remove();
+    }
+
+    if (savedScrolls && main) {
+      const nextScrollables = [...main.querySelectorAll('.ga-pane-scroll, .ga-col-bd, .vb-card-grid, .saf-card-grid')];
+      savedScrolls.forEach((top, idx) => {
+        if (top > 0 && nextScrollables[idx]) nextScrollables[idx].scrollTop = top;
+      });
     }
 
     syncSidebarNavGroups();
@@ -1309,7 +1553,7 @@
   };
 
   if (window.GA_REGISTRY && typeof window.GA_REGISTRY.registerModule === 'function') {
-    window.GA_REGISTRY.registerModule('ui-declutter.js', 'v2.0', '07暖沙雙層黃金艙 × 05特大高清晰字級一屏戰情殼層');
+    window.GA_REGISTRY.registerModule('ui-declutter.js', 'v2.1', '07暖沙雙層黃金艙 × 05特大字級（卡片自由隱藏＋上網招標與小額分流）');
   }
 
   renderCurrentView();

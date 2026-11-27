@@ -79,7 +79,7 @@
     return '其他庶務採購';
   }
 
-  // 匯整雲端手動小額台帳 ＋ 正式標案自動勾稽列
+  // 匯整雲端手動小額台帳 ＋ 「小額／逕洽／共契契約」自動勾稽列（與上網公開招標案徹底分流！）
   function getUnifiedRecords(fiscalYear) {
     const fy = String(fiscalYear || state.fiscalYear);
     const manual = window.GA_CORE.extStore.list(MOD_KEY)
@@ -96,25 +96,31 @@
       .filter(p => !['廢標撤案'].includes(p.status) && String(p.fiscal_year || '') === fy && !linkedProjIds.has(p.project_id))
       .map(p => {
         const flg = parseJSON(p.flags_json, {});
-        const amt = Number(p.contract_amount) || Number(p.budget_amount) || 0;
-        const isMicro = amt > 0 && (amt <= 150000 || p.procurement_method === '逕行採購');
+        if (flg.exclude_from_sp_ledger) return null;
+        const isMicroProj = window.GA_CORE.isMicroPurchaseProject(p);
         const greenTrack = flg.green_track || (flg.is_green ? 'CERTIFIED' : 'NONE');
         const prioTrack = flg.priority_track || (flg.is_priority ? 'PRIORITY_ORG' : 'NONE');
-        if (!isMicro && greenTrack === 'NONE' && prioTrack === 'NONE') return null;
-        const dt = p.award_date || p.created_at?.slice(0, 10) || (typeof todayStr === 'function' ? todayStr() : '2026-11-26');
+        // 上網招標案不混入小額台帳（除非明確標記綠優採且使用者未隱藏）
+        if (!isMicroProj && greenTrack === 'NONE' && prioTrack === 'NONE') return null;
+
+        const amt = Number(p.award_amount) || Number(p.contract_amount) || Number(p.budget_amount) || 0;
+        const isCoSupply = String(p.award_method || '').includes('共同供應契約');
+        const countSec14 = flg.count_in_sec14 !== undefined ? !!flg.count_in_sec14 : (isMicroProj && !isCoSupply && amt <= 150000);
+        const dt = p.start_date || p.award_date || p.created_at?.slice(0, 10) || (typeof todayStr === 'function' ? todayStr() : '2026-11-26');
         return {
           id: `AUTO-${p.project_id}`,
           fiscal_year: fy,
-          purchase_date: dt.slice(0, 10),
+          purchase_date: String(dt).slice(0, 10),
           quarter: inferQuarter(dt),
           item_title: p.project_name,
           category: flg.sec14_category || inferProjectCategory(p),
-          vendor_name: p.vendor_name || '（標案決標廠商）',
+          vendor_name: p.vendor_name || (isMicroProj ? '（小額契約廠商）' : '（標案決標廠商）'),
           amount: amt,
-          count_in_sec14: isMicro,
+          count_in_sec14: countSec14,
+          is_micro_contract: isMicroProj,
           green_track: greenTrack,
           priority_track: prioTrack,
-          voucher_no: p.case_no || p.project_id,
+          voucher_no: (typeof formatProjectCaseNo === 'function' ? formatProjectCaseNo(p) : p.project_id),
           linked_project_id: p.project_id,
           source: 'PROJECT'
         };
@@ -328,11 +334,104 @@
 
   window.spDeleteRecord = async function(id, title) {
     if (String(id).startsWith('AUTO-')) {
-      toast('此筆由「採購與工程」標案自動勾稽產生，請至標案詳情修改');
+      const pid = String(id).replace(/^AUTO-/, '');
+      window.spOpenProjectTrackModal(pid);
       return;
     }
     if (state.editingId === id) state.editingId = '';
     await window.GA_CORE.extStore.remove(MOD_KEY, id, title || id);
+  };
+
+  window.spOpenMicroProjectWizard = function() {
+    if (typeof openProjectWizard !== 'function') return;
+    openProjectWizard();
+    setTimeout(() => {
+      const tierEl = document.getElementById('wiz-tier');
+      const awardEl = document.getElementById('wiz-award');
+      const maintChk = document.getElementById('flg-maint');
+      if (tierEl) {
+        tierEl.value = '小額(15萬以下)';
+        if (typeof refreshWizardAwardOptions === 'function') refreshWizardAwardOptions('逕洽');
+        if (typeof refreshWizardProjectId === 'function') refreshWizardProjectId();
+        if (typeof onWizardTierChange === 'function') onWizardTierChange();
+      }
+      if (awardEl) awardEl.value = '逕洽';
+      if (maintChk && !maintChk.checked) { maintChk.checked = true; if (typeof toggleMaintOptionsUI === 'function') toggleMaintOptionsUI(); }
+    }, 60);
+  };
+
+  window.spOpenProjectTrackModal = function(projectId) {
+    const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+    if (!p) return;
+    const flg = parseJSON(p.flags_json, {});
+    const curCat = flg.sec14_category || inferProjectCategory(p);
+    const curSec14 = flg.count_in_sec14 !== undefined ? !!flg.count_in_sec14 : true;
+    const curGreen = flg.green_track || (flg.is_green ? 'CERTIFIED' : 'NONE');
+    const curPrio = flg.priority_track || (flg.is_priority ? 'PRIORITY_ORG' : 'NONE');
+
+    openModal(`⚙️ 設定小額契約統計屬性：${p.project_name}`, `
+      <div class="form-grid">
+        <div class="field full">
+          <label>🛡️ 採購法 §14 同性質分類</label>
+          <select id="sp-pm-cat">${CATEGORIES.map(c => `<option value="${h(c)}" ${curCat === c ? 'selected' : ''}>${h(c)}</option>`).join('')}</select>
+        </div>
+        <div class="field full">
+          <label>🌿 綠色採購統計軌跡</label>
+          <select id="sp-pm-green">${GREEN_OPTIONS.map(o => `<option value="${o.value}" ${curGreen === o.value ? 'selected' : ''}>${h(o.label)}</option>`).join('')}</select>
+        </div>
+        <div class="field full">
+          <label>🤝 優先採購統計軌跡</label>
+          <select id="sp-pm-prio">${PRIO_OPTIONS.map(o => `<option value="${o.value}" ${curPrio === o.value ? 'selected' : ''}>${h(o.label)}</option>`).join('')}</select>
+        </div>
+        <div class="field full" style="flex-direction:row;align-items:center;gap:8px">
+          <input type="checkbox" id="sp-pm-sec14" ${curSec14 ? 'checked' : ''} style="width:18px;height:18px">
+          <label for="sp-pm-sec14" style="margin:0;font-size:14px;cursor:pointer">計入本年度 §14 同性質 15 萬元小額累計（若屬臺銀共同供應契約可取消勾選）</label>
+        </div>
+      </div>
+    `, `
+      <button type="button" class="btn-danger" style="margin-right:auto" onclick="spExcludeProjectFromLedger('${h(projectId)}')">✕ 從小額台帳隱藏此案</button>
+      <button type="button" onclick="closeModal()">取消</button>
+      <button type="button" class="btn-primary" onclick="spSaveProjectTrackModal('${h(projectId)}')">💾 儲存設定</button>
+    `);
+  };
+
+  window.spSaveProjectTrackModal = async function(projectId) {
+    const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+    if (!p) return;
+    const flg = {
+      ...parseJSON(p.flags_json, {}),
+      sec14_category: document.getElementById('sp-pm-cat')?.value || '其他庶務採購',
+      green_track: document.getElementById('sp-pm-green')?.value || 'NONE',
+      priority_track: document.getElementById('sp-pm-prio')?.value || 'NONE',
+      count_in_sec14: !!document.getElementById('sp-pm-sec14')?.checked,
+      exclude_from_sp_ledger: false
+    };
+    p.flags_json = JSON.stringify(flg);
+    p.updated_at = nowStr();
+    persistCache();
+    closeModal();
+    renderCurrentView();
+    await pushToCloud({ action: 'upsert', table: 'Projects', record: p });
+    toast('✅ 已更新此契約之 §14 與綠優採統計設定');
+  };
+
+  window.spExcludeProjectFromLedger = async function(projectId) {
+    const p = (appData.tables.Projects || []).find(x => x.project_id === projectId);
+    if (!p) return;
+    const prevJson = p.flags_json;
+    p.flags_json = JSON.stringify({ ...parseJSON(prevJson, {}), exclude_from_sp_ledger: true });
+    p.updated_at = nowStr();
+    persistCache();
+    closeModal();
+    renderCurrentView();
+    await pushToCloud({ action: 'upsert', table: 'Projects', record: p });
+    window.GA_CORE.pushUndoAction(`已從小額台帳隱藏「${String(p.project_name || '').slice(0, 14)}」`, async () => {
+      p.flags_json = prevJson;
+      p.updated_at = nowStr();
+      persistCache();
+      renderCurrentView();
+      await pushToCloud({ action: 'upsert', table: 'Projects', record: p });
+    });
   };
 
   window.exportStatutoryProcCSV = function(mode = 'ALL') {
@@ -357,7 +456,7 @@
         `"${String(r.green_mark_no || '').replace(/"/g, '""')}"`,
         PRIO_OPTIONS.find(o => o.value === r.priority_track)?.short || '非義務',
         `"${String(r.voucher_no || '').replace(/"/g, '""')}"`,
-        r.source === 'PROJECT' ? '標案自動匯總' : '小額自記帳'
+        r.source === 'PROJECT' ? '小額契約自動匯總' : '小額自記帳'
       ].join(','))
     ];
     const blob = new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -375,10 +474,13 @@
     const fyNow = new Date().getFullYear() - 1911;
     const years = [String(fyNow - 1), String(fyNow), String(fyNow + 1)];
     const st = calcStatutoryProcurementStats(state.fiscalYear);
+    const microContractsCount = st.records.filter(r => r.source === 'PROJECT').length;
 
     let filtered = st.records.slice();
     if (state.quarter !== 'ALL') filtered = filtered.filter(r => r.quarter === state.quarter);
-    if (state.filterTab === 'SEC14') {
+    if (state.filterTab === 'CONTRACTS') {
+      filtered = filtered.filter(r => r.source === 'PROJECT');
+    } else if (state.filterTab === 'SEC14') {
       const warnCats = new Set(st.catList.filter(c => c.sum >= 90000).map(c => c.category));
       filtered = filtered.filter(r => r.count_in_sec14 !== false && (warnCats.has(r.category) || r.amount >= 50000));
     } else if (state.filterTab === 'GREEN') {
@@ -434,7 +536,7 @@
           <section class="panel ga-pane">
             <div class="panel-hd" style="gap:8px;flex-wrap:wrap">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <h3>🧾 ${h(state.fiscalYear)} 年度小額與綠優採台帳</h3>
+                <h3>🧾 ${h(state.fiscalYear)} 年度小額採購・開口維護・綠優採台帳</h3>
                 <select aria-label="會計年度" onchange="spSetYear(this.value)" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border-strong,#D6CBB9);font-weight:700;font-size:14px">
                   ${years.map(y => `<option value="${y}" ${y === state.fiscalYear ? 'selected' : ''}>${y} 年度</option>`).join('')}
                 </select>
@@ -444,21 +546,23 @@
                 </select>
               </div>
               <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <button type="button" class="btn-sm" onclick="exportStatutoryProcCSV('GREEN')">🌿 匯出綠採申報表</button>
-                <button type="button" class="btn-sm" onclick="exportStatutoryProcCSV('PRIO')">🤝 匯出優採對帳表</button>
+                <button type="button" class="btn-sm btn-primary" onclick="spOpenMicroProjectWizard()" title="建立如飲水機/電梯/清潔等 15 萬以下分期履約小額契約">＋ 開小額分期契約</button>
+                <button type="button" class="btn-sm" onclick="exportStatutoryProcCSV('GREEN')">🌿 綠採CSV</button>
+                <button type="button" class="btn-sm" onclick="exportStatutoryProcCSV('PRIO')">🤝 優採CSV</button>
               </div>
             </div>
 
             <div class="sp-filter-bar">
               <div class="sp-tabs">
-                <button type="button" class="sp-tab ${state.filterTab === 'ALL' ? 'active' : ''}" onclick="spSetFilter('ALL')">全部紀錄 (${st.records.length})</button>
+                <button type="button" class="sp-tab ${state.filterTab === 'ALL' ? 'active' : ''}" onclick="spSetFilter('ALL')">全部小額 (${st.records.length})</button>
+                <button type="button" class="sp-tab ${state.filterTab === 'CONTRACTS' ? 'active' : ''}" onclick="spSetFilter('CONTRACTS')">🔧 小額分期契約 (${microContractsCount})</button>
                 <button type="button" class="sp-tab ${state.filterTab === 'SEC14' ? 'active' : ''}" onclick="spSetFilter('SEC14')">🛡️ §14 重點分類</button>
                 <button type="button" class="sp-tab ${state.filterTab === 'GREEN' ? 'active' : ''}" onclick="spSetFilter('GREEN')">🌿 綠採指定品</button>
                 <button type="button" class="sp-tab ${state.filterTab === 'PRIO' ? 'active' : ''}" onclick="spSetFilter('PRIO')">🤝 優採義務品</button>
               </div>
               <div class="sp-pager num-mono">
                 <button type="button" class="btn-xs" ${state.page <= 1 ? 'disabled' : ''} onclick="spSetPage(${state.page - 1})">◀</button>
-                <span>第 ${state.page} / ${totalPages} 頁</span>
+                <span>${state.page} / ${totalPages}</span>
                 <button type="button" class="btn-xs" ${state.page >= totalPages ? 'disabled' : ''} onclick="spSetPage(${state.page + 1})">▶</button>
               </div>
             </div>
@@ -468,11 +572,11 @@
                 <table class="sp-table">
                   <thead>
                     <tr>
-                      <th>日期／季度</th>
-                      <th>品項摘要與廠商（已自動匯總標案）</th>
+                      <th>日期</th>
+                      <th>小額品項／維護契約</th>
                       <th>§14 分類</th>
-                      <th>法定軌跡</th>
-                      <th style="text-align:right">核銷／決標金額</th>
+                      <th>軌跡</th>
+                      <th style="text-align:right">金額</th>
                       <th style="text-align:right">操作</th>
                     </tr>
                   </thead>
@@ -482,23 +586,24 @@
                       const pOpt = PRIO_OPTIONS.find(o => o.value === r.priority_track);
                       return `
                         <tr>
-                          <td class="num-mono" style="white-space:nowrap"><strong>${h(roc(r.purchase_date))}</strong><div class="item-meta">${h(r.quarter)}｜${h(r.voucher_no || '-')}</div></td>
+                          <td class="num-mono" style="white-space:nowrap"><strong>${h(roc(r.purchase_date))}</strong><div class="item-meta">${h(r.quarter)}${r.voucher_no && r.voucher_no !== '小額免編號' ? '｜' + h(r.voucher_no) : ''}</div></td>
                           <td>
-                            <div style="font-size:16px;font-weight:700;color:var(--text-primary,#1C1917)">${h(r.item_title)}</div>
-                            <div class="item-meta">${h(r.vendor_name || '未填廠商')} ${r.source === 'PROJECT' ? '<span class="tag tag-blue">標案自動帶入</span>' : ''}</div>
+                            <div style="font-size:15.5px;font-weight:700;color:var(--text-primary,#1C1917)">${h(r.item_title)}</div>
+                            <div class="item-meta">${h(r.vendor_name || '未填廠商')} ${r.source === 'PROJECT' ? '<span class="tag tag-blue">🔧 分期契約</span>' : ''} ${r.count_in_sec14 === false ? '<span class="tag tag-gray">免計§14</span>' : ''}</div>
                           </td>
                           <td style="white-space:nowrap"><span class="tag tag-gray">${h(r.category)}</span></td>
                           <td style="white-space:nowrap">
                             ${r.green_track && r.green_track !== 'NONE' ? `<span class="tag ${r.green_track === 'CERTIFIED' ? 'tag-green' : r.green_track === 'UNCERTIFIED' ? 'tag-red' : 'tag-gray'}">${h(gOpt?.short || '')}</span>` : ''}
                             ${r.priority_track && r.priority_track !== 'NONE' ? `<span class="tag ${r.priority_track === 'PRIORITY_ORG' ? 'tag-green' : 'tag-amber'}">${h(pOpt?.short || '')}</span>` : ''}
-                            ${(!r.green_track || r.green_track === 'NONE') && (!r.priority_track || r.priority_track === 'NONE') ? '<span style="color:var(--text-muted,#57534E);font-size:13px">一般小額</span>' : ''}
+                            ${(!r.green_track || r.green_track === 'NONE') && (!r.priority_track || r.priority_track === 'NONE') ? '<span style="color:var(--text-muted,#57534E);font-size:13px">小額</span>' : ''}
                           </td>
-                          <td class="num-mono" style="text-align:right;white-space:nowrap;font-size:16px;font-weight:800">${fmtMoney(r.amount)}</td>
+                          <td class="num-mono" style="text-align:right;white-space:nowrap;font-size:15.5px;font-weight:800">${fmtMoney(r.amount)}</td>
                           <td style="text-align:right;white-space:nowrap">
                             ${r.source === 'PROJECT'
-                              ? `<button type="button" class="btn-xs" onclick="openProjectDetail('${h(r.linked_project_id)}')">開啟標案 →</button>`
-                              : `<button type="button" class="btn-xs" onclick="spEditRecord('${h(r.id)}')">編輯</button>
-                                 <button type="button" class="btn-xs" onclick="spDeleteRecord('${h(r.id)}','${h(r.item_title)}')">刪除</button>`}
+                              ? `<button type="button" class="btn-xs btn-primary" onclick="openProjectDetail('${h(r.linked_project_id)}')">檢核</button>
+                                 <button type="button" class="btn-xs" title="設定分類、排除 §14 或從此表隱藏" onclick="spOpenProjectTrackModal('${h(r.linked_project_id)}')">✎</button>`
+                              : `<button type="button" class="btn-xs" onclick="spEditRecord('${h(r.id)}')">✎</button>
+                                 <button type="button" class="btn-xs" onclick="spDeleteRecord('${h(r.id)}','${h(r.item_title)}')">刪</button>`}
                           </td>
                         </tr>`;
                     }).join('')}
@@ -506,8 +611,8 @@
                 </table>
               ` : `
                 <div class="empty-state" style="padding:28px 16px">
-                  <div style="font-size:16px;font-weight:700;color:var(--text-primary,#1C1917);margin-bottom:6px">尚無符合條件之小額或綠優採紀錄</div>
-                  <div>於右側表單輸入日常小額請購（如冷氣維修、碳粉、餐盒、印刷），系統即自動累計 §14 同性質 15 萬上限並精算綠採／優採比率！</div>
+                  <div style="font-size:16px;font-weight:700;color:var(--text-primary,#1C1917);margin-bottom:6px">尚無符合條件之小額採購紀錄（上網招標案已分流至「🏛️ 招標採購履約」）</div>
+                  <div>日常單筆小額請於右側直接記帳；若為按月／按季分期核銷之小額契約（如飲水機保養），可點右上「＋ 開小額分期契約」！</div>
                 </div>
               `}
             </div>

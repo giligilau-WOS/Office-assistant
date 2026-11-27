@@ -388,9 +388,12 @@
         ? '今日截止'
         : `剩 ${daysLeft} 天`;
 
+      const alertKey = `${mod}::${a.badge || ''}::${a.title || ''}`;
+
       return {
         ...a,
         _idx: idx,
+        alertKey,
         module: mod,
         dueDate: dueYmd,
         rocDue,
@@ -415,7 +418,85 @@
       return x._idx - y._idx;
     });
 
-    return enriched;
+    const prefs = getUiPrefs();
+    const snoozedMap = prefs.snoozedAlerts || {};
+    const visible = enriched.filter(item => {
+      const until = snoozedMap[item.alertKey];
+      return !(until && until >= tdy);
+    });
+    visible._snoozedList = enriched.filter(item => {
+      const until = snoozedMap[item.alertKey];
+      return !!(until && until >= tdy);
+    });
+    return visible;
+  }
+
+  // --------------------------------------------------------------------------
+  // 3b. 「上網招標案」vs「小額採購／逕洽／共契」精準分流判別器 & 雲端偏好記憶 (uiPrefs)
+  // --------------------------------------------------------------------------
+  function isMicroPurchaseProject(p) {
+    if (!p) return false;
+    const flg = parseJSON(p.flags_json, {});
+    if (flg.proc_track === 'MICRO') return true;
+    if (flg.proc_track === 'TENDER') return false;
+    const aw = String(p.award_method || '');
+    const pm = String(p.procurement_method || '');
+    const tier = String(p.threshold_tier || '');
+    if (aw === '逕洽' || aw.includes('共同供應契約') || pm === '逕行採購') return true;
+    if (tier === '小額(15萬以下)' && !/公開招標|公開取得/.test(pm)) return true;
+    return false;
+  }
+
+  function isFormalTenderProject(p) {
+    return !!p && !isMicroPurchaseProject(p);
+  }
+
+  const UI_PREFS_LS_KEY = 'ga_ui_prefs_v3';
+  function getUiPrefs() {
+    const cloud = extStore.get('UI_PREFS', 'MAIN');
+    let local = null;
+    try { local = JSON.parse(localStorage.getItem(UI_PREFS_LS_KEY) || 'null'); } catch {}
+    const src = (cloud && local)
+      ? (String(cloud.updated_at || '') >= String(local.updated_at || '') ? cloud : local)
+      : (cloud || local || {});
+    return {
+      hiddenTiles: Array.isArray(src.hiddenTiles) ? src.hiddenTiles : [],
+      hiddenTabs: Array.isArray(src.hiddenTabs) ? src.hiddenTabs : [],
+      snoozedAlerts: (src.snoozedAlerts && typeof src.snoozedAlerts === 'object') ? src.snoozedAlerts : {},
+      dismissedPresets: Array.isArray(src.dismissedPresets) ? src.dismissedPresets : [],
+      updated_at: src.updated_at || ''
+    };
+  }
+
+  async function updateUiPrefs(patch, undoLabel = '') {
+    const prev = getUiPrefs();
+    const next = {
+      ...prev,
+      ...patch,
+      updated_at: typeof nowStr === 'function' ? nowStr() : new Date().toISOString().slice(0, 19).replace('T', ' ')
+    };
+    try { localStorage.setItem(UI_PREFS_LS_KEY, JSON.stringify(next)); } catch {}
+    await extStore.upsert('UI_PREFS', 'MAIN', next, '使用者卡片與模組顯示偏好', 'PREFS');
+    if (undoLabel) {
+      pushUndoAction(undoLabel, async () => {
+        try { localStorage.setItem(UI_PREFS_LS_KEY, JSON.stringify(prev)); } catch {}
+        await extStore.upsert('UI_PREFS', 'MAIN', prev, '使用者卡片與模組顯示偏好', 'PREFS');
+      });
+    }
+    return next;
+  }
+
+  async function snoozeAlertByKey(alertKey, titleLabel = '提醒', days = 7) {
+    const tdy = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10);
+    const until = typeof addDays === 'function' ? addDays(tdy, days) : tdy;
+    const prefs = getUiPrefs();
+    const nextMap = { ...(prefs.snoozedAlerts || {}), [alertKey]: until };
+    await updateUiPrefs({ snoozedAlerts: nextMap }, `已暫緩「${String(titleLabel).slice(0, 16)}」${days} 天`);
+  }
+
+  async function clearSnoozedAlerts() {
+    await updateUiPrefs({ snoozedAlerts: {} });
+    if (typeof toast === 'function') toast('🔔 已恢復顯示所有暫緩提醒');
   }
 
   // --------------------------------------------------------------------------
@@ -456,7 +537,7 @@
     if (typeof toast === 'function') toast('↩ 已復原剛才的操作');
   }
 
-  // 包裝 markRoutineDone 與 toggleMemoDone 補上 8 秒復原保護
+  // 包裝 markRoutineDone、toggleMemoDone、deleteMemo 與 deleteRoutine 補上 8 秒復原保護
   if (typeof window.markRoutineDone === 'function' && !window.markRoutineDone.__gaUndoWrapped) {
     const _origMarkRtn = window.markRoutineDone;
     const wrapped = async function(routineId, cycle) {
@@ -499,6 +580,52 @@
     };
     wrappedMemo.__gaUndoWrapped = true;
     window.toggleMemoDone = wrappedMemo;
+  }
+
+  if (typeof window.deleteMemo === 'function' && !window.deleteMemo.__gaUndoWrapped) {
+    const wrappedDelMemo = async function(memoId) {
+      const arr = appData?.tables?.Quick_Memos || [];
+      const existing = arr.find(x => x.memo_id === memoId);
+      if (!existing) return;
+      const backup = JSON.parse(JSON.stringify(existing));
+      appData.tables.Quick_Memos = arr.filter(x => x.memo_id !== memoId);
+      if (typeof persistCache === 'function') persistCache();
+      if (typeof renderCurrentView === 'function') renderCurrentView();
+      if (typeof pushToCloud === 'function') await pushToCloud({ action: 'softDelete', table: 'Quick_Memos', id: memoId });
+      pushUndoAction(`已刪除交辦「${String(backup.content || '').slice(0, 16)}」`, async () => {
+        backup.is_deleted = false;
+        backup.updated_at = nowStr();
+        upsertLocal('Quick_Memos', backup, 'memo_id');
+        if (typeof persistCache === 'function') persistCache();
+        if (typeof renderCurrentView === 'function') renderCurrentView();
+        if (typeof pushToCloud === 'function') await pushToCloud({ action: 'upsert', table: 'Quick_Memos', record: backup });
+      });
+    };
+    wrappedDelMemo.__gaUndoWrapped = true;
+    window.deleteMemo = wrappedDelMemo;
+  }
+
+  if (typeof window.deleteRoutine === 'function' && !window.deleteRoutine.__gaUndoWrapped) {
+    const wrappedDelRtn = async function(routineId) {
+      const arr = appData?.tables?.Annual_Routines || [];
+      const existing = arr.find(x => x.routine_id === routineId);
+      if (!existing) return;
+      const backup = JSON.parse(JSON.stringify(existing));
+      appData.tables.Annual_Routines = arr.filter(x => x.routine_id !== routineId);
+      if (typeof persistCache === 'function') persistCache();
+      if (typeof renderCurrentView === 'function') renderCurrentView();
+      if (typeof pushToCloud === 'function') await pushToCloud({ action: 'softDelete', table: 'Annual_Routines', id: routineId });
+      pushUndoAction(`已刪除例行事項「${String(backup.title || '').slice(0, 16)}」`, async () => {
+        backup.is_deleted = false;
+        backup.updated_at = nowStr();
+        upsertLocal('Annual_Routines', backup, 'routine_id');
+        if (typeof persistCache === 'function') persistCache();
+        if (typeof renderCurrentView === 'function') renderCurrentView();
+        if (typeof pushToCloud === 'function') await pushToCloud({ action: 'upsert', table: 'Annual_Routines', record: backup });
+      });
+    };
+    wrappedDelRtn.__gaUndoWrapped = true;
+    window.deleteRoutine = wrappedDelRtn;
   }
 
   // --------------------------------------------------------------------------
@@ -556,22 +683,25 @@
     const q = String(qRaw || '').trim().toLowerCase();
     const items = [
       { tag: '導覽', title: '📊 戰情總覽（07暖沙雙層黃金艙）', act: "closeModal();switchTab('dashboard')" },
-      { tag: '導覽', title: '🧾 小額與法定採購（§14防拆單／綠採95%／優採5%）', act: "closeModal();switchTab('statutory-proc')" },
+      { tag: '導覽', title: '🏛️ 上網招標採購履約（15萬以上公開取得／公開招標）', act: "closeModal();switchTab('projects')" },
+      { tag: '導覽', title: '🧾 小額與綠優採台帳（15萬以下逕洽／共契／分期維護／綠採／優採）', act: "closeModal();switchTab('statutory-proc')" },
       { tag: '導覽', title: '🏟️ 場地與教室借用看板（卡片式空間時段）', act: "closeModal();switchTab('venue-board')" },
       { tag: '導覽', title: '🛡️ 校園法定安檢合規證照牆', act: "closeModal();switchTab('safety-wall')" },
       { tag: '導覽', title: '📦 設備履歷與耗材安全庫存', act: "closeModal();switchTab('asset-inv')" },
+      { tag: '設定', title: '🎛️ 自訂首頁業務卡片與隱藏不用模組', act: "closeModal();if(window.openCustomizeCardsModal)openCustomizeCardsModal()" },
       { tag: '助手', title: '📝 開啟公文簽呈／驗收紀錄／催辦草稿助手', act: "closeModal();if(window.openDocCopilotModal)openDocCopilotModal()" },
       { tag: '精靈', title: '⚡ 開啟年末維護／委外契約批次續約精靈', act: "closeModal();if(window.openBatchRenewalModal)openBatchRenewalModal()" }
     ];
 
     (appData?.tables?.Projects || []).forEach(p => {
-      items.push({ tag: `標案 ${p.fiscal_year || ''}`, title: `${p.project_name}（${p.project_id}）`, act: `closeModal();openProjectDetail('${safeEsc(p.project_id)}')` });
+      const tag = isMicroPurchaseProject(p) ? `小額契約 ${p.fiscal_year || ''}` : `上網招標 ${p.fiscal_year || ''}`;
+      items.push({ tag, title: `${p.project_name}（${p.project_id}）`, act: `closeModal();openProjectDetail('${safeEsc(p.project_id)}')` });
     });
     (appData?.tables?.Annual_Routines || []).filter(r => r.is_active !== false).forEach(r => {
       items.push({ tag: '例行', title: r.title, act: `closeModal();switchTab('routines');if(window.selectSplitRoutine)window.selectSplitRoutine('${safeEsc(r.routine_id)}')` });
     });
     (appData?.tables?.Solar_Contracts || []).forEach(c => {
-      items.push({ tag: '太陽能', title: `${c.building_name}（${c.phase_label || c.solar_id}）`, act: `closeModal();switchTab('solar');if(typeof openSolarV2Detail==='function')openSolarV2Detail('${safeEsc(c.solar_id)}')` });
+      items.push({ tag: '太陽能', title: `${c.building_name}（${c.phase_label || c.solar_id}）`, act: `closeModal();switchTab('solar');if(typeof spvSelectSolar==='function')spvSelectSolar('${safeEsc(c.solar_id)}')` });
     });
 
     const filtered = items.filter(it => !q || `${it.tag} ${it.title}`.toLowerCase().includes(q)).slice(0, 18);
@@ -612,6 +742,12 @@
     parseFlexibleRocDate,
     formatSmartTitle,
     computeUnifiedUrgency,
+    isMicroPurchaseProject,
+    isFormalTenderProject,
+    getUiPrefs,
+    updateUiPrefs,
+    snoozeAlertByKey,
+    clearSnoozedAlerts,
     pushUndoAction,
     triggerUndo,
     getSchoolSeasonHint,
@@ -623,6 +759,6 @@
   };
 
   if (window.GA_REGISTRY && typeof window.GA_REGISTRY.registerModule === 'function') {
-    window.GA_REGISTRY.registerModule('ga-core-registry.js', 'v2.0', '核心插槽註冊器、雲端擴充倉儲與公文級工具底座');
+    window.GA_REGISTRY.registerModule('ga-core-registry.js', 'v2.1', '核心插槽註冊器、招標與小額分流器、卡片自訂記憶與復原底座');
   }
 })();

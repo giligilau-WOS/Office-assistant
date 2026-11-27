@@ -163,6 +163,8 @@
   // 【模組 F3】🛡️ 校園法定安檢合規證照牆 (safety-wall)
   // ==========================================================================
   const SAFETY_KEY = 'SAFETY_CERT';
+  const SAFETY_META_KEY = 'SAFETY_META';
+  const SAFETY_CUSTOM_KEY = 'SAFETY_CUSTOM';
   const STATUTORY_ITEMS = [
     { id: 'SAF-FIRE', icon: '🧯', name: '消防安全設備檢修申報', cycleLabel: '每年 1 次（5月底前）', law: '消防法第 9 條', matchRegex: /消防.*申報|消防.*檢修/ },
     { id: 'SAF-ELEC', icon: '⚡', name: '高低壓用電設備定期檢驗', cycleLabel: '每半年／每年定期停電檢驗', law: '電業法第 32 條', matchRegex: /高低壓|機電|用電.*檢/ },
@@ -176,16 +178,32 @@
 
   const safetyState = { selectedId: 'SAF-FIRE' };
 
-  function buildSafetyCards() {
+  function getHiddenSafetyIds() {
+    const meta = window.GA_CORE.extStore.get(SAFETY_META_KEY, 'MAIN') || {};
+    return new Set(Array.isArray(meta.hiddenIds) ? meta.hiddenIds : []);
+  }
+
+  function getAllSafetyItems(opts = {}) {
+    const custom = window.GA_CORE.extStore.list(SAFETY_CUSTOM_KEY).map(c => ({
+      ...c,
+      icon: c.icon || '🛡️',
+      matchRegex: null
+    }));
+    const hidden = getHiddenSafetyIds();
+    const all = [...STATUTORY_ITEMS, ...custom];
+    return opts.includeHidden ? all : all.filter(it => !hidden.has(it.id));
+  }
+
+  function buildSafetyCards(opts = {}) {
     const tdy = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10);
     const savedMap = Object.fromEntries(window.GA_CORE.extStore.list(SAFETY_KEY).map(x => [x.id, x]));
     const routines = ((typeof appData !== 'undefined' && appData?.tables?.Annual_Routines) || []).filter(r => r.is_active !== false);
 
-    return STATUTORY_ITEMS.map(item => {
+    return getAllSafetyItems(opts).map(item => {
       const saved = savedMap[item.id] || {};
       const linkedRtn = saved.linked_routine_id
         ? routines.find(r => r.routine_id === saved.linked_routine_id)
-        : routines.find(r => item.matchRegex.test(`${r.title || ''} ${r.note || ''}`));
+        : (item.matchRegex ? routines.find(r => item.matchRegex.test(`${r.title || ''} ${r.note || ''}`)) : null);
       const sch = (linkedRtn && typeof computeRoutineSchedule === 'function') ? computeRoutineSchedule(linkedRtn) : null;
       const expiryYmd = saved.expiry_date || sch?.dueDate || '';
       const dLeft = expiryYmd ? diffDays(tdy, expiryYmd) : null;
@@ -219,9 +237,75 @@
     renderCurrentView();
   };
 
+  window.safHideCard = async function(id, ev) {
+    if (ev) ev.stopPropagation();
+    const item = getAllSafetyItems({ includeHidden: true }).find(x => x.id === id);
+    const prevMeta = window.GA_CORE.extStore.get(SAFETY_META_KEY, 'MAIN') || { hiddenIds: [] };
+    const prevHidden = Array.isArray(prevMeta.hiddenIds) ? prevMeta.hiddenIds : [];
+    const nextHidden = [...new Set([...prevHidden, id])];
+    await window.GA_CORE.extStore.upsert(SAFETY_META_KEY, 'MAIN', { id: 'MAIN', hiddenIds: nextHidden }, '安檢牆列管項目設定', 'META');
+    window.GA_CORE.pushUndoAction(`已標記「${item?.name || id}」不適用並移出合規分母`, async () => {
+      await window.GA_CORE.extStore.upsert(SAFETY_META_KEY, 'MAIN', { id: 'MAIN', hiddenIds: prevHidden }, '安檢牆列管項目設定', 'META');
+    });
+  };
+
+  window.safOpenManageModal = function() {
+    const all = getAllSafetyItems({ includeHidden: true });
+    const hidden = getHiddenSafetyIds();
+    openModal('⚙️ 管理本處室列管之法定安檢卡片', `
+      <div class="gate-banner amber" style="margin-bottom:10px;font-size:14px">
+        💡 非本校設施（如無電梯、無遊戲場）或屬他處室主政之項目，取消勾選即不會顯示在安檢牆，也不會拉低戰情首頁「有效合規」分數！
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:330px;overflow-y:auto">
+        ${all.map(it => `
+          <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border-subtle,#E7DFD3);border-radius:8px;background:#fff;cursor:pointer;font-size:14.5px;font-weight:700">
+            <input type="checkbox" class="safm-chk" value="${h(it.id)}" ${hidden.has(it.id) ? '' : 'checked'} style="width:17px;height:17px">
+            <span>${it.icon} ${h(it.name)} <small style="color:#78716C;font-weight:500">（${h(it.law || '自訂')}）</small></span>
+          </label>
+        `).join('')}
+      </div>
+    `, `<button onclick="closeModal()">取消</button><button class="btn-primary" onclick="safSaveManagedCards()">💾 儲存列管清單</button>`);
+  };
+
+  window.safSaveManagedCards = async function() {
+    const all = getAllSafetyItems({ includeHidden: true });
+    const checked = new Set([...document.querySelectorAll('.safm-chk:checked')].map(c => c.value));
+    const hiddenIds = all.map(x => x.id).filter(id => !checked.has(id));
+    closeModal();
+    await window.GA_CORE.extStore.upsert(SAFETY_META_KEY, 'MAIN', { id: 'MAIN', hiddenIds }, '安檢牆列管項目設定', 'META');
+    toast(`✅ 已更新法定安檢牆（目前列管 ${checked.size} 項）`);
+  };
+
+  window.safOpenAddModal = function() {
+    openModal('＋ 新增自訂安檢或許可證卡片', `
+      <div class="form-grid">
+        <div class="field full"><label>安檢／證照名稱 *</label><input id="safc-name" type="text" placeholder="例：鍋爐安全檢查、樹木褐根病巡檢、室內空氣品質檢測"></div>
+        <div class="field"><label>法規依據或主管機關</label><input id="safc-law" type="text" placeholder="例：室內空氣品質管理法"></div>
+        <div class="field"><label>法定檢驗頻率說明</label><input id="safc-cycle" type="text" placeholder="例：每年 1 次"></div>
+      </div>
+    `, `<button onclick="closeModal()">取消</button><button class="btn-primary" onclick="safSaveCustomCard()">💾 新增卡片</button>`);
+  };
+
+  window.safSaveCustomCard = async function() {
+    const name = (document.getElementById('safc-name')?.value || '').trim();
+    if (!name) return toast('請輸入安檢項目名稱');
+    const id = window.GA_CORE.extStore.nextSeqId(SAFETY_CUSTOM_KEY, 'SAFC', 3);
+    const rec = {
+      id,
+      icon: '🛡️',
+      name,
+      law: (document.getElementById('safc-law')?.value || '自訂列管').trim(),
+      cycleLabel: (document.getElementById('safc-cycle')?.value || '定期檢驗').trim()
+    };
+    safetyState.selectedId = id;
+    closeModal();
+    await window.GA_CORE.extStore.upsert(SAFETY_CUSTOM_KEY, id, rec, `自訂安檢卡｜${name}`, id);
+    toast(`✅ 已新增「${name}」安檢卡`);
+  };
+
   window.safSaveCert = async function() {
     const id = safetyState.selectedId;
-    const item = STATUTORY_ITEMS.find(x => x.id === id);
+    const item = getAllSafetyItems({ includeHidden: true }).find(x => x.id === id);
     if (!item) return;
     const rawExp = (document.getElementById('saf-f-exp')?.value || '').trim();
     const expYmd = window.GA_CORE.parseFlexibleRocDate(rawExp) || rawExp;
@@ -240,7 +324,9 @@
 
   function renderSafetyWallView(container) {
     const cards = buildSafetyCards();
-    const cur = cards.find(c => c.id === safetyState.selectedId) || cards[0];
+    const hiddenCnt = getHiddenSafetyIds().size;
+    const cur = cards.find(c => c.id === safetyState.selectedId) || cards[0] || null;
+    if (cur) safetyState.selectedId = cur.id;
     const redCnt = cards.filter(c => c.statusTone === 'red').length;
     const ambCnt = cards.filter(c => c.statusTone === 'amber').length;
     const okCnt = cards.filter(c => c.statusTone === 'teal').length;
@@ -249,26 +335,31 @@
       <div class="ga-split-shell" id="saf-module-root">
         <div class="vb-top-bar">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span style="font-size:18px;font-weight:800;color:var(--brand-primary,#7C4A21)">🛡️ 校園八大法定安檢與許可證合規牆</span>
-            <span style="font-size:14px;color:var(--text-muted,#57534E)">自動勾稽「例行事務」申報週期，督學視導或開學前安檢一眼盤點</span>
+            <span style="font-size:18px;font-weight:800;color:var(--brand-primary,#7C4A21)">🛡️ 校園法定安檢與許可證合規牆</span>
+            <span class="tag tag-green">🟢 有效 ${okCnt}/${cards.length}</span>
+            ${ambCnt ? `<span class="tag tag-amber">🟡 30日內 ${ambCnt}</span>` : ''}
+            ${redCnt ? `<span class="tag tag-red">🔴 逾期 ${redCnt}</span>` : ''}
           </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span class="tag tag-green">🟢 有效 ${okCnt} 項</span>
-            ${ambCnt ? `<span class="tag tag-amber">🟡 30日內到期 ${ambCnt} 項</span>` : ''}
-            ${redCnt ? `<span class="tag tag-red">🔴 逾期需補辦 ${redCnt} 項</span>` : ''}
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <button type="button" class="btn-sm" onclick="safOpenManageModal()">⚙️ 管理／隱藏不適用卡${hiddenCnt ? ` (已藏${hiddenCnt})` : ''}</button>
+            <button type="button" class="btn-sm btn-primary" onclick="safOpenAddModal()">＋ 新增安檢卡</button>
           </div>
         </div>
 
         <div class="ga-split-body" style="grid-template-columns: minmax(0, 1.75fr) minmax(340px, 1fr)">
-          <!-- 左欄：4×2 八大法定安檢證照卡 -->
+          <!-- 左欄：法定安檢證照卡 -->
           <section class="panel ga-pane">
             <div class="saf-card-grid">
-              ${cards.map(c => `
-                <div class="vb-space-card state-${c.statusTone === 'red' ? 'locked' : c.statusTone === 'amber' ? 'booked' : 'free'} ${c.id === cur.id ? 'is-selected' : ''}"
+              ${cards.length ? cards.map(c => `
+                <div class="vb-space-card state-${c.statusTone === 'red' ? 'locked' : c.statusTone === 'amber' ? 'booked' : 'free'} ${cur && c.id === cur.id ? 'is-selected' : ''}"
                      onclick="safSelectCard('${h(c.id)}')">
                   <div class="vb-card-top">
                     <span class="vb-floor-pill">${h(c.law)}</span>
-                    <span class="tag ${c.statusTone === 'red' ? 'tag-red' : c.statusTone === 'amber' ? 'tag-amber' : c.statusTone === 'teal' ? 'tag-green' : 'tag-gray'}">${h(c.statusLabel)}</span>
+                    <div style="display:flex;align-items:center;gap:5px">
+                      <span class="tag ${c.statusTone === 'red' ? 'tag-red' : c.statusTone === 'amber' ? 'tag-amber' : c.statusTone === 'teal' ? 'tag-green' : 'tag-gray'}">${h(c.statusLabel)}</span>
+                      <button type="button" class="ga-card-dismiss" title="本校不適用或非本處室業務（點擊隱藏並移出合規分母）"
+                              onclick="safHideCard('${h(c.id)}', event)">✕</button>
+                    </div>
                   </div>
                   <div class="vb-card-title">${c.icon} ${h(c.name)}</div>
                   <div class="item-meta" style="font-size:13.5px;color:var(--text-secondary,#44403C)">法定頻率：${h(c.cycleLabel)}</div>
@@ -277,58 +368,66 @@
                     ${c.linkedRtn ? '<span class="tag tag-blue">已連動例行</span>' : ''}
                   </div>
                 </div>
-              `).join('')}
+              `).join('') : `
+                <div class="empty-state" style="grid-column:1 / -1">
+                  目前所有安檢卡片皆已設為隱藏。<br>
+                  <button type="button" class="btn-sm" style="margin-top:8px" onclick="safOpenManageModal()">⚙️ 重新勾選要列管的安檢卡</button>
+                </div>
+              `}
             </div>
           </section>
 
           <!-- 右欄：選中安檢項目之合格證字號／雲端歸檔／連動打卡 -->
           <section class="panel ga-pane">
-            <div class="panel-hd">
-              <h3>${cur.icon} ${h(cur.name)}</h3>
-            </div>
-            <div class="ga-pane-scroll" style="padding:12px 14px">
-              ${cur.linkedRtn ? `
-                <div style="padding:10px 12px;border-radius:10px;background:var(--brand-soft,#F5EDE3);border:1px solid var(--border-strong,#D6CBB9);margin-bottom:10px">
-                  <div style="font-size:13.5px;font-weight:700;color:var(--brand-primary,#7C4A21)">🔗 已自動勾稽例行事務：${h(cur.linkedRtn.title)}</div>
-                  <div class="item-meta" style="font-size:13px;margin-top:3px">本期應辦日：${h(roc(cur.sch?.dueDate))}（上次完成期別：${h(cur.linkedRtn.last_done_cycle || '尚無')}）</div>
-                  <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-                    <button type="button" class="btn-xs btn-primary" onclick="markRoutineDone('${h(cur.linkedRtn.routine_id)}','${h(cur.sch?.cycle || '')}')">✓ 完成本期申報打卡</button>
-                    ${cur.linkedRtn.portal_url ? `<a class="btn-xs" style="text-decoration:none;border:1px solid #D6CBB9;padding:4px 8px;border-radius:6px;background:#fff;color:#1C1917;font-weight:700" href="${h(cur.linkedRtn.portal_url)}" target="_blank" rel="noopener">🌐 開啟申報網站 ↗</a>` : ''}
+            ${cur ? `
+              <div class="panel-hd">
+                <h3>${cur.icon} ${h(cur.name)}</h3>
+                <button type="button" class="btn-xs" onclick="safHideCard('${h(cur.id)}')">✕ 標記不適用</button>
+              </div>
+              <div class="ga-pane-scroll" style="padding:12px 14px">
+                ${cur.linkedRtn ? `
+                  <div style="padding:10px 12px;border-radius:10px;background:var(--brand-soft,#F5EDE3);border:1px solid var(--border-strong,#D6CBB9);margin-bottom:10px">
+                    <div style="font-size:13.5px;font-weight:700;color:var(--brand-primary,#7C4A21)">🔗 已自動勾稽例行事務：${h(cur.linkedRtn.title)}</div>
+                    <div class="item-meta" style="font-size:13px;margin-top:3px">本期應辦日：${h(roc(cur.sch?.dueDate))}（上次完成期別：${h(cur.linkedRtn.last_done_cycle || '尚無')}）</div>
+                    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+                      <button type="button" class="btn-xs btn-primary" onclick="markRoutineDone('${h(cur.linkedRtn.routine_id)}','${h(cur.sch?.cycle || '')}')">✓ 完成本期申報打卡</button>
+                      ${cur.linkedRtn.portal_url ? `<a class="btn-xs" style="text-decoration:none;border:1px solid #D6CBB9;padding:4px 8px;border-radius:6px;background:#fff;color:#1C1917;font-weight:700" href="${h(cur.linkedRtn.portal_url)}" target="_blank" rel="noopener">🌐 開啟申報網站 ↗</a>` : ''}
+                    </div>
+                  </div>
+                ` : ''}
+
+                <div class="form-grid">
+                  <div class="field full">
+                    <label>合格證字號／申報受理文號</label>
+                    <input id="saf-f-cert" type="text" value="${h(cur.saved.cert_no || '')}" placeholder="例：高市消安字第 11500XXXX 號">
+                  </div>
+                  <div class="field">
+                    <label>最近檢測日期</label>
+                    <input id="saf-f-last" type="date" value="${h(cur.saved.last_check_date || '')}">
+                  </div>
+                  <div class="field">
+                    <label>有效期限／下次應檢日</label>
+                    <input id="saf-f-exp" type="date" value="${h(cur.expiryYmd || '')}">
+                  </div>
+                  <div class="field full">
+                    <label>委外專業檢測機構／機電技師</label>
+                    <input id="saf-f-insp" type="text" value="${h(cur.saved.inspector || '')}" placeholder="例：○○消防設備師事務所／○○機電顧問">
+                  </div>
+                  <div class="field full">
+                    <label>合格證書／檢驗報告雲端連結 (Google Drive)</label>
+                    <input id="saf-f-url" type="url" value="${h(cur.saved.drive_url || '')}" placeholder="https://drive.google.com/...">
+                  </div>
+                  <div class="field full">
+                    <label>複查缺失改善或備註</label>
+                    <textarea id="saf-f-note" rows="2" placeholder="記錄缺失改善期限或檢查重點...">${h(cur.saved.note || '')}</textarea>
                   </div>
                 </div>
-              ` : ''}
-
-              <div class="form-grid">
-                <div class="field full">
-                  <label>合格證字號／申報受理文號</label>
-                  <input id="saf-f-cert" type="text" value="${h(cur.saved.cert_no || '')}" placeholder="例：高市消安字第 11500XXXX 號">
-                </div>
-                <div class="field">
-                  <label>最近檢測日期</label>
-                  <input id="saf-f-last" type="date" value="${h(cur.saved.last_check_date || '')}">
-                </div>
-                <div class="field">
-                  <label>有效期限／下次應檢日</label>
-                  <input id="saf-f-exp" type="date" value="${h(cur.expiryYmd || '')}">
-                </div>
-                <div class="field full">
-                  <label>委外專業檢測機構／機電技師</label>
-                  <input id="saf-f-insp" type="text" value="${h(cur.saved.inspector || '')}" placeholder="例：○○消防設備師事務所／○○機電顧問">
-                </div>
-                <div class="field full">
-                  <label>合格證書／檢驗報告雲端連結 (Google Drive)</label>
-                  <input id="saf-f-url" type="url" value="${h(cur.saved.drive_url || '')}" placeholder="https://drive.google.com/...">
-                </div>
-                <div class="field full">
-                  <label>複查缺失改善或備註</label>
-                  <textarea id="saf-f-note" rows="2" placeholder="記錄缺失改善期限或檢查重點...">${h(cur.saved.note || '')}</textarea>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+                  ${cur.saved.drive_url ? `<a href="${h(cur.saved.drive_url)}" target="_blank" rel="noopener" style="font-size:14px;font-weight:700;color:var(--brand-primary,#7C4A21)">📂 開啟證書掃描檔 ↗</a>` : '<span></span>'}
+                  <button type="button" class="btn-primary" onclick="safSaveCert()">💾 儲存證照紀錄</button>
                 </div>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
-                ${cur.saved.drive_url ? `<a href="${h(cur.saved.drive_url)}" target="_blank" rel="noopener" style="font-size:14px;font-weight:700;color:var(--brand-primary,#7C4A21)">📂 開啟證書掃描檔 ↗</a>` : '<span></span>'}
-                <button type="button" class="btn-primary" onclick="safSaveCert()">💾 儲存證照紀錄</button>
-              </div>
-            </div>
+            ` : '<div class="empty-state">請選擇左側安檢項目</div>'}
           </section>
         </div>
       </div>
@@ -340,7 +439,7 @@
     title: '法定安檢牆',
     navGroup: 'ops',
     icon: '🛡️',
-    version: 'v2.0',
+    version: 'v2.1',
     getSummaryTile() {
       const cards = buildSafetyCards();
       const redCount = cards.filter(c => c.statusTone === 'red').length;
@@ -358,7 +457,7 @@
         amberCount,
         subText: nextDue
           ? `最近：${nextDue.name.slice(0, 6)}（${nextDue.dLeft < 0 ? `逾期${Math.abs(nextDue.dLeft)}天` : `剩${nextDue.dLeft}天`}）`
-          : '8 大校園法定申報集中列管'
+          : '可自由隱藏不適用項目'
       };
     },
     renderView: renderSafetyWallView
@@ -368,20 +467,27 @@
   // 【模組 F4】📦 設備履歷與耗材安全庫存 (asset-inv)
   // ==========================================================================
   const ASSET_KEY = 'ASSET_INV';
+  const ASSET_META_KEY = 'ASSET_META';
   const DEFAULT_ASSETS = [
-    { id: 'AST-0001', kind: '設備履歷', name: '全校冰溫熱飲水機', location: '各樓層走廊及辦公室', qty: 16, safety_qty: 16, unit: '台', note: '每季抽驗 1/4 台水質並更換濾心' },
-    { id: 'AST-0002', kind: '設備履歷', name: '無障礙昇降機（電梯）', location: '主校舍東側 A 梯旁', qty: 1, safety_qty: 1, unit: '座', note: '每月定期保養並簽認紀錄表' },
-    { id: 'AST-0003', kind: '庶務耗材', name: '公廁大捲筒衛生紙＆洗手乳', location: '總務處儲藏室', qty: 6, safety_qty: 5, unit: '箱', note: '建議優先採購環保標章／庇護工場品項' },
-    { id: 'AST-0004', kind: '庶務耗材', name: '行政辦公室 A4 環保影印紙', location: '總務處器材室', qty: 8, safety_qty: 6, unit: '箱', note: '具環保標章（計入綠採分子）' }
+    { id: 'AST-0001', kind: '設備履歷', name: '全校冰溫熱飲水機', location: '各樓層走廊及辦公室', qty: 16, safety_qty: 16, unit: '台', note: '每季抽驗 1/4 台水質並更換濾心', is_sample: true },
+    { id: 'AST-0002', kind: '設備履歷', name: '無障礙昇降機（電梯）', location: '主校舍東側 A 梯旁', qty: 1, safety_qty: 1, unit: '座', note: '每月定期保養並簽認紀錄表', is_sample: true },
+    { id: 'AST-0003', kind: '庶務耗材', name: '公廁大捲筒衛生紙＆洗手乳', location: '總務處儲藏室', qty: 6, safety_qty: 5, unit: '箱', note: '建議優先採購環保標章／庇護工場品項', is_sample: true },
+    { id: 'AST-0004', kind: '庶務耗材', name: '行政辦公室 A4 環保影印紙', location: '總務處器材室', qty: 8, safety_qty: 6, unit: '箱', note: '具環保標章（計入綠採分子）', is_sample: true }
   ];
 
   const assetState = { filter: 'ALL', editingId: '' };
 
+  function getDeletedAssetIds() {
+    const meta = window.GA_CORE.extStore.get(ASSET_META_KEY, 'MAIN') || {};
+    return new Set(Array.isArray(meta.deletedIds) ? meta.deletedIds : []);
+  }
+
   function getAssetsList() {
     const saved = window.GA_CORE.extStore.list(ASSET_KEY);
-    if (!saved.length) return DEFAULT_ASSETS;
+    const deleted = getDeletedAssetIds();
     const savedIds = new Set(saved.map(x => x.id));
-    return [...saved, ...DEFAULT_ASSETS.filter(d => !savedIds.has(d.id))];
+    const defaultsLeft = DEFAULT_ASSETS.filter(d => !savedIds.has(d.id) && !deleted.has(d.id));
+    return [...saved.filter(x => !deleted.has(x.id)), ...defaultsLeft];
   }
 
   window.astSelectEdit = function(id) {
@@ -394,12 +500,43 @@
     renderCurrentView();
   };
 
+  window.astDeleteItem = async function(id, name) {
+    if (assetState.editingId === id) assetState.editingId = '';
+    const isDefault = DEFAULT_ASSETS.some(d => d.id === id);
+    const existingSaved = window.GA_CORE.extStore.get(ASSET_KEY, id);
+    if (isDefault) {
+      const prevMeta = window.GA_CORE.extStore.get(ASSET_META_KEY, 'MAIN') || { deletedIds: [] };
+      const prevDel = Array.isArray(prevMeta.deletedIds) ? prevMeta.deletedIds : [];
+      const nextDel = [...new Set([...prevDel, id])];
+      await window.GA_CORE.extStore.upsert(ASSET_META_KEY, 'MAIN', { id: 'MAIN', deletedIds: nextDel }, '設備耗材隱藏預設項', 'META');
+      if (existingSaved) {
+        await window.GA_CORE.extStore.remove(ASSET_KEY, id, name);
+      } else {
+        window.GA_CORE.pushUndoAction(`已移除預設項目「${name}」`, async () => {
+          await window.GA_CORE.extStore.upsert(ASSET_META_KEY, 'MAIN', { id: 'MAIN', deletedIds: prevDel }, '設備耗材隱藏預設項', 'META');
+        });
+      }
+    } else {
+      await window.GA_CORE.extStore.remove(ASSET_KEY, id, name);
+    }
+  };
+
+  window.astClearAllSamples = async function() {
+    const prevMeta = window.GA_CORE.extStore.get(ASSET_META_KEY, 'MAIN') || { deletedIds: [] };
+    const prevDel = Array.isArray(prevMeta.deletedIds) ? prevMeta.deletedIds : [];
+    const nextDel = [...new Set([...prevDel, ...DEFAULT_ASSETS.map(d => d.id)])];
+    await window.GA_CORE.extStore.upsert(ASSET_META_KEY, 'MAIN', { id: 'MAIN', deletedIds: nextDel }, '設備耗材隱藏預設項', 'META');
+    window.GA_CORE.pushUndoAction('已清空 4 筆預設範例資料', async () => {
+      await window.GA_CORE.extStore.upsert(ASSET_META_KEY, 'MAIN', { id: 'MAIN', deletedIds: prevDel }, '設備耗材隱藏預設項', 'META');
+    });
+  };
+
   window.astAdjustQty = async function(id, delta) {
     const list = getAssetsList();
     const cur = list.find(x => x.id === id);
     if (!cur) return;
     const nextQty = Math.max(0, (Number(cur.qty) || 0) + delta);
-    const updated = { ...cur, qty: nextQty };
+    const updated = { ...cur, qty: nextQty, is_sample: false };
     await window.GA_CORE.extStore.upsert(ASSET_KEY, id, updated, `${updated.kind}｜${updated.name} (${nextQty}${updated.unit})`, updated.kind);
     if (updated.kind === '設備履歷' && updated.linked_project_id) {
       toast(`⚠️ 設備數量已變更為 ${nextQty} ${updated.unit}！請確認關聯維護標案（${updated.linked_project_id}）各期保養金額是否需契約變更`);
@@ -423,9 +560,16 @@
       safety_qty: Number(document.getElementById('ast-f-safe')?.value || 0),
       unit: (document.getElementById('ast-f-unit')?.value || '件').trim(),
       linked_project_id: document.getElementById('ast-f-proj')?.value || '',
-      note: (document.getElementById('ast-f-note')?.value || '').trim()
+      note: (document.getElementById('ast-f-note')?.value || '').trim(),
+      is_sample: false
     };
     assetState.editingId = '';
+    // 若先前被標記刪除，解除刪除標記
+    const delSet = getDeletedAssetIds();
+    if (delSet.has(id)) {
+      delSet.delete(id);
+      await window.GA_CORE.extStore.upsert(ASSET_META_KEY, 'MAIN', { id: 'MAIN', deletedIds: [...delSet] }, '設備耗材隱藏預設項', 'META');
+    }
     await window.GA_CORE.extStore.upsert(ASSET_KEY, id, rec, `${rec.kind}｜${rec.name} (${rec.qty}${rec.unit})`, rec.kind);
     if (prev && prev.qty !== qty && rec.linked_project_id) {
       toast(`💡 貼心提醒：「${rec.name}」數量由 ${prev.qty} 變更為 ${qty}，請同步檢視關聯維護契約單價！`);
@@ -436,6 +580,7 @@
 
   function renderAssetInvView(container) {
     const all = getAssetsList();
+    const hasSamples = all.some(a => a.is_sample);
     const lowStock = all.filter(a => a.kind === '庶務耗材' && Number(a.qty) <= Number(a.safety_qty || 0));
     let shown = all;
     if (assetState.filter === 'EQUIP') shown = all.filter(a => a.kind === '設備履歷');
@@ -450,11 +595,12 @@
         <div class="vb-top-bar">
           <div>
             <span style="font-size:18px;font-weight:800;color:var(--brand-primary,#7C4A21)">📦 重要設備履歷與庶務耗材安全庫存</span>
-            <span style="font-size:14px;color:var(--text-muted,#57534E);margin-left:8px">設備數量異動自動提醒維護契約變更・低庫存耗材一鍵銜接小額綠優採</span>
+            <span style="font-size:14px;color:var(--text-muted,#57534E);margin-left:8px">用不到的預設範例可直接刪除，不會自動復活</span>
           </div>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span class="tag tag-blue">列管 ${all.length} 項</span>
-            ${lowStock.length ? `<span class="tag tag-amber">⚠️ 低於安全庫存 ${lowStock.length} 項</span>` : '<span class="tag tag-green">庫存充足 ✓</span>'}
+            ${lowStock.length ? `<span class="tag tag-amber">⚠️ 待補貨 ${lowStock.length} 項</span>` : '<span class="tag tag-green">庫存充足 ✓</span>'}
+            ${hasSamples ? `<button type="button" class="btn-xs" onclick="astClearAllSamples()">🧹 一鍵清空預設範例</button>` : ''}
           </div>
         </div>
 
@@ -469,36 +615,39 @@
               </div>
             </div>
             <div class="ga-pane-scroll">
-              <table class="sp-table">
-                <thead><tr><th>類別</th><th>設備／耗材名稱與放置地點</th><th>目前數量 / 安全水位</th><th>連動維護標案</th><th style="text-align:right">快速盤點</th></tr></thead>
-                <tbody>
-                  ${shown.map(a => {
-                    const isLow = a.kind === '庶務耗材' && Number(a.qty) <= Number(a.safety_qty || 0);
-                    return `
-                      <tr>
-                        <td><span class="tag ${a.kind === '設備履歷' ? 'tag-blue' : 'tag-amber'}">${h(a.kind)}</span></td>
-                        <td>
-                          <div style="font-size:16px;font-weight:700">${h(a.name)}</div>
-                          <div class="item-meta">📍 ${h(a.location || '-')}｜${h(a.note || '')}</div>
-                        </td>
-                        <td class="num-mono" style="white-space:nowrap;font-size:15px;font-weight:800">
-                          <span style="color:${isLow ? '#DC2626' : '#1C1917'}">${a.qty} ${h(a.unit)}</span>
-                          ${a.kind === '庶務耗材' ? `<span class="item-meta">（安全量 ${a.safety_qty}）</span>` : ''}
-                          ${isLow ? '<div><span class="tag tag-red">建議請購補貨</span></div>' : ''}
-                        </td>
-                        <td style="white-space:nowrap">
-                          ${a.linked_project_id ? `<button type="button" class="btn-xs" onclick="openProjectDetail('${h(a.linked_project_id)}')">🔗 ${h(a.linked_project_id)}</button>` : '<span class="item-meta">未綁定</span>'}
-                        </td>
-                        <td style="text-align:right;white-space:nowrap">
-                          <button type="button" class="btn-xs" onclick="astAdjustQty('${h(a.id)}', -1)">－1</button>
-                          <button type="button" class="btn-xs" onclick="astAdjustQty('${h(a.id)}', 1)">＋1</button>
-                          <button type="button" class="btn-xs" onclick="astSelectEdit('${h(a.id)}')">編輯</button>
-                        </td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
+              ${shown.length ? `
+                <table class="sp-table">
+                  <thead><tr><th>類別</th><th>設備／耗材名稱與放置地點</th><th>目前數量</th><th>連動維護契約</th><th style="text-align:right">盤點與刪除</th></tr></thead>
+                  <tbody>
+                    ${shown.map(a => {
+                      const isLow = a.kind === '庶務耗材' && Number(a.qty) <= Number(a.safety_qty || 0);
+                      return `
+                        <tr>
+                          <td><span class="tag ${a.kind === '設備履歷' ? 'tag-blue' : 'tag-amber'}">${h(a.kind)}</span></td>
+                          <td>
+                            <div style="font-size:16px;font-weight:700">${h(a.name)} ${a.is_sample ? '<span class="tag tag-gray">範例</span>' : ''}</div>
+                            <div class="item-meta">📍 ${h(a.location || '-')}｜${h(a.note || '')}</div>
+                          </td>
+                          <td class="num-mono" style="white-space:nowrap;font-size:15px;font-weight:800">
+                            <span style="color:${isLow ? '#DC2626' : '#1C1917'}">${a.qty} ${h(a.unit)}</span>
+                            ${a.kind === '庶務耗材' ? `<span class="item-meta">（安全量 ${a.safety_qty}）</span>` : ''}
+                            ${isLow ? '<div><span class="tag tag-red">建議補貨</span></div>' : ''}
+                          </td>
+                          <td style="white-space:nowrap">
+                            ${a.linked_project_id ? `<button type="button" class="btn-xs" onclick="openProjectDetail('${h(a.linked_project_id)}')">🔗 ${h(a.linked_project_id)}</button>` : '<span class="item-meta">未綁定</span>'}
+                          </td>
+                          <td style="text-align:right;white-space:nowrap">
+                            <button type="button" class="btn-xs" onclick="astAdjustQty('${h(a.id)}', -1)">－1</button>
+                            <button type="button" class="btn-xs" onclick="astAdjustQty('${h(a.id)}', 1)">＋1</button>
+                            <button type="button" class="btn-xs" onclick="astSelectEdit('${h(a.id)}')">✎</button>
+                            <button type="button" class="btn-xs" title="刪除此項目（可復原）" onclick="astDeleteItem('${h(a.id)}','${h(a.name)}')">🗑️</button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              ` : '<div class="empty-state">尚無列管之設備或耗材，可由右側表單自由新增。</div>'}
             </div>
           </section>
 
@@ -564,7 +713,7 @@
     title: '設備與耗材',
     navGroup: 'assets',
     icon: '📦',
-    version: 'v2.0',
+    version: 'v2.1',
     renderView: renderAssetInvView
   });
 })();

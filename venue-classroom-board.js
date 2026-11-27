@@ -38,21 +38,34 @@
 
   const CATEGORIES = ['全部空間', '只看使用中', '戶外與球場', '1F 教室與空間', '2F–3F 普通教室', '專科與會議室'];
 
+  const SPACE_META_KEY = 'VENUE_META';
+
   const state = {
     viewDate: typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10),
     category: '全部空間',
     page: 1,
     rightTab: 'BOOK_FORM', // BOOK_FORM | DAY_LIST
-    selectedSpaceIds: ['SP-GYM'],
+    selectedSpaceIds: [],
     editingBookingId: ''
   };
 
   const h = s => (typeof esc === 'function' ? esc(s) : String(s ?? ''));
   const roc = (ymd, opts) => window.GA_CORE.formatRocDate(ymd, opts);
 
-  function getAllSpaces() {
-    const custom = window.GA_CORE.extStore.list(CUSTOM_SPACE_KEY);
-    return [...DEFAULT_SPACES, ...custom];
+  function getHiddenSpaceIds() {
+    const meta = window.GA_CORE.extStore.get(SPACE_META_KEY, 'MAIN') || {};
+    return new Set(Array.isArray(meta.hiddenIds) ? meta.hiddenIds : []);
+  }
+
+  function getAllSpaces(opts = {}) {
+    const customList = window.GA_CORE.extStore.list(CUSTOM_SPACE_KEY);
+    const customById = Object.fromEntries(customList.map(c => [c.id, c]));
+    const hidden = getHiddenSpaceIds();
+    const merged = DEFAULT_SPACES.map(d => customById[d.id] ? { ...d, ...customById[d.id] } : d);
+    customList.forEach(c => {
+      if (!DEFAULT_SPACES.some(d => d.id === c.id)) merged.push(c);
+    });
+    return opts.includeHidden ? merged : merged.filter(sp => !hidden.has(sp.id));
   }
 
   function getAllBookings() {
@@ -218,19 +231,73 @@
   };
 
   window.vbToggleSpaceSelect = function(spaceId, multi = false) {
+    if (!spaceId) {
+      state.selectedSpaceIds = [];
+      renderCurrentView();
+      return;
+    }
     if (multi) {
       if (state.selectedSpaceIds.includes(spaceId)) {
-        if (state.selectedSpaceIds.length > 1) {
-          state.selectedSpaceIds = state.selectedSpaceIds.filter(x => x !== spaceId);
-        }
+        state.selectedSpaceIds = state.selectedSpaceIds.filter(x => x !== spaceId);
       } else {
         state.selectedSpaceIds = [...state.selectedSpaceIds, spaceId];
       }
     } else {
-      state.selectedSpaceIds = [spaceId];
+      if (state.selectedSpaceIds.length === 1 && state.selectedSpaceIds[0] === spaceId) {
+        state.selectedSpaceIds = [];
+      } else {
+        state.selectedSpaceIds = [spaceId];
+      }
     }
     state.rightTab = 'BOOK_FORM';
     renderCurrentView();
+  };
+
+  window.vbHideSpaceCard = async function(spaceId, ev) {
+    if (ev) ev.stopPropagation();
+    const all = getAllSpaces({ includeHidden: true });
+    const sp = all.find(s => s.id === spaceId);
+    const prevMeta = window.GA_CORE.extStore.get(SPACE_META_KEY, 'MAIN') || { hiddenIds: [] };
+    const prevHidden = Array.isArray(prevMeta.hiddenIds) ? prevMeta.hiddenIds : [];
+    const nextHidden = [...new Set([...prevHidden, spaceId])];
+    state.selectedSpaceIds = state.selectedSpaceIds.filter(id => id !== spaceId);
+    await window.GA_CORE.extStore.upsert(SPACE_META_KEY, 'MAIN', { id: 'MAIN', hiddenIds: nextHidden }, '場地卡片顯示設定', 'META');
+    window.GA_CORE.pushUndoAction(`已隱藏用不到的卡片「${sp?.name || spaceId}」`, async () => {
+      await window.GA_CORE.extStore.upsert(SPACE_META_KEY, 'MAIN', { id: 'MAIN', hiddenIds: prevHidden }, '場地卡片顯示設定', 'META');
+    });
+  };
+
+  window.vbOpenManageSpacesModal = function() {
+    const all = getAllSpaces({ includeHidden: true });
+    const hidden = getHiddenSpaceIds();
+    openModal('⚙️ 批次勾選要顯示的場地與教室卡片', `
+      <div class="gate-banner amber" style="margin-bottom:10px;font-size:14px">
+        💡 平時不開放外借或用不到的教室／專科空間，取消勾選即可從看板收起來（隨時可再打開）！
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <button type="button" class="btn-xs" onclick="document.querySelectorAll('.vbm-chk').forEach(c=>c.checked=true)">✓ 全部顯示</button>
+        <button type="button" class="btn-xs" onclick="document.querySelectorAll('.vbm-chk').forEach(c=>{c.checked=(c.dataset.cat==='戶外與球場')})">🏟️ 只留戶外與球場</button>
+        <button type="button" class="btn-xs" onclick="document.querySelectorAll('.vbm-chk').forEach(c=>c.checked=false)">✕ 全部取消</button>
+      </div>
+      <div style="max-height:330px;overflow-y:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">
+        ${all.map(sp => `
+          <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-subtle,#E7DFD3);border-radius:8px;background:#fff;cursor:pointer;font-size:14px;font-weight:700">
+            <input type="checkbox" class="vbm-chk" value="${h(sp.id)}" data-cat="${h(sp.category)}" ${hidden.has(sp.id) ? '' : 'checked'} style="width:17px;height:17px">
+            <span>${h(sp.name)} <small style="color:#78716C;font-weight:500">(${h(sp.floor)})</small></span>
+          </label>
+        `).join('')}
+      </div>
+    `, `<button onclick="closeModal()">取消</button><button class="btn-primary" onclick="vbSaveManagedSpaces()">💾 儲存顯示清單</button>`);
+  };
+
+  window.vbSaveManagedSpaces = async function() {
+    const all = getAllSpaces({ includeHidden: true });
+    const checked = new Set([...document.querySelectorAll('.vbm-chk:checked')].map(c => c.value));
+    const hiddenIds = all.map(s => s.id).filter(id => !checked.has(id));
+    state.selectedSpaceIds = state.selectedSpaceIds.filter(id => checked.has(id));
+    closeModal();
+    await window.GA_CORE.extStore.upsert(SPACE_META_KEY, 'MAIN', { id: 'MAIN', hiddenIds }, '場地卡片顯示設定', 'META');
+    toast(`✅ 已更新場地看板（目前顯示 ${checked.size} 張卡片）`);
   };
 
   window.vbApplySlotPreset = function(s, e) {
@@ -253,7 +320,7 @@
 
     if (!eventTitle) return toast('請輸入活動／借用事由名稱');
     if (!unit) return toast('請輸入借用單位或申請人');
-    if (!state.selectedSpaceIds.length) return toast('請至少點選左側 1 張空間／教室卡片');
+    if (!state.selectedSpaceIds.length) return toast('請先點選左側至少 1 張要借用的空間／教室卡片');
 
     const chk = checkVenueTimeConflict(state.selectedSpaceIds, ymd, startTime, endTime, state.editingBookingId);
     if (!chk.ok) {
@@ -261,7 +328,7 @@
       return;
     }
 
-    const spacesById = Object.fromEntries(getAllSpaces().map(s => [s.id, s]));
+    const spacesById = Object.fromEntries(getAllSpaces({ includeHidden: true }).map(s => [s.id, s]));
     const batchGroupId = `GRP-${Date.now().toString(36)}`;
     let baseMax = 0;
     getAllBookings().forEach(b => {
@@ -306,39 +373,43 @@
     await window.GA_CORE.extStore.remove(BOOKING_KEY, id, label || '場地借用');
   };
 
-  window.vbOpenAddSpaceModal = function() {
-    openModal('＋ 新增自訂教室／場地卡片', `
+  window.vbOpenAddSpaceModal = function(editId = '', ev = null) {
+    if (ev) ev.stopPropagation();
+    const existing = editId ? getAllSpaces({ includeHidden: true }).find(s => s.id === editId) : null;
+    openModal(existing ? `✎ 編輯空間卡片：${existing.name}` : '＋ 新增自訂教室／場地卡片', `
       <div class="form-grid">
-        <div class="field"><label>空間或教室名稱 *</label><input id="vbs-name" type="text" placeholder="例：1F 103 班教室、視聽教室"></div>
-        <div class="field"><label>棟別與樓層標記 *</label><input id="vbs-floor" type="text" value="主棟 1F" placeholder="例：主棟 2F"></div>
+        <div class="field"><label>空間或教室名稱 *</label><input id="vbs-name" type="text" value="${h(existing?.name || '')}" placeholder="例：1F 103 班教室、視聽教室"></div>
+        <div class="field"><label>棟別與樓層標記 *</label><input id="vbs-floor" type="text" value="${h(existing?.floor || '主棟 1F')}" placeholder="例：主棟 2F"></div>
         <div class="field"><label>歸屬卡片分類</label>
           <select id="vbs-cat">
-            <option value="1F 教室與空間">1F 教室與空間</option>
-            <option value="2F–3F 普通教室">2F–3F 普通教室</option>
-            <option value="專科與會議室">專科與會議室</option>
-            <option value="戶外與球場">戶外與球場</option>
+            ${['1F 教室與空間', '2F–3F 普通教室', '專科與會議室', '戶外與球場'].map(c => `<option value="${c}" ${existing?.category === c ? 'selected' : ''}>${c}</option>`).join('')}
           </select>
         </div>
-        <div class="field"><label>對應 3D 校舍關鍵字（選填）</label><input id="vbs-3d" type="text" placeholder="例：103 或 視聽"></div>
+        <div class="field"><label>對應 3D 校舍關鍵字（選填）</label><input id="vbs-3d" type="text" value="${h(existing?.room3d || '')}" placeholder="例：103 或 視聽"></div>
       </div>
-    `, `<button onclick="closeModal()">取消</button><button class="btn-primary" onclick="vbSaveCustomSpace()">💾 新增卡片</button>`);
+    `, `
+      ${existing ? `<button type="button" class="btn-danger" style="margin-right:auto" onclick="closeModal();vbHideSpaceCard('${h(existing.id)}')">🗑️ 隱藏／移除此卡</button>` : ''}
+      <button onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="vbSaveCustomSpace('${h(editId)}')">💾 ${existing ? '儲存修改' : '新增卡片'}</button>
+    `);
   };
 
-  window.vbSaveCustomSpace = async function() {
+  window.vbSaveCustomSpace = async function(editId = '') {
     const name = (document.getElementById('vbs-name')?.value || '').trim();
     if (!name) return toast('請輸入教室或空間名稱');
-    const id = window.GA_CORE.extStore.nextSeqId(CUSTOM_SPACE_KEY, 'SPC', 3);
+    const id = editId || window.GA_CORE.extStore.nextSeqId(CUSTOM_SPACE_KEY, 'SPC', 3);
+    const prev = getAllSpaces({ includeHidden: true }).find(s => s.id === id);
     const rec = {
       id,
       name,
       floor: (document.getElementById('vbs-floor')?.value || '校舍').trim(),
       category: document.getElementById('vbs-cat')?.value || '1F 教室與空間',
       room3d: (document.getElementById('vbs-3d')?.value || name).trim(),
-      keywords: [name]
+      keywords: prev?.keywords ? [...new Set([...prev.keywords, name])] : [name]
     };
     closeModal();
     await window.GA_CORE.extStore.upsert(CUSTOM_SPACE_KEY, id, rec, `空間卡片｜${name}`, rec.category);
-    toast(`✅ 已新增「${name}」卡片`);
+    toast(`✅ 已${editId ? '更新' : '新增'}「${name}」卡片`);
   };
 
   window.vbOpenRulesSlotModal = function() {
@@ -380,6 +451,7 @@
     const sunYmd = nextWeekdayYmd(0);
 
     const allSpaces = getAllSpaces();
+    const hiddenCount = getHiddenSpaceIds().size;
     const allBookings = getAllBookings();
     const dayBookings = allBookings.filter(b => b.date === state.viewDate);
     const dayLocks = getAutoProjectLocksForDate(state.viewDate);
@@ -396,15 +468,14 @@
       visibleCards = cardModels.filter(c => c.space.category === state.category);
     }
 
-    const pageSize = window.innerHeight < 710 ? 6 : 9; // 3×2 on compact laptop, 3×3 on desktop
+    const pageSize = window.innerHeight < 710 ? 6 : 9;
     const totalPages = Math.max(1, Math.ceil(visibleCards.length / pageSize));
     if (state.page > totalPages) state.page = totalPages;
     const pageCards = visibleCards.slice((state.page - 1) * pageSize, state.page * pageSize);
 
     const spacesById = Object.fromEntries(allSpaces.map(s => [s.id, s]));
-    const selectedNames = state.selectedSpaceIds.map(id => spacesById[id]?.name || id);
+    const selectedNames = state.selectedSpaceIds.filter(id => spacesById[id]).map(id => spacesById[id].name);
 
-    // 近 14 日借用預覽
     const upcoming14 = allBookings.filter(b => b.date >= tdy && diffDays(tdy, b.date) <= 14);
 
     container.innerHTML = `
@@ -412,20 +483,21 @@
         <!-- 頂部：日期快速切換列 ＋ 全校空間即時燈號統計 -->
         <div class="vb-top-bar">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="font-size:17px;font-weight:800;color:var(--brand-primary,#7C4A21)">🏟️ 檢視日期：${h(roc(state.viewDate, { withWeekday: true }))}</span>
+            <span style="font-size:17px;font-weight:800;color:var(--brand-primary,#7C4A21)">🏟️ ${h(roc(state.viewDate, { withWeekday: true }))}</span>
             <button type="button" class="btn-xs ${state.viewDate === tdy ? 'btn-primary' : ''}" onclick="vbSetDate('${tdy}')">今日</button>
-            <button type="button" class="btn-xs ${state.viewDate === satYmd ? 'btn-primary' : ''}" onclick="vbQuickWeekend(6)">本週六 (${satYmd.slice(5)})</button>
-            <button type="button" class="btn-xs ${state.viewDate === sunYmd ? 'btn-primary' : ''}" onclick="vbQuickWeekend(0)">本週日 (${sunYmd.slice(5)})</button>
+            <button type="button" class="btn-xs ${state.viewDate === satYmd ? 'btn-primary' : ''}" onclick="vbQuickWeekend(6)">本週六</button>
+            <button type="button" class="btn-xs ${state.viewDate === sunYmd ? 'btn-primary' : ''}" onclick="vbQuickWeekend(0)">本週日</button>
             <button type="button" class="btn-xs" onclick="vbShiftDate(-1)" title="前一天">◀</button>
             <input type="date" aria-label="選擇檢視日期" value="${h(state.viewDate)}" onchange="vbSetDate(this.value)" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border-strong,#D6CBB9);font-size:14px;font-weight:700">
             <button type="button" class="btn-xs" onclick="vbShiftDate(1)" title="後一天">▶</button>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span class="tag tag-green">🟢 空閒 ${freeCount} 間</span>
-            <span class="tag tag-blue">🔵 已借用 ${bookedCount} 間</span>
-            ${lockedCount ? `<span class="tag tag-amber">🚧 工程／公務保留 ${lockedCount} 處</span>` : ''}
-            <button type="button" class="btn-sm" onclick="vbOpenRulesSlotModal()">📜 租用規則設定</button>
-            <button type="button" class="btn-sm" onclick="vbOpenAddSpaceModal()">＋ 新增教室卡片</button>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span class="tag tag-green">🟢 空閒 ${freeCount}</span>
+            <span class="tag tag-blue">🔵 已借 ${bookedCount}</span>
+            ${lockedCount ? `<span class="tag tag-amber">🚧 保留 ${lockedCount}</span>` : ''}
+            <button type="button" class="btn-sm" onclick="vbOpenManageSpacesModal()">⚙️ 管理卡片${hiddenCount ? ` (已藏${hiddenCount})` : ''}</button>
+            <button type="button" class="btn-sm" onclick="vbOpenRulesSlotModal()">📜 租用規則</button>
+            <button type="button" class="btn-sm btn-primary" onclick="vbOpenAddSpaceModal()">＋ 新增卡片</button>
           </div>
         </div>
 
@@ -461,11 +533,13 @@
                        onclick="vbToggleSpaceSelect('${h(sp.id)}', event.shiftKey || event.ctrlKey || event.metaKey)">
                     <div class="vb-card-top">
                       <span class="vb-floor-pill">${h(sp.floor)}</span>
-                      <div style="display:flex;align-items:center;gap:6px">
+                      <div style="display:flex;align-items:center;gap:5px">
                         <span class="tag ${cm.badgeCls}">${cm.badgeText}</span>
                         <input type="checkbox" aria-label="勾選${h(sp.name)}批次借用" ${isSel ? 'checked' : ''}
                           onclick="event.stopPropagation();vbToggleSpaceSelect('${h(sp.id)}', true)"
-                          title="勾選可一次批次借用多間教室" style="width:16px;height:16px;cursor:pointer">
+                          title="勾選或取消勾選此空間" style="width:16px;height:16px;cursor:pointer">
+                        <button type="button" class="ga-card-dismiss" title="隱藏／移除這張用不到的空間卡（可復原）"
+                          onclick="vbHideSpaceCard('${h(sp.id)}', event)">✕</button>
                       </div>
                     </div>
 
@@ -480,14 +554,18 @@
                     <div class="vb-card-summary" title="${h(firstEvent)}">${h(firstEvent)}</div>
 
                     <div class="vb-card-foot">
-                      <span style="font-size:12.5px;color:var(--text-muted,#57534E)">${cm.myBookings.length > 1 ? `另有 ${cm.myBookings.length - 1} 個時段已借` : h(sp.category)}</span>
+                      <button type="button" class="btn-xs" style="padding:2px 6px;border:none;background:transparent;color:#78716C"
+                              onclick="vbOpenAddSpaceModal('${h(sp.id)}', event)">✎ 改名</button>
                       <a href="./campus-3d.html?room=${encodeURIComponent(sp.room3d || sp.name)}" target="_blank" rel="noopener"
                          onclick="event.stopPropagation()" class="vb-3d-link">🏫 3D位置 ↗</a>
                     </div>
                   </div>
                 `;
               }).join('') : `
-                <div class="empty-state" style="grid-column:1 / -1">此篩選條件下目前沒有空間卡片。</div>
+                <div class="empty-state" style="grid-column:1 / -1">
+                  此篩選條件下目前沒有空間卡片。<br>
+                  <button type="button" class="btn-sm" style="margin-top:8px" onclick="vbOpenManageSpacesModal()">⚙️ 開啟卡片管理恢復顯示</button>
+                </div>
               `}
             </div>
           </section>
@@ -496,9 +574,10 @@
           <section class="panel ga-pane">
             <div class="panel-hd">
               <div class="sp-tabs">
-                <button type="button" class="sp-tab ${state.rightTab === 'BOOK_FORM' ? 'active' : ''}" onclick="vbSetRightTab('BOOK_FORM')">✍️ 登記借用 (${state.selectedSpaceIds.length}間)</button>
+                <button type="button" class="sp-tab ${state.rightTab === 'BOOK_FORM' ? 'active' : ''}" onclick="vbSetRightTab('BOOK_FORM')">✍️ 登記借用 (${selectedNames.length}間)</button>
                 <button type="button" class="sp-tab ${state.rightTab === 'DAY_LIST' ? 'active' : ''}" onclick="vbSetRightTab('DAY_LIST')">📋 時段明細 (${dayBookings.length || upcoming14.length})</button>
               </div>
+              ${selectedNames.length ? `<button type="button" class="btn-xs" onclick="vbToggleSpaceSelect('')">清除已選</button>` : ''}
             </div>
 
             <div class="ga-pane-scroll" style="padding:12px 14px">
@@ -529,8 +608,8 @@
                 </div>
               ` : `
                 <div style="padding:9px 12px;border-radius:10px;background:var(--brand-soft,#F5EDE3);border:1px solid var(--border-strong,#D6CBB9);margin-bottom:10px">
-                  <div style="font-size:13px;color:var(--text-secondary,#44403C);font-weight:700">已選取借用空間（點卡片切換、勾選框可多選教室）：</div>
-                  <div style="font-size:15px;font-weight:800;color:var(--brand-primary,#7C4A21);margin-top:3px">${h(selectedNames.join('、') || '請點選左側卡片')}</div>
+                  <div style="font-size:13px;color:var(--text-secondary,#44403C);font-weight:700">已選取借用空間（點卡片選取，再點一次即可取消勾選）：</div>
+                  <div style="font-size:15px;font-weight:800;color:var(--brand-primary,#7C4A21);margin-top:3px">${h(selectedNames.join('、') || '尚未選取（請點選左側要借用的卡片）')}</div>
                 </div>
 
                 <div class="form-grid">
