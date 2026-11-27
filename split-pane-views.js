@@ -1045,7 +1045,7 @@
 
           <div class="sp-gauge-card tone-${yr.yearReceivable > yr.yearPaid ? 'amber' : 'green'}">
             <div class="sp-gauge-hd">
-              <span>💰 ${opsSolarYear} 年度應收／實收回饋金</span>
+              <span>💰 ${opsSolarYear} 年應收／實收</span>
               <div style="display:flex;gap:4px">
                 <button type="button" class="btn-xs" onclick="opsSolarYear--;renderCurrentView()">◀</button>
                 <button type="button" class="btn-xs" onclick="opsSolarYear++;renderCurrentView()">▶</button>
@@ -1063,7 +1063,7 @@
 
           <div class="sp-gauge-card tone-${alerts.some(a => a.level === 'red') ? 'red' : alerts.length ? 'amber' : 'green'}">
             <div class="sp-gauge-hd">
-              <span>🔔 保單／催繳／續租預警</span>
+              <span>🔔 保單與催繳預警</span>
               <button type="button" class="btn-xs btn-primary" onclick="openSolarContractModal()">＋ 新增契約</button>
             </div>
             <div class="sp-gauge-val num-mono">${alerts.length} <small>項提醒</small></div>
@@ -1173,7 +1173,7 @@
           </div>
         </div>
 
-        <div class="ga-split-body" style="grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr)">
+        <div class="ga-split-body" style="grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr)">
           <!-- 左欄：1~12 月同期走勢比較圖 ＋ 各錶號健康與契約需量卡 -->
           <section class="panel ga-pane">
             <div class="panel-hd">
@@ -1189,7 +1189,7 @@
                   ${buildUtilitiesMonthlySVG(adYear, allBills, targetIds)}
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:8px">
-                  ${filteredMeters.map(m => renderMeterStatusCardHTML(m, allBills)).join('')}
+                  ${filteredMeters.map(m => renderMeterStatusCardHTML(m, allBills).replace(/\b(20\d{2})-(\d{2})\b/g, (_, y, mm) => `${Number(y) - 1911}/${mm}`)).join('')}
                 </div>
               ` : `<div class="empty-state">尚未建立水電錶主檔<br><button class="btn-sm btn-primary" style="margin-top:8px" onclick="seedDefaultSchoolMeters()">⚡ 一鍵建立 4 顆常用水電錶範本</button></div>`}
             </div>
@@ -1203,25 +1203,27 @@
             <div class="ga-pane-scroll">
               ${yearBills.length ? `
                 <table class="sp-table">
-                  <thead><tr><th>年月／錶別</th><th>度數／YoY</th><th>應繳金額</th><th>狀態與需量警示</th><th style="text-align:right">操作</th></tr></thead>
+                  <thead><tr><th>年月／錶別</th><th>度數／同期</th><th>金額</th><th>狀態與需量</th><th style="text-align:right">操作</th></tr></thead>
                   <tbody>
                     ${yearBills.map(b => {
                       const ev = b._eval;
                       const m = b._meter || {};
+                      const rocYm = String(b.billing_ym || '').replace(/^(20\d{2})-(\d{2})$/, (_, y, mm) => `${Number(y) - 1911}/${mm}`);
+                      const shortMeter = smart(m.meter_label || b.meter_id).cleanTitle.replace(/（連結.*?）/, '');
                       return `
                         <tr>
-                          <td class="num-mono" style="white-space:nowrap">
-                            <strong>${h(b.billing_ym)}</strong>
-                            <div class="item-meta">${h(m.meter_label || b.meter_id)}</div>
+                          <td class="num-mono">
+                            <strong style="white-space:nowrap">${h(rocYm)}</strong>
+                            <div class="item-meta" style="white-space:normal;line-height:1.25">${h(shortMeter)}</div>
                           </td>
                           <td class="num-mono" style="white-space:nowrap">
-                            <strong>${Number(b.usage_units || 0).toLocaleString('zh-TW')} 度</strong>
-                            <div class="item-meta">${ev.yoyPct !== null ? `同期 ${ev.yoyPct > 0 ? '+' : ''}${ev.yoyPct}%` : '無同期'}</div>
+                            <strong>${Number(b.usage_units || 0).toLocaleString('zh-TW')}</strong>
+                            <div class="item-meta">${ev.yoyPct !== null ? `${ev.yoyPct > 0 ? '+' : ''}${ev.yoyPct}%` : '無同期'}</div>
                           </td>
                           <td class="num-mono" style="white-space:nowrap;font-weight:800">${fmtMoney(b.bill_amount)}</td>
                           <td>
                             <span class="tag ${ev.level === 'red' ? 'tag-red' : ev.level === 'amber' ? 'tag-amber' : 'tag-green'}">${h(ev.alertText)}</span>
-                            ${m.utility_type === '電費' && b.max_demand_kw ? `<div class="item-meta num-mono">最高需量 ${b.max_demand_kw} kW</div>` : ''}
+                            ${m.utility_type === '電費' && b.max_demand_kw ? `<div class="item-meta num-mono">需量 ${b.max_demand_kw}kW</div>` : ''}
                           </td>
                           <td style="text-align:right;white-space:nowrap">
                             <button type="button" class="btn-xs" onclick="openUtilityBillModal('${h(b.meter_id)}','${h(b.bill_id)}')">✎</button>

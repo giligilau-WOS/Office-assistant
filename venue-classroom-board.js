@@ -176,15 +176,15 @@
 
     let stateKey = 'FREE';
     let badgeCls = 'tag-green';
-    let badgeText = '🟢 空閒可借';
+    let badgeText = '🟢 可借';
     if (myLocks.length) {
       stateKey = 'LOCKED';
       badgeCls = 'tag-amber';
-      badgeText = '🚧 工程／公務保留';
+      badgeText = '🚧 保留';
     } else if (myBookings.length) {
       stateKey = 'BOOKED';
       badgeCls = 'tag-blue';
-      badgeText = `🔵 已借用 (${myBookings.length}場)`;
+      badgeText = `🔵 已借(${myBookings.length})`;
     }
 
     return { space, myBookings, myLocks, hasMorning, hasAfternoon, hasNight, stateKey, badgeCls, badgeText };
@@ -533,11 +533,11 @@
                        onclick="vbToggleSpaceSelect('${h(sp.id)}', event.shiftKey || event.ctrlKey || event.metaKey)">
                     <div class="vb-card-top">
                       <span class="vb-floor-pill">${h(sp.floor)}</span>
-                      <div style="display:flex;align-items:center;gap:5px">
-                        <span class="tag ${cm.badgeCls}">${cm.badgeText}</span>
+                      <div style="display:inline-flex;align-items:center;gap:4px;flex-shrink:0">
+                        <span class="tag ${cm.badgeCls}" style="padding:2px 6px">${cm.badgeText}</span>
                         <input type="checkbox" aria-label="勾選${h(sp.name)}批次借用" ${isSel ? 'checked' : ''}
                           onclick="event.stopPropagation();vbToggleSpaceSelect('${h(sp.id)}', true)"
-                          title="勾選或取消勾選此空間" style="width:16px;height:16px;cursor:pointer">
+                          title="勾選或取消勾選此空間" style="width:15px;height:15px;margin:0;cursor:pointer;flex-shrink:0">
                         <button type="button" class="ga-card-dismiss" title="隱藏／移除這張用不到的空間卡（可復原）"
                           onclick="vbHideSpaceCard('${h(sp.id)}', event)">✕</button>
                       </div>

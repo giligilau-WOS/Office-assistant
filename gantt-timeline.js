@@ -174,12 +174,16 @@
       const open = st.expanded.has(p.project_id);
       const prog = calcProjectProgress(p.project_id);
       const caseNo = typeof formatProjectCaseNo === 'function' ? formatProjectCaseNo(p) : p.project_id;
+      const sm = (window.GA_CORE && typeof window.GA_CORE.formatSmartTitle === 'function')
+        ? window.GA_CORE.formatSmartTitle(p.project_name)
+        : { yearBadge: '', cleanTitle: p.project_name };
+      const dispName = `${sm.yearBadge ? `[${sm.yearBadge}] ` : ''}${sm.cleanTitle}`;
       const summary = `
         <div class="gt-row">
           <div class="gt-name">
             ${tasks.length ? `<button class="gt-tog" onclick="toggleGanttProject('${esc(p.project_id)}')" title="${open ? '收合' : '展開'}階段">${open ? '▾' : '▸'}</button>` : '<span style="width:18px"></span>'}
             <div style="min-width:0">
-              <div class="gt-pname" onclick="openProjectDetail('${esc(p.project_id)}')" title="${esc(p.project_name)}">${esc(p.project_name)}</div>
+              <div class="gt-pname" onclick="openProjectDetail('${esc(p.project_id)}')" title="${esc(p.project_name)}">${esc(dispName)}</div>
               <div class="gt-meta">${esc(caseNo)}｜${esc(prog.currentStage)}${prog.totalChecks ? `（${prog.pct}%）` : ''}</div>
             </div>
           </div>
@@ -202,9 +206,9 @@
       html: `
         <div class="gt-canvas" style="width:${NAME_W + W}px">
           <div class="gt-head">
-            <div class="gt-row"><div class="gt-name">標案（${rows.length} 案）</div><div class="gt-track" style="width:${W}px">${yearCells}</div></div>
+            <div class="gt-row"><div class="gt-name">標案（${rows.length} 案）</div><div class="gt-track" style="width:${W}px">${yearCells}<div class="gt-today-tag" style="left:${x(today)}px">今天 ${roc(today)}</div></div></div>
             <div class="gt-row"><div class="gt-name" style="font-weight:600;font-size:12px;color:#64748B">月份</div><div class="gt-track" style="width:${W}px">${monthCells}</div></div>
-            <div class="gt-row"><div class="gt-name" style="font-weight:600;font-size:12px;color:#64748B">開標／驗收負荷</div><div class="gt-track" style="width:${W}px">${loadCells}<div class="gt-today-tag" style="left:${x(today)}px">今天 ${roc(today)}</div></div></div>
+            <div class="gt-row"><div class="gt-name" style="font-weight:600;font-size:12px;color:#64748B">開標／驗收負荷</div><div class="gt-track" style="width:${W}px">${loadCells}</div></div>
           </div>
           <div style="position:relative">
             <div style="position:absolute;left:${NAME_W}px;top:0;bottom:0;width:${W}px;pointer-events:none">${gridLines}</div>

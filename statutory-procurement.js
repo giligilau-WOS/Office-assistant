@@ -504,17 +504,17 @@
         <div class="sp-top-deck">
           <div class="sp-gauge-card tone-${st.topCat.tone}">
             <div class="sp-gauge-hd">
-              <span>🛡️ 採購法 §14 同性質防拆單（上限 15 萬）</span>
-              <span class="tag tag-${st.topCat.tone === 'red' ? 'red' : st.topCat.tone === 'amber' ? 'amber' : 'green'}">${st.topCat.sum >= 150000 ? '達上限攔截' : st.topCat.sum >= 120000 ? '80% 警戒' : '安全額度內'}</span>
+              <span>🛡️ §14 同性質累計（上限 15 萬）</span>
+              <span class="tag tag-${st.topCat.tone === 'red' ? 'red' : st.topCat.tone === 'amber' ? 'amber' : 'green'}">${st.topCat.sum >= 150000 ? '達上限' : st.topCat.sum >= 120000 ? '80%警戒' : '安全額內'}</span>
             </div>
             <div class="sp-gauge-val num-mono">${fmtMoney(st.topCat.sum)} <small>/ 150,000 元（${st.topCat.rawPct}%）</small></div>
-            <div class="sp-gauge-sub">最高分類：<strong>${h(st.topCat.category)}</strong>（剩餘安全額度 ${fmtMoney(st.topCat.remain)}｜全校共 ${st.microCount} 筆小額）</div>
+            <div class="sp-gauge-sub">最高：<strong>${h(st.topCat.category)}</strong>（餘 ${fmtMoney(st.topCat.remain)}｜共 ${st.microCount} 筆）</div>
           </div>
 
           <div class="sp-gauge-card tone-${st.greenPass ? 'green' : 'red'}">
             <div class="sp-gauge-hd">
-              <span>🌿 機關綠色採購比率（法定目標 ≥ ${st.greenTarget}%）</span>
-              <span class="tag ${st.greenDenom === 0 ? 'tag-blue' : st.greenPass ? 'tag-green' : 'tag-red'}">${st.greenDenom === 0 ? '本年尚無指定品項' : st.greenPass ? '法規達標 ✓' : '低於目標'}</span>
+              <span>🌿 綠色採購達成率（目標 ≥${st.greenTarget}%）</span>
+              <span class="tag ${st.greenDenom === 0 ? 'tag-blue' : st.greenPass ? 'tag-green' : 'tag-red'}">${st.greenDenom === 0 ? '尚無指定品' : st.greenPass ? '法規達標 ✓' : '低於目標'}</span>
             </div>
             <div class="sp-gauge-val num-mono">${st.greenDenom === 0 ? '—' : `${st.greenPct}%`} <small>標章 ${fmtMoney(st.greenNumer)} / 指定分母 ${fmtMoney(st.greenDenom)}</small></div>
             <div class="sp-gauge-sub">${st.greenDenom === 0 ? '非指定品項自動排除於分母外，不影響達成率' : st.greenPass ? `已達 ${st.greenTarget}% 考核標準（專簽免計 ${st.greenExemptCount} 筆）` : `⚠️ 尚需採購環保標章指定品約 ${fmtMoney(st.greenNeedAdd)} 以拉回 ${st.greenTarget}%`}</div>
@@ -522,11 +522,11 @@
 
           <div class="sp-gauge-card tone-${st.prioPass ? 'green' : 'amber'}">
             <div class="sp-gauge-hd">
-              <span>🤝 身心障礙優先採購比率（法定門檻 ≥ ${st.prioTarget}%）</span>
-              <span class="tag ${st.prioDenom === 0 ? 'tag-blue' : st.prioPass ? 'tag-green' : 'tag-amber'}">${st.prioDenom === 0 ? '本年尚無義務品項' : st.prioPass ? '已達 5% 門檻 ✓' : '待補足 5%'}</span>
+              <span>🤝 身障優先採購（門檻 ≥${st.prioTarget}%）</span>
+              <span class="tag ${st.prioDenom === 0 ? 'tag-blue' : st.prioPass ? 'tag-green' : 'tag-amber'}">${st.prioDenom === 0 ? '尚無義務品' : st.prioPass ? '已達 5% ✓' : '待補足 5%'}</span>
             </div>
             <div class="sp-gauge-val num-mono">${st.prioDenom === 0 ? '—' : `${st.prioPct}%`} <small>優採 ${fmtMoney(st.prioNumer)} / 義務分母 ${fmtMoney(st.prioDenom)}</small></div>
-            <div class="sp-gauge-sub">${st.prioDenom === 0 ? '購買餐盒、印刷、清潔等義務品項時請優先選用優採機構' : st.prioPass ? '已符合身心障礙者權益保障法 5% 義務比率' : `💡 <strong>尚差 ${fmtMoney(st.prioShortfallDirect)} 達標 5%</strong>（若新購優採機構品項需 ${fmtMoney(st.prioNeedNewPurchase)}）`}</div>
+            <div class="sp-gauge-sub">${st.prioDenom === 0 ? '購買餐盒、印刷、清潔等義務品項請優先選用優採機構' : st.prioPass ? '已符合身心障礙者權益保障法 5% 義務比率' : `💡 <strong>尚差 ${fmtMoney(st.prioShortfallDirect)} 達標 5%</strong>（若新購優採機構品項需 ${fmtMoney(st.prioNeedNewPurchase)}）`}</div>
           </div>
         </div>
 

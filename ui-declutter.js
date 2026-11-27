@@ -237,14 +237,34 @@
       white-space: nowrap;
     }
     #global-search {
-      width: 200px !important;
-      min-width: 155px !important;
+      width: 186px !important;
+      min-width: 145px !important;
       background: #FFFFFF !important;
       color: #1C1917 !important;
       border: 1px solid var(--border-strong) !important;
       border-radius: 8px !important;
       padding: 6px 10px !important;
       font-size: 13.5px !important;
+    }
+
+    /* 全站雙欄表單防溢出鐵律：覆寫 repeat(2, 1fr) 預設 min-width:auto 造成的水平撐破 */
+    html body .form-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      min-width: 0 !important;
+    }
+    html body .form-grid > .field { min-width: 0 !important; }
+    html body .form-grid > .field.full { grid-column: 1 / -1 !important; }
+    html body .form-grid input,
+    html body .form-grid select,
+    html body .form-grid textarea {
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    html body .form-grid > .field > input,
+    html body .form-grid > .field > select,
+    html body .form-grid > .field > textarea {
+      min-width: 0 !important;
+      width: 100% !important;
     }
 
     /* ---------------- 戰情總覽：07 暖沙雙層黃金艙 ---------------- */
@@ -270,12 +290,14 @@
       border: 1px solid var(--border-subtle);
       border-top: 4px solid var(--brand-accent);
       border-radius: 12px;
-      padding: 10px 13px;
+      padding: 10px 12px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       gap: 3px;
       min-width: 0;
+      flex-shrink: 0;
+      overflow: clip;
       transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
     }
     @media (max-height: 700px) { .ga-tile { padding: 7px 10px; gap: 2px; } }
@@ -308,7 +330,20 @@
       flex-shrink: 0;
       transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease;
     }
-    .ga-tile:hover .ga-card-dismiss,
+    .ga-tile > .ga-card-dismiss {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      z-index: 2;
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: 0 2px 6px rgba(28, 25, 23, 0.12);
+    }
+    .ga-tile:hover > .ga-card-dismiss,
+    .ga-tile:focus-within > .ga-card-dismiss {
+      opacity: 1;
+      pointer-events: auto;
+    }
     .ga-card-dismiss:hover {
       opacity: 1;
       color: #DC2626 !important;
@@ -324,18 +359,25 @@
       font-weight: 800;
       color: var(--text-secondary);
       white-space: nowrap;
+      min-width: 0;
+    }
+    @media (max-width: 1460px) { .ga-tile-hd { font-size: 13px; } }
+    .ga-tile-hd > .tag {
+      padding: 2px 6px !important;
+      flex-shrink: 0;
     }
     .ga-tile-kpi {
       font-size: var(--fs-kpi);
       font-weight: 900;
       line-height: 1.1;
       color: var(--text-primary);
+      white-space: nowrap;
     }
     .ga-tile-kpi small {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 700;
       color: var(--text-muted);
-      margin-left: 4px;
+      margin-left: 3px;
     }
     .ga-tile-sub {
       font-size: var(--fs-xs);
@@ -368,22 +410,28 @@
       box-shadow: 0 2px 8px rgba(28, 25, 23, 0.03);
     }
     .ga-col-hd {
-      padding: 10px 14px;
+      padding: 9px 12px;
       background: var(--bg-subtle);
       border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
       flex: 0 0 auto;
     }
-    @media (max-height: 700px) { .ga-col-hd { padding: 7px 12px; } }
+    @media (max-height: 700px) { .ga-col-hd { padding: 6px 10px; } }
     .ga-col-hd h3 {
       margin: 0;
       font-size: var(--fs-lg);
       font-weight: 800;
       color: var(--text-primary);
+      white-space: nowrap;
+    }
+    .ga-col-hd .sp-tabs { gap: 4px; }
+    .ga-col-hd .sp-tab {
+      padding: 3px 9px !important;
+      font-size: var(--fs-xs) !important;
     }
     .ga-col-bd {
       flex: 1 1 auto;
@@ -395,6 +443,7 @@
       flex-direction: column;
       gap: 7px;
     }
+    @media (max-height: 700px) { .ga-col-bd { padding: 6px 10px; gap: 5px; } }
     .ga-col-ft {
       padding: 7px 12px;
       border-top: 1px solid var(--border-subtle);
@@ -414,9 +463,12 @@
       border-radius: 10px;
       background: #FFFFFF;
       cursor: pointer;
+      min-width: 0;
+      flex-shrink: 0;
+      overflow: clip;
       transition: background 0.12s ease, border-color 0.12s ease;
     }
-    @media (max-height: 700px) { .ga-alert-card { padding: 6px 10px; } }
+    @media (max-height: 700px) { .ga-alert-card { padding: 5px 9px; } }
     .ga-alert-card:hover { background: #FAF6F0; border-color: var(--border-strong); }
     .ga-alert-card.lv-red { border-left-color: var(--status-danger); background: #FFFDFD; }
     .ga-alert-card.lv-amber { border-left-color: #D97706; }
@@ -461,6 +513,7 @@
     .ga-pane {
       height: 100%;
       min-height: 0;
+      min-width: 0;
       margin: 0 !important;
       display: flex;
       flex-direction: column;
@@ -479,6 +532,7 @@
     .ga-pane-scroll {
       flex: 1 1 auto;
       min-height: 0;
+      min-width: 0;
       overflow-y: auto;
       overflow-x: auto;
     }
@@ -495,12 +549,16 @@
       border: 1px solid var(--border-subtle);
       border-top: 4px solid var(--brand-accent);
       border-radius: 12px;
-      padding: 9px 14px;
+      padding: 9px 13px;
+      min-width: 0;
+      flex-shrink: 0;
+      overflow: clip;
     }
     .sp-gauge-card.tone-red { border-top-color: var(--status-danger); }
     .sp-gauge-card.tone-amber { border-top-color: #D97706; }
     .sp-gauge-card.tone-green { border-top-color: var(--brand-accent); }
-    .sp-gauge-hd { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; color: var(--text-secondary); }
+    .sp-gauge-hd { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; color: var(--text-secondary); min-width: 0; }
+    .sp-gauge-hd > .tag { flex-shrink: 0; }
     .sp-gauge-val { font-size: 24px; font-weight: 900; color: var(--text-primary); margin: 2px 0; }
     .sp-gauge-val small { font-size: 12.5px; font-weight: 600; color: var(--text-muted); }
     .sp-gauge-sub { font-size: 13px; color: var(--text-secondary); }
@@ -565,6 +623,7 @@
       padding: 10px 12px;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-auto-rows: max-content;
       gap: 10px;
       overflow-y: auto;
       align-content: start;
@@ -575,6 +634,7 @@
       padding: 10px 12px;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: max-content;
       gap: 10px;
       overflow-y: auto;
       align-content: start;
@@ -593,6 +653,7 @@
       flex-direction: column;
       gap: 6px;
       min-width: 0;
+      overflow: clip;
       transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
     }
     @media (max-height: 700px) {
@@ -630,7 +691,7 @@
       text-overflow: ellipsis;
     }
     @media (max-width: 1420px) {
-      .saf-card-title { font-size: 14.5px; }
+      .saf-card-title { font-size: 14px; }
     }
     .saf-card-r2 {
       display: flex;
@@ -685,22 +746,24 @@
       border: 1px solid var(--border-subtle);
       border-top: 4px solid #10B981;
       border-radius: 12px;
-      padding: 10px 12px;
+      padding: 10px 11px;
       background: #FFFFFF;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       gap: 6px;
+      min-width: 0;
+      overflow: clip;
       transition: border-color 0.12s ease, box-shadow 0.12s ease;
     }
     .vb-space-card.state-booked { border-top-color: #0284C7; background: #F8FCFF; }
     .vb-space-card.state-locked { border-top-color: #D97706; background: #FFFDF7; }
     .vb-space-card.is-selected { outline: 2px solid var(--brand-primary); box-shadow: 0 4px 14px rgba(124, 74, 33, 0.12); }
-    .vb-card-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-    .vb-floor-pill { font-size: 12px; font-weight: 800; color: var(--brand-primary); background: var(--brand-soft); padding: 2px 7px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
+    .vb-card-top { display: flex; justify-content: space-between; align-items: center; gap: 4px; min-width: 0; }
+    .vb-floor-pill { font-size: 12px; font-weight: 800; color: var(--brand-primary); background: var(--brand-soft); padding: 2px 6px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
     .vb-card-title { font-size: var(--fs-base); font-weight: 800; color: var(--text-primary); }
-    .vb-slot-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-    .vb-slot-pill { text-align: center; font-size: 12px; font-weight: 700; padding: 2px 4px; border-radius: 6px; }
+    .vb-slot-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+    .vb-slot-pill { text-align: center; font-size: 12px; font-weight: 700; padding: 2px 4px; border-radius: 6px; white-space: nowrap; }
     .vb-slot-pill.free { background: #ECFDF5; color: #047857; }
     .vb-slot-pill.busy { background: #DBEAFE; color: #1D4ED8; }
     .vb-card-summary {
@@ -713,7 +776,7 @@
       min-height: 34px;
     }
     .vb-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; border-top: 1px dashed var(--border-subtle); padding-top: 5px; }
-    .vb-3d-link { font-size: 12.5px; font-weight: 800; color: var(--brand-primary); text-decoration: none; }
+    .vb-3d-link { font-size: 12.5px; font-weight: 800; color: var(--brand-primary); text-decoration: none; white-space: nowrap; }
     .vb-3d-link:hover { text-decoration: underline; }
 
     /* 標案雙欄階段樹與 16px 檢核列 */
@@ -723,20 +786,26 @@
       border-radius: 10px;
       background: #FFFFFF;
       cursor: pointer;
+      min-width: 0;
+      flex-shrink: 0;
+      overflow: clip;
     }
     .spv-list-card:hover { background: var(--bg-subtle); }
     .spv-list-card.is-selected { border-color: var(--brand-primary); background: var(--brand-soft); }
     .spv-stage-node {
       display: flex !important;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
       width: 100%;
-      padding: 9px 10px !important;
+      min-width: 0;
+      padding: 8px 9px !important;
       margin-bottom: 5px;
       border-radius: 10px !important;
       border: 1px solid transparent !important;
       background: transparent !important;
+      white-space: normal !important;
       cursor: pointer;
+      box-sizing: border-box;
     }
     .spv-stage-node:hover { background: var(--bg-subtle) !important; }
     .spv-stage-node.is-active {
@@ -755,13 +824,31 @@
       justify-content: center;
       flex-shrink: 0;
     }
-    .spv-stage-title { font-size: 14.5px; font-weight: 800; color: var(--text-primary); line-height: 1.3; }
-    .spv-stage-meta { display: flex; justify-content: space-between; gap: 6px; font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+    .spv-stage-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.3;
+      white-space: normal !important;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .spv-stage-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      white-space: nowrap !important;
+    }
 
     .spv-chk-row {
       display: grid;
-      grid-template-columns: 24px minmax(0, 1fr) 175px 138px 32px;
-      gap: 10px;
+      grid-template-columns: 24px minmax(0, 1fr) 168px 134px 30px;
+      gap: 8px;
       align-items: center;
       padding: 10px 8px;
       border-bottom: 1px solid var(--border-subtle);
@@ -774,6 +861,8 @@
       border-radius: 7px;
       font-size: 13.5px;
       width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
     }
 
     /* 下拉選單 */
@@ -1079,14 +1168,14 @@
       }
     }
 
-    // 矮視窗 (<780px) 自動將側欄完整月曆收斂為單行按鈕，確保側欄零溢出
+    // 矮視窗 (<780px) 自動將側欄完整月曆收斂為單行按鈕，確保側欄零溢出且日期不斷行
     const calHost = document.getElementById('nordic-side-calendar');
     if (calHost && window.innerHeight < 780 && !calHost.classList.contains('collapsed')) {
       const tdy = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10);
       calHost.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;font-size:12.5px;font-weight:700;color:#7C4A21">
-          <span>📅 ${h(roc(tdy, { withWeekday: true }))}</span>
-          <button type="button" class="btn-xs" onclick="window.GA_CORE.openCommandPalette()">Ctrl+K</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;padding:4px 8px;font-size:12px;font-weight:700;color:#7C4A21;white-space:nowrap">
+          <span class="num-mono">📅 ${h(roc(tdy, { withWeekday: true }))}</span>
+          <button type="button" class="btn-xs" style="padding:2px 6px" onclick="window.GA_CORE.openCommandPalette()">Ctrl+K</button>
         </div>
       `;
     }
@@ -1110,7 +1199,7 @@
 
     const searchInput = document.getElementById('global-search');
     if (searchInput) {
-      searchInput.placeholder = '🔍 搜尋標案／教室／例行 (Ctrl+K)';
+      searchInput.placeholder = '🔍 搜尋全站 (Ctrl+K)';
     }
 
     // 學校雙曆制「總務節氣膠囊」
@@ -1250,8 +1339,8 @@
         key: 'projects',
         tab: 'projects',
         tone: projAlerts.some(a => a.tier === 0) ? 'red' : projAlerts.length ? 'amber' : 'walnut',
-        icon: '🏛️', title: '上網招標案',
-        badge: projAlerts.length ? `${projAlerts.length} 急件` : '進度正常',
+        icon: '🏛️', title: '上網招標',
+        badge: projAlerts.length ? `${projAlerts.length}急件` : '正常',
         badgeCls: projAlerts.length ? 'tag-red' : 'tag-green',
         kpi: String(tenderActive.length), unit: '件上網招標',
         sub: tenderActive[0] ? `重點：${smart(tenderActive[0].project_name).cleanTitle}` : `小額契約 ${microActive.length} 件已分流`
@@ -1260,8 +1349,8 @@
         key: 'statutory-proc',
         tab: 'statutory-proc',
         tone: spTile.tone || 'teal',
-        icon: '🧾', title: '小額與綠優採',
-        badge: spTile.redCount ? '需注意' : '小額專帳',
+        icon: '🧾', title: '小額綠優',
+        badge: spTile.redCount ? '需注意' : '專帳',
         badgeCls: spTile.redCount ? 'tag-red' : spTile.amberCount ? 'tag-amber' : 'tag-green',
         kpi: spTile.kpi, unit: spTile.unit,
         sub: spTile.subText
@@ -1270,8 +1359,8 @@
         key: 'routines',
         tab: 'routines',
         tone: rtnNext && rtnNext.s.diffDays < 0 ? 'red' : rtnNext && rtnNext.s.diffDays <= 7 ? 'amber' : 'teal',
-        icon: '🔁', title: '例行與續約',
-        badge: rtnNext ? (rtnNext.s.diffDays < 0 ? `逾期${Math.abs(rtnNext.s.diffDays)}天` : `最近剩${rtnNext.s.diffDays}天`) : '已就緒',
+        icon: '🔁', title: '例行續約',
+        badge: rtnNext ? (rtnNext.s.diffDays < 0 ? `逾${Math.abs(rtnNext.s.diffDays)}天` : `剩${rtnNext.s.diffDays}天`) : '就緒',
         badgeCls: rtnNext && rtnNext.s.diffDays <= 7 ? 'tag-amber' : 'tag-blue',
         kpi: String(routines.length), unit: '項年度列管',
         sub: rtnNext ? `最近：${rtnNext.r.title}` : '含年末批次續約精靈'
@@ -1280,18 +1369,18 @@
         key: 'solar',
         tab: 'solar',
         tone: energyAlerts.some(a => a.tier === 0) ? 'red' : energyAlerts.length ? 'amber' : 'teal',
-        icon: '☀️', title: '光電與水電',
-        badge: energyAlerts.length ? `${energyAlerts.length} 預警` : `${meters.length} 錶正常`,
+        icon: '☀️', title: '光電水電',
+        badge: energyAlerts.length ? `${energyAlerts.length}預警` : `${meters.length}錶正常`,
         badgeCls: energyAlerts.some(a => a.tier === 0) ? 'tag-red' : energyAlerts.length ? 'tag-amber' : 'tag-green',
-        kpi: `${activeSolar.length}約`, unit: `/ 本年應收 ${Math.round((solarYr.yearReceivable || 0) / 1000)}k`,
+        kpi: `${activeSolar.length}約`, unit: `/ 應收 ${Math.round((solarYr.yearReceivable || 0) / 1000)}k`,
         sub: energyAlerts[0] ? energyAlerts[0].cleanTitle : `水電監控 ${meters.length} 錶號（點此管理）`
       },
       {
         key: 'safety-wall',
         tab: 'safety-wall',
         tone: safTile.tone || 'teal',
-        icon: '🛡️', title: '法定安檢牆',
-        badge: safTile.redCount ? `${safTile.redCount} 逾期` : '督學視導就緒',
+        icon: '🛡️', title: '法定安檢',
+        badge: safTile.redCount ? `${safTile.redCount}逾期` : '就緒',
         badgeCls: safTile.redCount ? 'tag-red' : safTile.amberCount ? 'tag-amber' : 'tag-green',
         kpi: safTile.kpi, unit: safTile.unit,
         sub: safTile.subText
@@ -1300,8 +1389,8 @@
         key: 'venue-board',
         tab: 'venue-board',
         tone: vbTile.tone || 'teal',
-        icon: '🏟️', title: '場地與教室',
-        badge: '卡片看板',
+        icon: '🏟️', title: '場地教室',
+        badge: '看板',
         badgeCls: vbTile.amberCount ? 'tag-amber' : 'tag-blue',
         kpi: vbTile.kpi, unit: vbTile.unit,
         sub: vbTile.subText
@@ -1370,12 +1459,10 @@
             ${visibleTiles.map(t => `
               <div class="ga-tile tone-${h(t.tone)}" role="button" tabindex="0"
                    onclick="switchTab('${h(t.tab)}')" onkeydown="if(event.key==='Enter')switchTab('${h(t.tab)}')">
+                <button type="button" class="ga-card-dismiss" title="隱藏此卡片（可隨時復原）" onclick="gaHideTopTile('${h(t.key)}','${h(t.title)}',event)">✕</button>
                 <div class="ga-tile-hd">
                   <span>${t.icon} ${h(t.title)}</span>
-                  <span style="display:inline-flex;align-items:center;gap:4px">
-                    <span class="tag ${t.badgeCls}">${h(t.badge)}</span>
-                    <button type="button" class="ga-card-dismiss" title="隱藏此卡片（可隨時復原）" onclick="gaHideTopTile('${h(t.key)}','${h(t.title)}',event)">✕</button>
-                  </span>
+                  <span class="tag ${t.badgeCls}">${h(t.badge)}</span>
                 </div>
                 <div class="ga-tile-kpi num-mono">${h(t.kpi)}<small>${h(t.unit)}</small></div>
                 <div class="ga-tile-sub" title="${h(t.sub)}">${h(t.sub)}</div>
@@ -1396,9 +1483,9 @@
             <div class="ga-col-hd">
               <h3>🚨 近期必辦佇列</h3>
               <div class="sp-tabs">
-                <button type="button" class="sp-tab ${dashState.alertBucket === 'URGENT7' ? 'active' : ''}" onclick="gaSetAlertBucket('URGENT7')">🔴 7日內 (${urgent7.length})</button>
-                <button type="button" class="sp-tab ${dashState.alertBucket === 'DAYS30' ? 'active' : ''}" onclick="gaSetAlertBucket('DAYS30')">🟡 30日預告 (${days30.length})</button>
-                <button type="button" class="sp-tab ${dashState.alertBucket === 'ALL' ? 'active' : ''}" onclick="gaSetAlertBucket('ALL')">🔵 全覽 (${allAlerts.length})</button>
+                <button type="button" class="sp-tab ${dashState.alertBucket === 'URGENT7' ? 'active' : ''}" onclick="gaSetAlertBucket('URGENT7')">🔴 7日 (${urgent7.length})</button>
+                <button type="button" class="sp-tab ${dashState.alertBucket === 'DAYS30' ? 'active' : ''}" onclick="gaSetAlertBucket('DAYS30')">🟡 30日 (${days30.length})</button>
+                <button type="button" class="sp-tab ${dashState.alertBucket === 'ALL' ? 'active' : ''}" onclick="gaSetAlertBucket('ALL')">全覽 (${allAlerts.length})</button>
               </div>
             </div>
 
@@ -1426,7 +1513,7 @@
                 `;
               }).join('') : `
                 <div class="empty-state" style="margin:auto 0">
-                  🎉 太棒了！目前此區間沒有緊急待辦事項，可切換「30日預告」提前部署。
+                  🎉 太棒了！目前此區間沒有緊急待辦事項，可切換「30日」提前部署。
                 </div>
               `}
             </div>
@@ -1450,8 +1537,8 @@
             <div class="ga-col-hd">
               <h3>${dashState.projTrack === 'MICRO' ? '🔧 小額契約' : '🏛️ 上網招標'}</h3>
               <div class="sp-tabs">
-                <button type="button" class="sp-tab ${dashState.projTrack === 'TENDER' ? 'active' : ''}" onclick="gaSetDashProjTrack('TENDER')">🏛️ 上網招標 (${tenderProjs.length})</button>
-                <button type="button" class="sp-tab ${dashState.projTrack === 'MICRO' ? 'active' : ''}" onclick="gaSetDashProjTrack('MICRO')">🔧 小額契約 (${microProjs.length})</button>
+                <button type="button" class="sp-tab ${dashState.projTrack === 'TENDER' ? 'active' : ''}" onclick="gaSetDashProjTrack('TENDER')">🏛️ 招標 (${tenderProjs.length})</button>
+                <button type="button" class="sp-tab ${dashState.projTrack === 'MICRO' ? 'active' : ''}" onclick="gaSetDashProjTrack('MICRO')">🔧 小額 (${microProjs.length})</button>
               </div>
             </div>
 
@@ -1516,43 +1603,43 @@
               </div>
             </div>
 
-            <div style="padding:8px 12px;border-bottom:1px dashed var(--border-subtle);background:#FFFDF9;flex:0 0 auto">
-              <div style="display:flex;gap:6px;min-width:0">
+            <div style="padding:8px 10px;border-bottom:1px dashed var(--border-subtle);background:#FFFDF9;flex:0 0 auto">
+              <div style="display:flex;gap:5px;min-width:0">
                 <input id="memo-input" type="text" placeholder="記一筆交辦按 Enter..."
-                       style="flex:1;min-width:0;padding:7px 9px;border:1px solid var(--border-strong);border-radius:8px;font-size:14px"
+                       style="flex:1;min-width:0;padding:6px 8px;border:1px solid var(--border-strong);border-radius:8px;font-size:14px"
                        onkeydown="if(event.key==='Enter') quickAddMemo()">
                 <button type="button" class="btn-xs btn-primary" style="flex-shrink:0" onclick="quickAddMemo()">＋記</button>
               </div>
-              <div style="display:flex;gap:5px;margin-top:6px;min-width:0;flex-wrap:wrap">
-                <select id="memo-tag" aria-label="交辦來源" style="flex:1;min-width:84px;padding:4px 5px;border:1px solid var(--border-subtle);border-radius:6px;font-size:12.5px">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1.08fr);gap:4px;margin-top:5px;min-width:0;align-items:center">
+                <select id="memo-tag" aria-label="交辦來源" style="min-width:0;width:100%;padding:3px 4px;border:1px solid var(--border-subtle);border-radius:6px;font-size:12px">
                   <option value="校長交辦">校長交辦</option>
                   <option value="處室需求">處室需求</option>
                   <option value="廠商追蹤">廠商追蹤</option>
                   <option value="現場會勘">現場會勘</option>
                   <option value="自訂備忘">自訂備忘</option>
                 </select>
-                <select id="memo-prio" aria-label="優先級" style="padding:4px 5px;border:1px solid var(--border-subtle);border-radius:6px;font-size:12.5px">
+                <select id="memo-prio" aria-label="優先級" style="padding:3px 4px;border:1px solid var(--border-subtle);border-radius:6px;font-size:12px">
                   <option value="一般">一般</option>
                   <option value="重要">重要</option>
-                  <option value="緊急">🔴 緊急</option>
+                  <option value="緊急">🔴緊急</option>
                 </select>
-                <input id="memo-due" type="date" aria-label="交辦期限" title="選填完成期限" style="flex:1;min-width:110px;padding:3px 5px;border:1px solid var(--border-subtle);border-radius:6px;font-size:12px">
+                <input id="memo-due" type="date" aria-label="交辦期限" title="選填完成期限" style="min-width:0;width:100%;padding:2px 4px;border:1px solid var(--border-subtle);border-radius:6px;font-size:12px;box-sizing:border-box">
                 <input id="memo-remind" type="date" class="ud-hide">
               </div>
             </div>
 
             <div class="ga-col-bd">
               ${shownMemos.length ? shownMemos.map(m => `
-                <div style="padding:8px 10px;border:1px solid var(--border-subtle);border-left:4px solid ${m.priority === '緊急' ? '#DC2626' : m.priority === '重要' ? '#D97706' : '#7C4A21'};border-radius:9px;background:#FFF">
-                  <div style="display:flex;gap:8px;align-items:flex-start">
-                    <input type="checkbox" ${m.is_done ? 'checked' : ''} style="width:17px;height:17px;margin-top:3px;flex-shrink:0;cursor:pointer"
+                <div style="padding:8px 10px;border:1px solid var(--border-subtle);border-left:4px solid ${m.priority === '緊急' ? '#DC2626' : m.priority === '重要' ? '#D97706' : '#7C4A21'};border-radius:9px;background:#FFF;flex-shrink:0;overflow:clip">
+                  <div style="display:flex;gap:7px;align-items:flex-start">
+                    <input type="checkbox" ${m.is_done ? 'checked' : ''} style="width:16px;height:16px;margin-top:3px;flex-shrink:0;cursor:pointer"
                            onchange="toggleMemoDone('${h(m.memo_id)}', this.checked)">
                     <div style="flex:1;min-width:0">
                       <div style="font-size:15px;font-weight:700;color:${m.is_done ? 'var(--text-muted)' : 'var(--text-primary)'};${m.is_done ? 'text-decoration:line-through;' : ''}line-height:1.35">${h(m.content)}</div>
-                      <div class="item-meta" style="display:flex;justify-content:space-between;align-items:center;gap:4px;margin-top:4px">
-                        <span>${h(m.source_tag || '備忘')}${m.due_date ? `・限 ${roc(m.due_date, { noYear: true })}` : ''}</span>
-                        <span style="display:inline-flex;align-items:center;gap:4px">
-                          ${!m.is_done ? `<button type="button" class="btn-xs" style="padding:2px 6px" onclick="convertMemoToProject('${h(m.memo_id)}')">轉標案</button>` : ''}
+                      <div class="item-meta num-mono" style="display:flex;justify-content:space-between;align-items:center;gap:4px;margin-top:4px;flex-wrap:wrap">
+                        <span>${h(m.source_tag || '備忘')}${m.due_date ? `・${roc(m.due_date, { noYear: true })}` : ''}</span>
+                        <span style="display:inline-flex;align-items:center;gap:3px;flex-shrink:0">
+                          ${!m.is_done ? `<button type="button" class="btn-xs" style="padding:2px 5px" onclick="convertMemoToProject('${h(m.memo_id)}')" title="轉為採購標案">轉案</button>` : ''}
                           <button type="button" class="ga-card-dismiss" title="刪除此筆交辦（支援 8 秒復原）" onclick="deleteMemo('${h(m.memo_id)}')">✕</button>
                         </span>
                       </div>
@@ -1643,8 +1730,25 @@
         && el.clientWidth > 0 && el.clientWidth < 120 && el.scrollWidth > el.clientWidth + 4;
     });
 
+    const boxOverflows = [...document.querySelectorAll('.ga-tile, .vb-space-card, .saf-cert-card, .sp-gauge-card, .spv-list-card, .ga-alert-card')].filter(el => {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || el.clientWidth <= 0) return false;
+      if (el.scrollWidth > el.clientWidth + 2 || el.scrollHeight > el.clientHeight + 2) return true;
+      const br = el.getBoundingClientRect();
+      return [...el.children].some(ch => {
+        const ccs = getComputedStyle(ch);
+        if (ccs.display === 'none' || ccs.position === 'absolute') return false;
+        const cr = ch.getBoundingClientRect();
+        return cr.right > br.right + 2 || cr.bottom > br.bottom + 2;
+      });
+    });
+
+    const paneHorizOverflows = vw >= 1200
+      ? [...document.querySelectorAll('.ga-pane-scroll')].filter(el => el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 2)
+      : [];
+
     return {
-      pass: docNoScroll && noGhostDom && smallTextNodes.length === 0 && badTruncations.length === 0,
+      pass: docNoScroll && noGhostDom && smallTextNodes.length === 0 && badTruncations.length === 0 && boxOverflows.length === 0 && paneHorizOverflows.length === 0,
       viewport: `${vw}x${vh}`,
       docNoScroll,
       scrollHeight: document.documentElement.scrollHeight,
@@ -1653,12 +1757,16 @@
       smallTextCount: smallTextNodes.length,
       smallSamples: smallTextNodes.slice(0, 5).map(e => ({ tag: e.tagName, cls: e.className, fs: getComputedStyle(e).fontSize, txt: e.innerText.slice(0, 20) })),
       badTruncationCount: badTruncations.length,
-      badTruncSamples: badTruncations.slice(0, 5).map(e => ({ tag: e.tagName, cls: e.className, w: e.clientWidth, sw: e.scrollWidth, txt: e.innerText.slice(0, 20) }))
+      badTruncSamples: badTruncations.slice(0, 5).map(e => ({ tag: e.tagName, cls: e.className, w: e.clientWidth, sw: e.scrollWidth, txt: e.innerText.slice(0, 20) })),
+      boxOverflowCount: boxOverflows.length,
+      boxOverflowSamples: boxOverflows.slice(0, 5).map(e => ({ cls: e.className, cw: e.clientWidth, sw: e.scrollWidth, ch: e.clientHeight, sh: e.scrollHeight, txt: e.innerText.slice(0, 24) })),
+      paneHorizOverflowCount: paneHorizOverflows.length,
+      paneHorizSamples: paneHorizOverflows.slice(0, 5).map(e => ({ cw: e.clientWidth, sw: e.scrollWidth, txt: e.innerText.slice(0, 24) }))
     };
   };
 
   if (window.GA_REGISTRY && typeof window.GA_REGISTRY.registerModule === 'function') {
-    window.GA_REGISTRY.registerModule('ui-declutter.js', 'v2.1', '07暖沙雙層黃金艙 × 05特大字級（卡片自由隱藏＋上網招標與小額分流）');
+    window.GA_REGISTRY.registerModule('ui-declutter.js', 'v2.2', '07暖沙雙層黃金艙 × 05特大字級（全站13頁卡片邊界零溢出與表單防撐破）');
   }
 
   renderCurrentView();

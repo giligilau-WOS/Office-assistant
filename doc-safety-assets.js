@@ -227,15 +227,15 @@
         if (dLeft < 0) {
           statusTone = 'red';
           statusLabel = `🔴 逾期 ${Math.abs(dLeft)} 天`;
-          shortStatus = `🔴 逾期 ${Math.abs(dLeft)} 天`;
+          shortStatus = `🔴 逾${Math.abs(dLeft)}天`;
         } else if (dLeft <= 30) {
           statusTone = 'amber';
           statusLabel = `🟡 剩 ${dLeft} 天到期`;
-          shortStatus = `🟡 剩 ${dLeft} 天`;
+          shortStatus = `🟡 剩${dLeft}天`;
         } else {
           statusTone = 'teal';
           statusLabel = `🟢 有效（剩 ${dLeft} 天）`;
-          shortStatus = `🟢 剩 ${dLeft} 天`;
+          shortStatus = `🟢 ${dLeft}天`;
         }
       } else if (!saved.cert_no && !linkedRtn) {
         statusTone = 'gray';
@@ -739,8 +739,8 @@
                 <div class="field">
                   <label>項目類別</label>
                   <select id="ast-f-kind">
-                    <option value="庶務耗材" ${editing?.kind === '庶務耗材' ? 'selected' : ''}>🧻 庶務耗材（安全庫存預警）</option>
-                    <option value="設備履歷" ${editing?.kind === '設備履歷' ? 'selected' : ''}>🔧 重要設備（連動維護契約）</option>
+                    <option value="庶務耗材" ${editing?.kind === '庶務耗材' ? 'selected' : ''}>🧻 庶務耗材（庫存預警）</option>
+                    <option value="設備履歷" ${editing?.kind === '設備履歷' ? 'selected' : ''}>🔧 設備履歷（維護契約）</option>
                   </select>
                 </div>
                 <div class="field">
@@ -756,7 +756,7 @@
                   <input id="ast-f-qty" type="number" min="0" value="${h(editing?.qty ?? 1)}">
                 </div>
                 <div class="field">
-                  <label>安全庫存水位（耗材低於此值預警）</label>
+                  <label>安全庫存水位（低於預警）</label>
                   <input id="ast-f-safe" type="number" min="0" value="${h(editing?.safety_qty ?? 2)}">
                 </div>
                 <div class="field full">

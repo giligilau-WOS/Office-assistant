@@ -283,10 +283,14 @@
     return m ? m[1] : '';
   }
 
+  function replaceIsoWithRoc(str) {
+    return String(str || '').replace(/\b(20\d{2})-(\d{2})-(\d{2})\b/g, (_, y, m, d) => `${Number(y) - 1911}/${m}/${d}`);
+  }
+
   function inferActionHint(a, mod) {
-    if (a.actionHint) return a.actionHint;
+    if (a.actionHint) return replaceIsoWithRoc(a.actionHint);
     const b = String(a.badge || '');
-    const det = String(a.detail || '');
+    const det = replaceIsoWithRoc(String(a.detail || ''));
     if (b.includes('意外險') || b.includes('產險') || b.includes('保險')) {
       return '請催廠商補送新年度續保保單影本並登錄備查';
     }
@@ -297,7 +301,7 @@
       return det || '屬上級／法定硬死線，請優先完成本階段檢核項';
     }
     if (mod === 'routine') {
-      return det ? det.replace(/應辦日\s*\d{4}-\d{2}-\d{2}\s*[｜|]?\s*/, '') || '開啟標準步驟完成本期申報並打卡' : '開啟標準步驟完成本期申報並打卡';
+      return det ? det.replace(/應辦日\s*\d{2,3}\/\d{2}\/\d{2}\s*[｜|]?\s*/, '') || '開啟標準步驟完成本期申報並打卡' : '開啟標準步驟完成本期申報並打卡';
     }
     if (mod === 'util') {
       return det || '檢視本期水電度數異常原因與契約容量需量';
