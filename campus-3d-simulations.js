@@ -269,9 +269,10 @@ export function initCampusSimulations(ctx) {
   }
 
   // =========================================================================
-  // 2. 🗺️ 國土測繪雲 NLSC 免申請 WMTS 圖層（精準 WGS84 投影 ＋ 即時微調校準）
+  // 2. 🗺️ 國土測繪雲 NLSC 免申請 WMTS 圖層（實測跑道＋噴水池基準 ＋ 0.2m 微調）
   // =========================================================================
-  const NLSC_CAL_KEY = 'ga_nlsc_cal_v1';
+  const NLSC_CAL_KEY = 'ga_nlsc_cal_v2';
+  const NLSC_BASE_ROT_DEG = 2.6; // 依正射影像對齊跑道與噴水池實測之校園軸線偏角 (+2.6°)
   const NLSC_BOUNDS = { rx0: -130, rx1: 185, rz0: -68, rz1: 146 }; // 315m × 214m（中心 rx=27.5, rz=39.0）
   const NLSC_W = NLSC_BOUNDS.rx1 - NLSC_BOUNDS.rx0;
   const NLSC_H = NLSC_BOUNDS.rz1 - NLSC_BOUNDS.rz0;
@@ -306,7 +307,7 @@ export function initCampusSimulations(ctx) {
   function applyNlscTransform() {
     if (!nlscMesh) return;
     nlscMesh.position.set(NLSC_CX + nlscCal.dx, 0.028, NLSC_CZ + nlscCal.dz);
-    nlscMesh.rotation.set(-Math.PI / 2, 0, (nlscCal.rotDeg * Math.PI) / 180, 'XYZ');
+    nlscMesh.rotation.set(-Math.PI / 2, 0, ((NLSC_BASE_ROT_DEG + nlscCal.rotDeg) * Math.PI) / 180, 'XYZ');
     const sc = nlscCal.scalePct / 100;
     nlscMesh.scale.set(sc, sc, 1);
     try { localStorage.setItem(NLSC_CAL_KEY, JSON.stringify(nlscCal)); } catch {}
