@@ -30,6 +30,128 @@ const NLSC_LAYERS = {
   B5000: { label: '📋 1/5000 基本地形圖 (B5000)', zoom: 17, desc: '工程會勘常用基本地形圖' }
 };
 
+const SEASON_PROFILES = {
+  SPRING: { key: 'SPRING', label: '🌱 春季微風（偏東北東）', shortLabel: '春季微風', month: 3, windFromDeg: 65, colorHex: 0x2dd4bf },
+  SUMMER: { key: 'SUMMER', label: '☀️ 夏季西南季風', shortLabel: '夏季西南季風', month: 6, windFromDeg: 225, colorHex: 0x34d399 },
+  AUTUMN: { key: 'AUTUMN', label: '🍂 秋季轉東北風', shortLabel: '秋季轉東北風', month: 9, windFromDeg: 50, colorHex: 0xfbbf24 },
+  WINTER: { key: 'WINTER', label: '❄️ 冬季東北季風', shortLabel: '冬季東北季風', month: 12, windFromDeg: 35, colorHex: 0x38bdf8 }
+};
+
+function monthToSeason(m) {
+  const mm = ((Math.round(m) - 1 + 12) % 12) + 1;
+  if (mm >= 3 && mm <= 5) return 'SPRING';
+  if (mm >= 6 && mm <= 8) return 'SUMMER';
+  if (mm >= 9 && mm <= 11) return 'AUTUMN';
+  return 'WINTER';
+}
+
+function degToCompass(deg) {
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const norm = ((deg % 360) + 360) % 360;
+  return dirs[Math.round(norm / 45) % 8];
+}
+
+const COLOR_LEGENDS = {
+  MOI_SLOPEP_LV7_2: {
+    title: '📊 國土 7 級坡度圖（MOI）',
+    items: [
+      ['#15803d', '1 級 (≤5%) 平地／極緩坡'],
+      ['#65a30d', '2 級 (5–15%) 緩坡'],
+      ['#bef264', '3 級 (15–30%) 中坡'],
+      ['#facc15', '4 級 (30–40%) 較陡坡（限建）'],
+      ['#fb923c', '5 級 (40–55%) 陡坡（加強水保）'],
+      ['#ef4444', '6 級 (55–100%) 極陡坡'],
+      ['#991b1b', '7 級 (>100%) 峭壁／崩塌警戒']
+    ]
+  },
+  MOI_ASPECT: {
+    title: '🧭 國土坡向圖（坡面朝向＝水流方向）',
+    items: [
+      ['#ef4444', '紅：北坡（水流向北）'],
+      ['#f97316', '橘：東北坡（水流向東北）'],
+      ['#eab308', '黃：東坡（水流向東）'],
+      ['#22c55e', '綠：東南坡（水流向東南）'],
+      ['#06b6d4', '青：南坡（水流向南）'],
+      ['#38bdf8', '天藍：西南坡（水流向西南）'],
+      ['#3b82f6', '藍：西坡（水流向西）'],
+      ['#a855f7', '紫：西北坡（水流向西北）'],
+      ['#94a3b8', '灰：平坦地（無明顯坡向）']
+    ]
+  },
+  MOI_CONTOUR_2: {
+    title: '⛰️ 等高線圖（高程線）',
+    items: [
+      ['#92400e', '粗棕線：主要等高線（計曲線）'],
+      ['#d97706', '細棕線：加密等高線（線越密坡越陡）']
+    ]
+  },
+  LANDSECT: {
+    title: '📐 段籍圖（地籍界線）',
+    items: [
+      ['#e11d48', '紅／洋紅線：官方地段界線'],
+      ['#f43f5e', '紅色標註：地段名稱']
+    ]
+  },
+  SCHOOL: {
+    title: '🏫 各級學校範圍圖',
+    items: [
+      ['#8b5cf6', '紫／藍線框：國土測繪官方校地邊界']
+    ]
+  },
+  evac: {
+    title: '🚨 防災疏散與消防圖例',
+    items: [
+      ['#10b981', '翠綠管線：各棟➔操場安全集合區'],
+      ['#ef4444', '紅帶／紅點：外牆落物警戒／消防栓'],
+      ['#f97316', '橘點：滅火器（15m 覆蓋圈）'],
+      ['#38bdf8', '藍點：AED 急救設備'],
+      ['#facc15', '黃柱：消防泵浦室']
+    ]
+  },
+  construction: {
+    title: '🚧 工程施工圍籬與人車分流',
+    items: [
+      ['#ef4444', '紅白圍欄：施工管制禁區'],
+      ['#f97316', '橘線／黃車：工程車進出場動線'],
+      ['#22c55e', '綠線：學生安全人行替代通道']
+    ]
+  },
+  night: {
+    title: '🌙 夜間照明與 CCTV 覆蓋',
+    items: [
+      ['#fde047', '暖黃光暈：校園路燈與走廊照明'],
+      ['#38bdf8', '藍綠扇形：監視器可視角度'],
+      ['#f97316', '橘紅空心圓：夜間照明／監視暗角']
+    ]
+  },
+  wind: {
+    title: '🌬️ 季節風場（已校正 +2.6° 軸線）',
+    items: [
+      ['#38bdf8', '冰藍箭帶：冬季東北季風（NE）'],
+      ['#34d399', '翠綠箭帶：夏季西南季風（SW）'],
+      ['#2dd4bf', '薄荷箭帶：春季偏東微風'],
+      ['#fbbf24', '琥珀箭帶：秋季轉東北風']
+    ]
+  },
+  rain: {
+    title: '🌧️ 豪雨積水與坡向水流預測',
+    items: [
+      ['#0284c7', '深藍水窪：低窪易積水熱區'],
+      ['#38bdf8', '天藍管線：校園既設排水溝方向'],
+      ['#22d3ee', '亮青箭頭：依坡向預測之地表水流'],
+      ['#facc15', '黃色角錐：沙包／抽水機建議部署點']
+    ]
+  },
+  terrain: {
+    title: '⛰️ 周邊坡地 3D 地形起伏',
+    items: [
+      ['#10b981', '翠綠格網：北側較高坡地（+12m 示意）'],
+      ['#0f766e', '深青格網：南／西南側緩降平地（校區維持 0m 水平）']
+    ]
+  }
+};
+
+
 /**
  * 精確天文太陽位置計算（適用於北緯 latDeg、東經 lngDeg、台灣標準時間 UTC+8）
  * 回傳：altitudeDeg（仰角）、azimuthDeg（方位角：北=0, 東=90, 南=180, 西=270）、
@@ -109,15 +231,19 @@ export function initCampusSimulations(ctx) {
   root.name = 'Campus_Simulations_Root';
   scene.add(root);
 
+  const initMonth = new Date().getMonth() + 1;
+  const initSeason = monthToSeason(initMonth);
   const simState = {
     // 1. Solar
-    month: new Date().getMonth() + 1,
+    month: initMonth,
     hour: 10.5,
     showSunArc: true,
+    seasonSync: true,
     playMode: null, // null | 'day' | 'year'
-    // 2. NLSC WMTS
+    // 2. NLSC WMTS & 3D Terrain
     nlscLayer: 'NONE',
     nlscOpacity: 0.85,
+    terrainRelief: false,
     // 3. Five campus simulation layers
     evac: false,
     evacRadius: true,
@@ -126,9 +252,14 @@ export function initCampusSimulations(ctx) {
     night: false,
     showCctv: true,
     wind: false,
-    windSeason: 'NE', // 'NE' (冬季東北季風) | 'SW' (夏季西南季風)
+    windSeason: initSeason, // 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER'
+    windAngleDeg: SEASON_PROFILES[initSeason].windFromDeg,
+    windDensity: 220,
+    windThickness: 0.35,
+    windSpeedMul: 1.2,
     rain: false,
     rainLevel: 'heavy', // 'heavy' | 'torrential' | 'typhoon'
+    rainUseAspect: true,
     // Live data summary
     liveSummary: { projects: [], solar: [], bookings: [] }
   };
@@ -295,6 +426,7 @@ export function initCampusSimulations(ctx) {
   let nlscMesh = null;
   let nlscMat = null;
   const nlscTexCache = new Map();
+  const nlscCanvasCache = new Map();
 
   function lonLatToTileF(lng, lat, z) {
     const n = Math.pow(2, z);
@@ -339,6 +471,75 @@ export function initCampusSimulations(ctx) {
     satOverlayMesh.visible = isOverlayOnly || simState.nlscOpacity < 0.96;
   }
 
+  async function fetchNlscCanvas(layerId) {
+    if (nlscCanvasCache.has(layerId)) return nlscCanvasCache.get(layerId);
+    const cfg = NLSC_LAYERS[layerId];
+    if (!cfg || typeof document === 'undefined' || typeof Image === 'undefined') return null;
+
+    // 以精準 WGS84 換算係數計算 315m × 214m 校地貼圖矩形之經緯度邊界
+    const mPerDegLat = 110742;
+    const mPerDegLng = 111320 * Math.cos((GEO.lat0 * Math.PI) / 180);
+    const lngMin = GEO.lng0 + (gx(NLSC_BOUNDS.rx0) - GEO.x0) / mPerDegLng;
+    const lngMax = GEO.lng0 + (gx(NLSC_BOUNDS.rx1) - GEO.x0) / mPerDegLng;
+    const latMax = GEO.lat0 - (gz(NLSC_BOUNDS.rz0) - GEO.z0) / mPerDegLat;
+    const latMin = GEO.lat0 - (gz(NLSC_BOUNDS.rz1) - GEO.z0) / mPerDegLat;
+
+    const z = cfg.zoom;
+    const tl = lonLatToTileF(lngMin, latMax, z);
+    const br = lonLatToTileF(lngMax, latMin, z);
+    const tx0 = Math.floor(tl.x), tx1 = Math.floor(br.x);
+    const ty0 = Math.floor(tl.y), ty1 = Math.floor(br.y);
+
+    const tileW = 256;
+    const fullW = (tx1 - tx0 + 1) * tileW;
+    const fullH = (ty1 - ty0 + 1) * tileW;
+    const stitch = document.createElement('canvas');
+    stitch.width = fullW;
+    stitch.height = fullH;
+    const sCtx = stitch.getContext('2d');
+    if (!sCtx) return null;
+
+    const tasks = [];
+    let okCount = 0;
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        const url = `https://wmts.nlsc.gov.tw/wmts/${layerId}/default/GoogleMapsCompatible/${z}/${ty}/${tx}`;
+        tasks.push(new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          const timer = setTimeout(() => resolve(false), 6000);
+          img.onload = () => {
+            clearTimeout(timer);
+            try {
+              sCtx.drawImage(img, (tx - tx0) * tileW, (ty - ty0) * tileW, tileW, tileW);
+              okCount++;
+              resolve(true);
+            } catch { resolve(false); }
+          };
+          img.onerror = () => { clearTimeout(timer); resolve(false); };
+          img.src = url;
+        }));
+      }
+    }
+
+    await Promise.all(tasks);
+    if (okCount === 0) return null;
+
+    const cropX = (tl.x - tx0) * tileW;
+    const cropY = (tl.y - ty0) * tileW;
+    const cropW = Math.max(8, (br.x - tl.x) * tileW);
+    const cropH = Math.max(8, (br.y - tl.y) * tileW);
+    const out = document.createElement('canvas');
+    out.width = 1280;
+    out.height = Math.round(1280 * (NLSC_H / NLSC_W));
+    const oCtx = out.getContext('2d', { willReadFrequently: true });
+    if (!oCtx) return null;
+    oCtx.drawImage(stitch, cropX, cropY, cropW, cropH, 0, 0, out.width, out.height);
+
+    nlscCanvasCache.set(layerId, out);
+    return out;
+  }
+
   async function loadNlscLayer(layerId) {
     simState.nlscLayer = layerId;
     ensureNlscMesh();
@@ -366,69 +567,14 @@ export function initCampusSimulations(ctx) {
     }
 
     if (statusEl) statusEl.textContent = `⏳ 正在載入國土測繪雲 ${layerId} 圖磚...`;
-
-    // 以精準 WGS84 換算係數計算 315m × 214m 校地貼圖矩形之經緯度邊界
-    const mPerDegLat = 110742;
-    const mPerDegLng = 111320 * Math.cos((GEO.lat0 * Math.PI) / 180);
-    const lngMin = GEO.lng0 + (gx(NLSC_BOUNDS.rx0) - GEO.x0) / mPerDegLng;
-    const lngMax = GEO.lng0 + (gx(NLSC_BOUNDS.rx1) - GEO.x0) / mPerDegLng;
-    const latMax = GEO.lat0 - (gz(NLSC_BOUNDS.rz0) - GEO.z0) / mPerDegLat;
-    const latMin = GEO.lat0 - (gz(NLSC_BOUNDS.rz1) - GEO.z0) / mPerDegLat;
-
-    const z = cfg.zoom;
-    const tl = lonLatToTileF(lngMin, latMax, z);
-    const br = lonLatToTileF(lngMax, latMin, z);
-    const tx0 = Math.floor(tl.x), tx1 = Math.floor(br.x);
-    const ty0 = Math.floor(tl.y), ty1 = Math.floor(br.y);
-
-    const tileW = 256;
-    const fullW = (tx1 - tx0 + 1) * tileW;
-    const fullH = (ty1 - ty0 + 1) * tileW;
-    const stitch = document.createElement('canvas');
-    stitch.width = fullW;
-    stitch.height = fullH;
-    const sCtx = stitch.getContext('2d');
-
-    const tasks = [];
-    let okCount = 0;
-    for (let ty = ty0; ty <= ty1; ty++) {
-      for (let tx = tx0; tx <= tx1; tx++) {
-        const url = `https://wmts.nlsc.gov.tw/wmts/${layerId}/default/GoogleMapsCompatible/${z}/${ty}/${tx}`;
-        tasks.push(new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          const timer = setTimeout(() => resolve(false), 6000);
-          img.onload = () => {
-            clearTimeout(timer);
-            try {
-              sCtx.drawImage(img, (tx - tx0) * tileW, (ty - ty0) * tileW, tileW, tileW);
-              okCount++;
-              resolve(true);
-            } catch { resolve(false); }
-          };
-          img.onerror = () => { clearTimeout(timer); resolve(false); };
-          img.src = url;
-        }));
-      }
-    }
-
-    await Promise.all(tasks);
-    if (okCount === 0) {
+    const out = await fetchNlscCanvas(layerId);
+    if (!out) {
       nlscMesh.visible = false;
       syncNlscSatVisibility('NONE');
       if (statusEl) statusEl.textContent = `⚠️ 無法連線國土測繪圖磚（可能離線或跨網域受限），已自動維持本機衛星底圖`;
+      updateHudBanner();
       return;
     }
-
-    // 依精確像素範圍裁切至 315×214 比例（高解析 1280px 寬）
-    const cropX = (tl.x - tx0) * tileW;
-    const cropY = (tl.y - ty0) * tileW;
-    const cropW = Math.max(8, (br.x - tl.x) * tileW);
-    const cropH = Math.max(8, (br.y - tl.y) * tileW);
-    const out = document.createElement('canvas');
-    out.width = 1280;
-    out.height = Math.round(1280 * (NLSC_H / NLSC_W));
-    out.getContext('2d').drawImage(stitch, cropX, cropY, cropW, cropH, 0, 0, out.width, out.height);
 
     const tex = new THREE.CanvasTexture(out);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -732,62 +878,81 @@ export function initCampusSimulations(ctx) {
   }
 
   // =========================================================================
-  // 6. 🌬️ 季節風場與教室通風流線 (WindFlowLayer)
+  // 6. 🌬️ 季節風場與教室通風流線（立體風帶 InstancedMesh ＋ +2.6° 軸線校準 ＋ 手動微調）
   // =========================================================================
   const windGroup = new THREE.Group();
   windGroup.name = 'Sim_Wind_Flow';
   windGroup.visible = false;
   root.add(windGroup);
 
-  const WIND_COUNT = 220;
-  const windPositions = new Float32Array(WIND_COUNT * 2 * 3);
+  const MAX_WIND = 360;
   const windSeeds = [];
-  for (let i = 0; i < WIND_COUNT; i++) {
+  for (let i = 0; i < MAX_WIND; i++) {
     windSeeds.push({
       x: -70 + Math.random() * 200,
-      y: 1.5 + Math.random() * 14.5,
+      y: 1.6 + Math.random() * 14.5,
       z: -24 + Math.random() * 124,
-      speed: 14 + Math.random() * 12,
-      len: 4.5 + Math.random() * 4.5
+      speed: 13 + Math.random() * 11,
+      len: 4.8 + Math.random() * 5.2
     });
   }
-  const windGeo = new THREE.BufferGeometry();
-  windGeo.setAttribute('position', new THREE.BufferAttribute(windPositions, 3));
-  const windMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.72 });
-  const windLines = new THREE.LineSegments(windGeo, windMat);
-  windGroup.add(windLines);
+  // 3D 立體漸縮風箭（+Z 為箭頭尖端），避開 WebGL linewidth=1px 限制
+  const windUnitGeo = new THREE.CylinderGeometry(0.06, 0.48, 1, 6);
+  if (typeof windUnitGeo.rotateX === 'function') windUnitGeo.rotateX(Math.PI / 2);
+  const windMat = new THREE.MeshBasicMaterial({
+    color: (SEASON_PROFILES[simState.windSeason] || SEASON_PROFILES.WINTER).colorHex,
+    transparent: true,
+    opacity: 0.78,
+    depthWrite: false
+  });
+  const windMesh = new THREE.InstancedMesh(windUnitGeo, windMat, MAX_WIND);
+  windMesh.count = simState.windDensity;
+  if (windMesh.instanceMatrix && typeof windMesh.instanceMatrix.setUsage === 'function' && THREE.DynamicDrawUsage !== undefined) {
+    windMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  }
+  windGroup.add(windMesh);
+  const windDummy = new THREE.Object3D();
+
+  function getCalibratedWindVec() {
+    // 校準校園軸線偏角 (+2.6° + 使用者旋轉微調)
+    const calDeg = simState.windAngleDeg - (NLSC_BASE_ROT_DEG + nlscCal.rotDeg);
+    const fromRad = (calDeg * Math.PI) / 180;
+    // 風「自 fromRad 吹來」→ 氣流前進方向為 (-sin, +cos)（+X=東, +Z=南）
+    return { dx: -Math.sin(fromRad), dz: Math.cos(fromRad) };
+  }
 
   function tickWind(dt) {
     if (!simState.wind) return;
-    // NE 東北季風：從 (+X, -Z) 吹向 (-X, +Z)；SW 西南季風：從 (-X, +Z) 吹向 (+X, -Z)
-    const isNE = simState.windSeason === 'NE';
-    const dx = isNE ? -0.707 : 0.707;
-    const dz = isNE ? 0.707 : -0.707;
-    windMat.color.setHex(isNE ? 0x38bdf8 : 0x34d399);
+    const { dx, dz } = getCalibratedWindVec();
+    const rotY = Math.atan2(dx, dz);
+    const prof = SEASON_PROFILES[simState.windSeason] || SEASON_PROFILES.WINTER;
+    windMat.color.setHex(prof.colorHex);
 
-    const pos = windGeo.attributes.position.array;
-    for (let i = 0; i < WIND_COUNT; i++) {
+    const activeCount = Math.max(40, Math.min(MAX_WIND, Math.round(simState.windDensity)));
+    windMesh.count = activeCount;
+    const thick = Math.max(0.12, Math.min(0.85, Number(simState.windThickness) || 0.35));
+    const spdMul = Math.max(0.3, Math.min(3.0, Number(simState.windSpeedMul) || 1.2));
+
+    for (let i = 0; i < activeCount; i++) {
       const s = windSeeds[i];
-      s.x += dx * s.speed * dt;
-      s.z += dz * s.speed * dt;
+      s.x += dx * s.speed * spdMul * dt;
+      s.z += dz * s.speed * spdMul * dt;
       if (s.x < -75) s.x = 130;
       if (s.x > 130) s.x = -75;
       if (s.z < -26) s.z = 102;
       if (s.z > 102) s.z = -26;
 
-      const idx = i * 6;
-      pos[idx]     = gx(s.x);
-      pos[idx + 1] = s.y;
-      pos[idx + 2] = gz(s.z);
-      pos[idx + 3] = gx(s.x - dx * s.len);
-      pos[idx + 4] = s.y;
-      pos[idx + 5] = gz(s.z - dz * s.len);
+      windDummy.position.set(gx(s.x), s.y, gz(s.z));
+      windDummy.rotation.set(0, rotY, 0);
+      windDummy.scale.set(thick, thick, s.len);
+      windDummy.updateMatrix();
+      windMesh.setMatrixAt(i, windDummy.matrix);
     }
-    windGeo.attributes.position.needsUpdate = true;
+    if (windMesh.instanceMatrix) windMesh.instanceMatrix.needsUpdate = true;
   }
 
   // =========================================================================
-  // 7. 🌧️ 豪雨積水與校園排水路徑模擬 (RainFloodLayer)
+  // 7. 🌧️ 豪雨積水與坡向水流預測模擬 (RainFloodLayer + MOI_ASPECT)
   // =========================================================================
   const rainGroup = new THREE.Group();
   rainGroup.name = 'Sim_Rain_Flood';
@@ -814,15 +979,17 @@ export function initCampusSimulations(ctx) {
   rainGroup.add(rainLines);
 
   // 低窪易積水熱區 ＋ 沙包／抽水機預置點
+  const PUDDLE_SPECS = [
+    { x: 10,  z: 46.5, rx: 32, rz: 14, baseOp: 0.34 }, // 操場內野低窪積水
+    { x: 53,  z: 16,   rx: 9,  rz: 6,  baseOp: 0.40 }, // 穿堂南側低處
+    { x: -34, z: 16,   rx: 11, rz: 6.5, baseOp: 0.42 }, // 中央廚房西南排水口
+    { x: 96,  z: 24,   rx: 9,  rz: 6,  baseOp: 0.36 }  // 東大門前庭
+  ];
   const puddleMeshes = [];
+  const runoffArrows = [];
+
   function buildFloodZones() {
-    const puddles = [
-      { x: 10,  z: 46.5, rx: 32, rz: 14, baseOp: 0.34 }, // 操場內野低窪積水
-      { x: 53,  z: 16,   rx: 9,  rz: 6,  baseOp: 0.40 }, // 穿堂南側低處
-      { x: -34, z: 16,   rx: 11, rz: 6.5, baseOp: 0.42 }, // 中央廚房西南排水口
-      { x: 96,  z: 24,   rx: 9,  rz: 6,  baseOp: 0.36 }  // 東大門前庭
-    ];
-    puddles.forEach((pd) => {
+    PUDDLE_SPECS.forEach((pd) => {
       const m = new THREE.Mesh(
         new THREE.CircleGeometry(1, 32),
         new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: pd.baseOp, side: THREE.DoubleSide, depthWrite: false })
@@ -835,7 +1002,7 @@ export function initCampusSimulations(ctx) {
       puddleMeshes.push(m);
     });
 
-    // 排水溝流向藍線
+    // 既設排水溝流向藍線
     const drainRoutes = [
       [[gx(53), 0.25, gz(14)], [gx(53), 0.25, gz(24)], [gx(70), 0.25, gz(24)], [gx(95), 0.25, gz(24)]],
       [[gx(-22), 0.25, gz(14)], [gx(-34), 0.25, gz(18)], [gx(-42), 0.25, gz(38)]]
@@ -858,8 +1025,139 @@ export function initCampusSimulations(ctx) {
       cone.position.set(gx(px), 1.1, gz(pz));
       rainGroup.add(cone);
     });
+
+    // 10 × 6 地表逕流水流預測箭頭網格（依 MOI_ASPECT 坡向圖或地形模型動態計算方向）
+    const arrowGeo = new THREE.ConeGeometry(0.55, 2.6, 6);
+    if (typeof arrowGeo.rotateX === 'function') arrowGeo.rotateX(Math.PI / 2);
+    const arrowMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.88 });
+    for (let row = 0; row < 6; row++) {
+      for (let col = 0; col < 10; col++) {
+        const rx = -52 + col * 16.5;
+        const rz = -8 + row * 16.8;
+        const mesh = new THREE.Mesh(arrowGeo, arrowMat);
+        mesh.position.set(gx(rx), 0.42, gz(rz));
+        rainGroup.add(mesh);
+        runoffArrows.push({
+          mesh,
+          rx,
+          rz,
+          dx: -0.22,
+          dz: 0.975,
+          phase: (row * 0.37 + col * 0.23) % 1
+        });
+      }
+    }
   }
   buildFloodZones();
+
+  // 將內政部坡向圖 (MOI_ASPECT) RGB 色相轉為水流方位角 (0=北, 90=東, 180=南, 270=西)
+  function aspectRgbToAzimuthDeg(r, g, b, a) {
+    if (a < 40) return null;
+    const rn = r / 255, gn = g / 255, bn = b / 255;
+    const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+    const d = max - min;
+    const s = max === 0 ? 0 : d / max;
+    if (s < 0.14 || max < 0.15) return null; // 平坦地（灰／白）
+    let h = 0;
+    if (d > 0) {
+      if (max === rn) h = ((gn - bn) / d) % 6;
+      else if (max === gn) h = (bn - rn) / d + 2;
+      else h = (rn - gn) / d + 4;
+      h = (h * 60 + 360) % 360;
+    }
+    const stops = [
+      [0, 0], [30, 45], [60, 90], [120, 135],
+      [180, 180], [210, 225], [240, 270], [300, 315], [360, 360]
+    ];
+    for (let i = 0; i < stops.length - 1; i++) {
+      const [h0, az0] = stops[i];
+      const [h1, az1] = stops[i + 1];
+      if (h >= h0 && h <= h1) {
+        const t = (h - h0) / Math.max(1e-5, h1 - h0);
+        return az0 + t * (az1 - az0);
+      }
+    }
+    return 180;
+  }
+
+  function fallbackRunoffVec(rx, rz) {
+    // 基準地形：北高南低微偏西南，並受鄰近低窪積水／排水點匯聚影響
+    let vx = -0.22;
+    let vz = 0.975;
+    let bestD2 = Infinity;
+    let target = null;
+    for (const pd of PUDDLE_SPECS) {
+      const d2 = (pd.x - rx) * (pd.x - rx) + (pd.z - rz) * (pd.z - rz);
+      if (d2 < bestD2) { bestD2 = d2; target = pd; }
+    }
+    if (target && bestD2 > 9 && bestD2 < 2600) {
+      const dist = Math.sqrt(bestD2);
+      const w = 0.55 * (1 - dist / 52);
+      vx = vx * (1 - w) + ((target.x - rx) / dist) * w;
+      vz = vz * (1 - w) + ((target.z - rz) / dist) * w;
+    }
+    const len = Math.hypot(vx, vz) || 1;
+    return { dx: vx / len, dz: vz / len };
+  }
+
+  async function updateRainFlowFromAspect() {
+    const srcEl = document.getElementById('rain-flow-source');
+    let aspectCtx = null;
+    let aspectCanvas = null;
+
+    if (simState.rainUseAspect) {
+      if (srcEl) srcEl.textContent = '⏳ 正在分析國土坡向圖 (MOI_ASPECT) 推算地表流向...';
+      aspectCanvas = await fetchNlscCanvas('MOI_ASPECT');
+      if (aspectCanvas) {
+        try { aspectCtx = aspectCanvas.getContext('2d', { willReadFrequently: true }); } catch {}
+      }
+    }
+
+    let aspectHits = 0;
+    const rotRadOffset = ((NLSC_BASE_ROT_DEG + nlscCal.rotDeg) * Math.PI) / 180;
+
+    for (const ar of runoffArrows) {
+      let vec = null;
+      if (aspectCtx && aspectCanvas) {
+        const u = Math.floor(((ar.rx - NLSC_BOUNDS.rx0) / NLSC_W) * aspectCanvas.width);
+        const v = Math.floor(((ar.rz - NLSC_BOUNDS.rz0) / NLSC_H) * aspectCanvas.height);
+        if (u >= 2 && u < aspectCanvas.width - 2 && v >= 2 && v < aspectCanvas.height - 2) {
+          try {
+            const imgData = aspectCtx.getImageData(u - 2, v - 2, 5, 5).data;
+            let sx = 0, sz = 0, cnt = 0;
+            for (let p = 0; p < imgData.length; p += 4) {
+              const az = aspectRgbToAzimuthDeg(imgData[p], imgData[p + 1], imgData[p + 2], imgData[p + 3]);
+              if (az !== null) {
+                const rad = (az * Math.PI) / 180 - rotRadOffset;
+                sx += Math.sin(rad);
+                sz += -Math.cos(rad);
+                cnt++;
+              }
+            }
+            if (cnt >= 4) {
+              const len = Math.hypot(sx, sz) || 1;
+              vec = { dx: sx / len, dz: sz / len };
+              aspectHits++;
+            }
+          } catch {}
+        }
+      }
+      if (!vec) vec = fallbackRunoffVec(ar.rx, ar.rz);
+      ar.dx = vec.dx;
+      ar.dz = vec.dz;
+      ar.mesh.rotation.y = Math.atan2(ar.dx, ar.dz);
+    }
+
+    if (srcEl) {
+      if (simState.rainUseAspect && aspectHits > 0) {
+        srcEl.textContent = `✅ 已依國土坡向圖 (MOI_ASPECT) 推算 ${aspectHits}/${runoffArrows.length} 處坡面流向（平坦處輔以排水匯聚）`;
+      } else if (simState.rainUseAspect) {
+        srcEl.textContent = '📐 校區坡向多屬平坦或離線，已以「北高南低＋低窪匯聚」地形模型推算流向';
+      } else {
+        srcEl.textContent = '📐 目前使用「北高南低＋低窪匯聚」校園地形模型推算流向';
+      }
+    }
+  }
 
   function applyRainIntensity() {
     rainGroup.visible = simState.rain;
@@ -870,6 +1168,7 @@ export function initCampusSimulations(ctx) {
       m.scale.set(pd.rx * scaleMul, pd.rz * scaleMul, 1);
       m.material.opacity = Math.min(0.68, pd.baseOp * opMul);
     });
+    if (simState.rain) updateRainFlowFromAspect();
     if (!simState.night) applySolarState();
     updateHudBanner();
   }
@@ -896,12 +1195,140 @@ export function initCampusSimulations(ctx) {
       pos[idx + 5] = gz(d.z - windTilt * 0.3);
     }
     rainGeo.attributes.position.needsUpdate = true;
+
+    // 動畫化地表逕流箭頭（依預測流向滑動前進）
+    const flowSpd = simState.rainLevel === 'typhoon' ? 1.65 : simState.rainLevel === 'torrential' ? 1.15 : 0.75;
+    for (const ar of runoffArrows) {
+      const t = (elapsed * flowSpd + ar.phase) % 1;
+      const offset = (t - 0.5) * 3.8;
+      ar.mesh.position.set(gx(ar.rx + ar.dx * offset), 0.42, gz(ar.rz + ar.dz * offset));
+    }
   }
 
   // =========================================================================
-  // 8. 浮動模擬狀態 HUD ＆ UI 事件綁定
+  // 7b. ⛰️ 周邊坡地 3D 地形起伏示意（校區基地維持 0m 水平，外圍北高南低 3D 網格）
   // =========================================================================
+  const terrainGroup = new THREE.Group();
+  terrainGroup.name = 'Sim_Terrain_Relief';
+  terrainGroup.visible = false;
+  root.add(terrainGroup);
+
+  function buildTerrainReliefLayer() {
+    const geo = new THREE.PlaneGeometry(360, 260, 48, 36);
+    const posAttr = geo.attributes && geo.attributes.position;
+    const cx = (NLSC_BOUNDS.rx0 + NLSC_BOUNDS.rx1) * 0.5;
+    const cz = (NLSC_BOUNDS.rz0 + NLSC_BOUNDS.rz1) * 0.5;
+    const smoothstep = (e0, e1, x) => {
+      const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
+      return t * t * (3 - 2 * t);
+    };
+
+    if (posAttr && typeof posAttr.count === 'number') {
+      for (let i = 0; i < posAttr.count; i++) {
+        const vx = posAttr.getX(i);
+        const vy = posAttr.getY(i);
+        const rx = cx + vx;
+        const rz = cz - vy; // rotX(-PI/2) 後，local +Y 對應 world -Z（北側）
+
+        // 校區基地範圍 [-72, 108] × [-22, 96] 維持平整，避免校舍與操場模型浮沉
+        const dxPad = rx < -72 ? (-72 - rx) : rx > 108 ? (rx - 108) : 0;
+        const dzPad = rz < -22 ? (-22 - rz) : rz > 96 ? (rz - 96) : 0;
+        const padDist = Math.hypot(dxPad, dzPad);
+        const blend = smoothstep(0, 18, padDist);
+
+        // 北側坡地緩升（最高約 +12m），南／西南側緩降（最低約 -2.8m）
+        const northLift = rz < -22 ? Math.min(12.2, ((-22 - rz) / 80) * 11.5) : 0;
+        const southDip = rz > 96 ? -Math.min(2.6, ((rz - 96) / 60) * 2.4) : 0;
+        const westDip = rx < -72 ? -Math.min(1.4, ((-72 - rx) / 70) * 1.4) : 0;
+        const undulation = 0.75 * Math.sin(rx * 0.045) * Math.cos(rz * 0.05);
+
+        const h = -0.06 + blend * (northLift + southDip + westDip + undulation);
+        posAttr.setZ(i, h);
+      }
+      posAttr.needsUpdate = true;
+      if (typeof geo.computeVertexNormals === 'function') geo.computeVertexNormals();
+    }
+
+    const solid = new THREE.Mesh(
+      geo,
+      new THREE.MeshStandardMaterial({
+        color: 0x0f766e,
+        roughness: 0.92,
+        metalness: 0.0,
+        transparent: true,
+        opacity: 0.34,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      })
+    );
+    solid.rotation.x = -Math.PI / 2;
+    solid.position.set(NLSC_CX, 0, NLSC_CZ);
+    terrainGroup.add(solid);
+
+    const wire = new THREE.Mesh(
+      geo,
+      new THREE.MeshBasicMaterial({
+        color: 0x34d399,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.28
+      })
+    );
+    wire.rotation.x = -Math.PI / 2;
+    wire.position.set(NLSC_CX, 0.03, NLSC_CZ);
+    terrainGroup.add(wire);
+  }
+  buildTerrainReliefLayer();
+
+  // =========================================================================
+  // 8. 浮動圖例卡片、模擬狀態 HUD、四季連動 ＆ UI 事件綁定
+  // =========================================================================
+  function renderLegendCard() {
+    const card = document.getElementById('sim-legend-card');
+    if (!card) return;
+    const keys = [];
+    if (simState.nlscLayer !== 'NONE' && COLOR_LEGENDS[simState.nlscLayer]) keys.push(simState.nlscLayer);
+    if (simState.terrainRelief) keys.push('terrain');
+    if (simState.evac) keys.push('evac');
+    if (simState.construction) keys.push('construction');
+    if (simState.night) keys.push('night');
+    if (simState.wind) keys.push('wind');
+    if (simState.rain) keys.push('rain');
+
+    card.classList.toggle('hidden', keys.length === 0);
+    if (keys.length === 0) {
+      card.innerHTML = '';
+      return;
+    }
+
+    card.innerHTML = `
+      <div class="flex items-center justify-between border-b border-slate-700/80 pb-1.5 mb-2">
+        <span class="font-bold text-slate-100 text-[11.5px]">🎨 圖層顏色說明（圖例）</span>
+        <span class="text-[10px] text-slate-400">${keys.length} 項作用中</span>
+      </div>
+      <div class="space-y-2.5">
+        ${keys.map((k) => {
+          const lg = COLOR_LEGENDS[k];
+          return `
+            <div>
+              <div class="font-semibold text-sky-200 text-[11px] mb-1">${lg.title}</div>
+              <div class="space-y-1">
+                ${lg.items.map(([hex, txt]) => `
+                  <div class="flex items-center gap-1.5 leading-snug">
+                    <span class="inline-block w-3 h-3 rounded-sm shrink-0 border border-white/25" style="background:${hex}"></span>
+                    <span class="text-slate-200">${txt}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
   function updateHudBanner(spOpt = null) {
+    renderLegendCard();
     const hud = document.getElementById('sim-hud-bar');
     if (!hud) return;
     const tags = [];
@@ -912,27 +1339,76 @@ export function initCampusSimulations(ctx) {
       tags.push(`🌙 夜間照明${simState.showCctv ? '＋CCTV 視角' : ''}`);
     }
     if (simState.nlscLayer !== 'NONE') tags.push(`🗺️ 國土測繪 ${simState.nlscLayer}`);
+    if (simState.terrainRelief) tags.push('⛰️ 周邊 3D 地形');
     if (simState.evac) tags.push('🚨 防災疏散動線');
     if (simState.construction) {
       const zKey = simState.constructionZone === 'auto' ? detectAutoConstructionZone() : simState.constructionZone;
       const projCnt = simState.liveSummary.projects.length;
       tags.push(`🚧 ${ZONE_SPECS[zKey]?.title?.split('（')[0] || '施工圍籬'}${projCnt ? `（連動 ${projCnt} 案）` : ''}`);
     }
-    if (simState.wind) tags.push(simState.windSeason === 'NE' ? '🌬️ 冬季東北季風' : '🌬️ 夏季西南季風');
+    if (simState.wind) {
+      const prof = SEASON_PROFILES[simState.windSeason] || SEASON_PROFILES.WINTER;
+      tags.push(`🌬️ ${prof.shortLabel} ${Math.round(simState.windAngleDeg)}° ${degToCompass(simState.windAngleDeg)}`);
+    }
     if (simState.rain) {
       const lvTxt = simState.rainLevel === 'typhoon' ? '颱風強降雨' : simState.rainLevel === 'torrential' ? '豪雨積水' : '大雨排水';
-      tags.push(`🌧️ ${lvTxt}`);
+      tags.push(`🌧️ ${lvTxt}${simState.rainUseAspect ? '＋坡向流向' : ''}`);
     }
 
-    const activeExtra = simState.evac || simState.construction || simState.night || simState.wind || simState.rain || simState.nlscLayer !== 'NONE' || !!simState.playMode;
+    const activeExtra = simState.evac || simState.construction || simState.night || simState.wind || simState.rain || simState.terrainRelief || simState.nlscLayer !== 'NONE' || !!simState.playMode;
     hud.classList.toggle('hidden', !activeExtra);
     hud.innerHTML = tags.map(t => `<span class="px-2 py-0.5 rounded-full bg-slate-800/90 border border-slate-600/70 text-[11px] font-semibold text-slate-100 whitespace-nowrap">${t}</span>`).join('');
+  }
+
+  function syncWindUi() {
+    document.querySelectorAll('.sim-wind-btn').forEach((x) => {
+      const active = x.dataset.season === simState.windSeason;
+      x.classList.toggle('bg-sky-500', active);
+      x.classList.toggle('text-white', active);
+      x.classList.toggle('font-semibold', active);
+      x.classList.toggle('bg-slate-800/90', !active);
+    });
+    const setSlider = (id, val, txt) => {
+      const el = document.getElementById(id);
+      const lb = document.getElementById(`${id}-val`);
+      if (el) el.value = String(val);
+      if (lb) lb.textContent = txt;
+    };
+    setSlider('wind-angle-slider', simState.windAngleDeg, `${Math.round(simState.windAngleDeg)}° ${degToCompass(simState.windAngleDeg)}`);
+    setSlider('wind-density-slider', simState.windDensity, `${simState.windDensity}條`);
+    setSlider('wind-thick-slider', simState.windThickness, `${Number(simState.windThickness).toFixed(2)}m`);
+    setSlider('wind-speed-slider', simState.windSpeedMul, `${Number(simState.windSpeedMul).toFixed(1)}×`);
+  }
+
+  function applySeasonSync(seasonKey, { from = 'sun' } = {}) {
+    const prof = SEASON_PROFILES[seasonKey];
+    if (!prof) return;
+    if (from === 'sun') {
+      if (!simState.seasonSync) return;
+      simState.windSeason = prof.key;
+      simState.windAngleDeg = prof.windFromDeg;
+      syncWindUi();
+    } else if (from === 'wind') {
+      simState.windSeason = prof.key;
+      simState.windAngleDeg = prof.windFromDeg;
+      syncWindUi();
+      if (simState.seasonSync) {
+        simState.month = prof.month;
+        const ms = document.getElementById('sun-month-slider');
+        if (ms) ms.value = String(simState.month);
+        rebuildSunArc(simState.month);
+        applySolarState();
+        return;
+      }
+      updateHudBanner();
+    }
   }
 
   function bindUi() {
     const monthSlider = document.getElementById('sun-month-slider');
     const hourSlider = document.getElementById('sun-slider');
     const arcChk = document.getElementById('toggle-sun-arc');
+    const seasonSyncChk = document.getElementById('toggle-season-sync');
     const playDayBtn = document.getElementById('sun-play-day');
     const playYearBtn = document.getElementById('sun-play-year');
 
@@ -940,6 +1416,7 @@ export function initCampusSimulations(ctx) {
       monthSlider.value = String(simState.month);
       monthSlider.addEventListener('input', (e) => {
         simState.month = Number(e.target.value);
+        applySeasonSync(monthToSeason(simState.month), { from: 'sun' });
         rebuildSunArc(simState.month);
         applySolarState();
       });
@@ -961,6 +1438,16 @@ export function initCampusSimulations(ctx) {
         applySolarState();
       });
     }
+    if (seasonSyncChk) {
+      seasonSyncChk.checked = simState.seasonSync;
+      seasonSyncChk.addEventListener('change', (e) => {
+        simState.seasonSync = e.target.checked;
+        if (simState.seasonSync) {
+          applySeasonSync(monthToSeason(simState.month), { from: 'sun' });
+          updateHudBanner();
+        }
+      });
+    }
 
     document.querySelectorAll('.sun-term-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -970,6 +1457,7 @@ export function initCampusSimulations(ctx) {
           simState.hour = parseFloat(btn.dataset.hour);
           if (hourSlider) hourSlider.value = String(simState.hour);
         }
+        applySeasonSync(monthToSeason(simState.month), { from: 'sun' });
         rebuildSunArc(simState.month);
         applySolarState();
       });
@@ -1021,6 +1509,17 @@ export function initCampusSimulations(ctx) {
       nlscPortalBtn.href = `https://maps.nlsc.gov.tw/T09/mapshow.action?In_type=web&In_x=${GEO.lng0.toFixed(6)}&In_y=${GEO.lat0.toFixed(6)}&In_scale=2500`;
     }
 
+    // 周邊坡地 3D 地形起伏開關
+    const terrainChk = document.getElementById('toggle-terrain-relief');
+    if (terrainChk) {
+      terrainChk.checked = simState.terrainRelief;
+      terrainChk.addEventListener('change', (e) => {
+        simState.terrainRelief = e.target.checked;
+        terrainGroup.visible = simState.terrainRelief;
+        updateHudBanner();
+      });
+    }
+
     // 圖資對位微調滑桿（即時移動與記憶）
     const syncCalUi = () => {
       const setV = (id, val, txt) => {
@@ -1046,6 +1545,7 @@ export function initCampusSimulations(ctx) {
         const lb = document.getElementById(`${id}-val`);
         if (lb) lb.textContent = fmt(nlscCal[key]);
         applyNlscTransform();
+        if (simState.rain && key === 'rotDeg') updateRainFlowFromAspect();
       });
     });
     document.getElementById('btn-nlsc-cal-reset')?.addEventListener('click', () => {
@@ -1100,20 +1600,41 @@ export function initCampusSimulations(ctx) {
       updateHudBanner();
     });
 
-    bindToggle('toggle-sim-wind', 'wind', 'sim-wind-opts', (on) => { windGroup.visible = on; });
+    // 風場：四季按鈕（連動日照）＋ 4 條手動微調滑桿
+    bindToggle('toggle-sim-wind', 'wind', 'sim-wind-opts', (on) => {
+      windGroup.visible = on;
+      if (on) syncWindUi();
+    });
     document.querySelectorAll('.sim-wind-btn').forEach((b) => {
       b.addEventListener('click', () => {
-        simState.windSeason = b.dataset.season;
-        document.querySelectorAll('.sim-wind-btn').forEach(x => {
-          const active = x.dataset.season === simState.windSeason;
-          x.classList.toggle('bg-sky-500', active);
-          x.classList.toggle('text-white', active);
-          x.classList.toggle('bg-slate-800/90', !active);
-        });
-        updateHudBanner();
+        const sKey = b.dataset.season;
+        if (SEASON_PROFILES[sKey]) applySeasonSync(sKey, { from: 'wind' });
       });
     });
+    document.getElementById('wind-angle-slider')?.addEventListener('input', (e) => {
+      simState.windAngleDeg = Number(e.target.value);
+      const lb = document.getElementById('wind-angle-val');
+      if (lb) lb.textContent = `${Math.round(simState.windAngleDeg)}° ${degToCompass(simState.windAngleDeg)}`;
+      updateHudBanner();
+    });
+    document.getElementById('wind-density-slider')?.addEventListener('input', (e) => {
+      simState.windDensity = Number(e.target.value);
+      const lb = document.getElementById('wind-density-val');
+      if (lb) lb.textContent = `${simState.windDensity}條`;
+    });
+    document.getElementById('wind-thick-slider')?.addEventListener('input', (e) => {
+      simState.windThickness = parseFloat(e.target.value);
+      const lb = document.getElementById('wind-thick-val');
+      if (lb) lb.textContent = `${simState.windThickness.toFixed(2)}m`;
+    });
+    document.getElementById('wind-speed-slider')?.addEventListener('input', (e) => {
+      simState.windSpeedMul = parseFloat(e.target.value);
+      const lb = document.getElementById('wind-speed-val');
+      if (lb) lb.textContent = `${simState.windSpeedMul.toFixed(1)}×`;
+    });
+    syncWindUi();
 
+    // 豪雨與坡向水流預測
     bindToggle('toggle-sim-rain', 'rain', 'sim-rain-opts', () => applyRainIntensity());
     document.querySelectorAll('.sim-rain-btn').forEach((b) => {
       b.addEventListener('click', () => {
@@ -1127,12 +1648,21 @@ export function initCampusSimulations(ctx) {
         applyRainIntensity();
       });
     });
+    const rainAspectChk = document.getElementById('toggle-rain-aspect');
+    if (rainAspectChk) {
+      rainAspectChk.checked = simState.rainUseAspect;
+      rainAspectChk.addEventListener('change', (e) => {
+        simState.rainUseAspect = e.target.checked;
+        if (simState.rain) updateRainFlowFromAspect();
+        updateHudBanner();
+      });
+    }
 
     // 一鍵重置全部模擬
     document.getElementById('btn-sim-reset-all')?.addEventListener('click', () => {
       simState.playMode = null;
       syncPlayBtns();
-      ['toggle-sim-evac', 'toggle-sim-construction', 'toggle-sim-night', 'toggle-sim-wind', 'toggle-sim-rain'].forEach(id => {
+      ['toggle-sim-evac', 'toggle-sim-construction', 'toggle-sim-night', 'toggle-sim-wind', 'toggle-sim-rain', 'toggle-terrain-relief'].forEach(id => {
         const el = document.getElementById(id);
         if (el && el.checked) { el.checked = false; el.dispatchEvent(new Event('change')); }
       });
@@ -1191,6 +1721,7 @@ export function initCampusSimulations(ctx) {
         simState.month = (simState.month % 12) + 1;
         const ms = document.getElementById('sun-month-slider');
         if (ms) ms.value = String(simState.month);
+        applySeasonSync(monthToSeason(simState.month), { from: 'sun' });
         rebuildSunArc(simState.month);
         applySolarState();
       }
@@ -1230,10 +1761,14 @@ export function initCampusSimulations(ctx) {
     state: simState,
     tick,
     computeSolarPosition,
+    applySeasonSync,
+    updateRainFlowFromAspect,
+    renderLegendCard,
     setMonth(m) {
       simState.month = Math.max(1, Math.min(12, Math.round(m)));
       const ms = document.getElementById('sun-month-slider');
       if (ms) ms.value = String(simState.month);
+      applySeasonSync(monthToSeason(simState.month), { from: 'sun' });
       rebuildSunArc(simState.month);
       applySolarState();
     },
@@ -1245,9 +1780,10 @@ export function initCampusSimulations(ctx) {
     },
     loadNlscLayer,
     getGroups() {
-      return { root, sunArcGroup, evacGroup, constructionGroup, nightGroup, windGroup, rainGroup };
+      return { root, sunArcGroup, evacGroup, constructionGroup, nightGroup, windGroup, rainGroup, terrainGroup };
     }
   };
   window.__CAMPUS_SIM__ = api;
   return api;
 }
+

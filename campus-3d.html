@@ -177,6 +177,9 @@
     </button>
   </div>
 
+  <!-- Floating Dynamic Color Legend Card (Auto-shows for NLSC & Simulation Layers) -->
+  <div id="sim-legend-card" class="hidden fixed top-16 right-3 z-30 w-64 max-h-[58vh] overflow-y-auto custom-scroll glass-panel rounded-xl p-2.5 text-[11px] text-slate-200 space-y-2 border border-slate-600/60"></div>
+
   <!-- Pegman Placement Banner -->
   <div id="pegman-hint-banner" class="fixed top-16 left-1/2 -translate-x-1/2 z-40 glass-panel rounded-2xl px-4 py-2 text-xs text-amber-200 border border-amber-400/50 flex items-center gap-3 opacity-0 pointer-events-none transition-all duration-200 -translate-y-2">
     <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
@@ -390,6 +393,10 @@
             <span>顯示 3D 太陽軌跡弧線</span>
             <input id="toggle-sun-arc" type="checkbox" checked class="w-4 h-4 accent-amber-400 rounded cursor-pointer" />
           </label>
+          <label class="flex items-center justify-between text-[11px] text-sky-200 cursor-pointer">
+            <span>🔗 選季節／月份時同步連動風場季風</span>
+            <input id="toggle-season-sync" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+          </label>
         </div>
       </section>
 
@@ -417,6 +424,10 @@
             <span id="nlsc-opacity-val" class="font-mono text-indigo-300 w-8 text-right">85%</span>
           </div>
           <div id="nlsc-status-msg" class="text-[10.5px] text-slate-400 leading-snug">免申請官方圖資：正射航照／灰階／段籍／等高線／7級坡度</div>
+          <label class="flex items-center justify-between text-[11px] text-emerald-200 cursor-pointer pt-1 border-t border-indigo-400/20">
+            <span>⛰️ 周邊坡地 3D 地形起伏（北高南低）</span>
+            <input id="toggle-terrain-relief" type="checkbox" class="w-4 h-4 accent-emerald-400 rounded cursor-pointer" />
+          </label>
           <details class="pt-1 border-t border-indigo-400/20">
             <summary class="text-[10.5px] text-indigo-200 font-semibold cursor-pointer select-none">🎯 圖資對位微調（東西／南北／旋轉／縮放）</summary>
             <div class="mt-1.5 space-y-1 text-[10.5px] text-slate-300">
@@ -461,7 +472,7 @@
                 <span>顯示消防栓／滅火器／AED 覆蓋半徑</span>
                 <input id="toggle-sim-evac-radius" type="checkbox" checked class="w-3.5 h-3.5 accent-emerald-400" />
               </label>
-              <div class="text-slate-400">綠線：各樓層➔操場集合區｜紅帶：外牆落物警戒</div>
+              <div class="text-slate-400">詳細顏色說明請見右上角「圖例」卡片</div>
             </div>
           </div>
 
@@ -478,7 +489,6 @@
                 <option value="restroom">🚻 東側 1~3F 廁所整修圍籬</option>
                 <option value="kitchen">🍳 中央廚房周邊修繕工程</option>
               </select>
-              <div class="text-slate-400">紅白欄：禁區｜橘線：工程車｜綠線：學生安全通道</div>
             </div>
           </div>
 
@@ -496,22 +506,48 @@
             </div>
           </div>
 
-          <!-- 6d. 季節風場與通風 -->
+          <!-- 6d. 季節風場與通風（立體風帶＋可調密度／粗細／風速／風向＋四季連動日照） -->
           <div class="p-2 rounded-xl bg-sky-500/10 border border-sky-400/30">
             <label class="flex items-center justify-between cursor-pointer">
               <span class="text-sky-200 font-medium">🌬️ 季節風場 ＆ 教室通風流線</span>
               <input id="toggle-sim-wind" type="checkbox" class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
             </label>
-            <div id="sim-wind-opts" class="hidden mt-1.5 pt-1.5 border-t border-sky-400/20 flex gap-1.5 text-[11px]">
-              <button type="button" class="sim-wind-btn flex-1 py-1 rounded-lg bg-sky-500 text-white font-semibold transition" data-season="NE">❄️ 冬季東北季風</button>
-              <button type="button" class="sim-wind-btn flex-1 py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-season="SW">☀️ 夏季西南季風</button>
+            <div id="sim-wind-opts" class="hidden mt-1.5 pt-1.5 border-t border-sky-400/20 space-y-1.5 text-[11px]">
+              <div class="grid grid-cols-4 gap-1 text-[10.5px]">
+                <button type="button" class="sim-wind-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-season="SPRING">🌱 春</button>
+                <button type="button" class="sim-wind-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-season="SUMMER">☀️ 夏西南</button>
+                <button type="button" class="sim-wind-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-season="AUTUMN">🍂 秋</button>
+                <button type="button" class="sim-wind-btn py-1 rounded-lg bg-sky-500 text-white font-semibold transition" data-season="WINTER">❄️ 冬東北</button>
+              </div>
+              <div class="space-y-1 text-[10.5px] text-slate-300">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-10 shrink-0">風向</span>
+                  <input id="wind-angle-slider" type="range" min="0" max="355" step="5" value="35" class="flex-1 accent-sky-400" />
+                  <span id="wind-angle-val" class="font-mono text-sky-200 w-12 text-right">35° NE</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-10 shrink-0">密度</span>
+                  <input id="wind-density-slider" type="range" min="60" max="360" step="20" value="220" class="flex-1 accent-sky-400" />
+                  <span id="wind-density-val" class="font-mono text-sky-200 w-12 text-right">220條</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-10 shrink-0">粗細</span>
+                  <input id="wind-thick-slider" type="range" min="0.15" max="0.70" step="0.05" value="0.35" class="flex-1 accent-sky-400" />
+                  <span id="wind-thick-val" class="font-mono text-sky-200 w-12 text-right">0.35m</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-10 shrink-0">風速</span>
+                  <input id="wind-speed-slider" type="range" min="0.5" max="2.5" step="0.1" value="1.2" class="flex-1 accent-sky-400" />
+                  <span id="wind-speed-val" class="font-mono text-sky-200 w-12 text-right">1.2×</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- 6e. 豪雨積水與排水 -->
+          <!-- 6e. 豪雨積水與坡向水流預測 -->
           <div class="p-2 rounded-xl bg-cyan-500/10 border border-cyan-400/30">
             <label class="flex items-center justify-between cursor-pointer">
-              <span class="text-cyan-200 font-medium">🌧️ 豪雨積水 ＆ 校園排水路徑</span>
+              <span class="text-cyan-200 font-medium">🌧️ 豪雨積水 ＆ 坡向水流預測</span>
               <input id="toggle-sim-rain" type="checkbox" class="w-4 h-4 accent-cyan-400 rounded cursor-pointer" />
             </label>
             <div id="sim-rain-opts" class="hidden mt-1.5 pt-1.5 border-t border-cyan-400/20 space-y-1.5 text-[11px]">
@@ -520,7 +556,11 @@
                 <button type="button" class="sim-rain-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-level="torrential">豪雨</button>
                 <button type="button" class="sim-rain-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-level="typhoon">颱風</button>
               </div>
-              <div class="text-slate-400">藍面：低窪積水｜藍管：排水方向｜黃錐：沙包/抽水機</div>
+              <label class="flex items-center justify-between text-cyan-200 cursor-pointer">
+                <span>🧭 依國土坡向圖 (MOI_ASPECT) 推算流向</span>
+                <input id="toggle-rain-aspect" type="checkbox" checked class="w-3.5 h-3.5 accent-cyan-400" />
+              </label>
+              <div id="rain-flow-source" class="text-[10.5px] text-slate-300 bg-slate-950/50 rounded-lg px-2 py-1">水流來源：待啟動</div>
             </div>
           </div>
         </div>
@@ -7079,7 +7119,7 @@
       function startApp() {
         applyFloorVisibility();
         updateModeButtonsUI();
-        import('./campus-3d-simulations.js?v=3')
+        import('./campus-3d-simulations.js?v=4')
           .then((mod) => {
             if (mod && typeof mod.initCampusSimulations === 'function') {
               simSuite = mod.initCampusSimulations({
