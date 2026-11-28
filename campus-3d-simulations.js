@@ -125,8 +125,10 @@ const COLOR_LEGENDS = {
     ]
   },
   wind: {
-    title: '🌬️ 季節風場（已校正 +2.6° 軸線）',
+    title: '🌬️ 季節風場 ＆ 開窗通風（+2.6° 軸線校準）',
     items: [
+      ['#5eead4', '亮青綠：開窗教室／1F 穿堂對流氣流'],
+      ['#e0f2fe', '亮冰白：遇實牆／屋頂迎風爬升與繞流'],
       ['#38bdf8', '冰藍箭帶：冬季東北季風（NE）'],
       ['#34d399', '翠綠箭帶：夏季西南季風（SW）'],
       ['#2dd4bf', '薄荷箭帶：春季偏東微風'],
@@ -277,9 +279,10 @@ export function initCampusSimulations(ctx) {
     night: false,
     showCctv: true,
     wind: false,
+    windMode: 'ventilate', // 'ventilate' (開窗通風) | 'deflect' (繞流不穿牆) | 'free' (自由風場)
     windSeason: initSeason, // 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER'
     windAngleDeg: SEASON_PROFILES[initSeason].windFromDeg,
-    windDensity: 220,
+    windDensity: 260,
     windThickness: 0.35,
     windSpeedMul: 1.2,
     rain: false,
@@ -903,31 +906,75 @@ export function initCampusSimulations(ctx) {
   }
 
   // =========================================================================
-  // 6. 🌬️ 季節風場與教室通風流線（立體風帶 InstancedMesh ＋ +2.6° 軸線校準 ＋ 手動微調）
+  // 6. 🌬️ 季節風場與教室通風流線（立體風帶 InstancedMesh ＋ 不穿建築繞流 ＋ 開窗穿堂對流）
   // =========================================================================
   const windGroup = new THREE.Group();
   windGroup.name = 'Sim_Wind_Flow';
   windGroup.visible = false;
   root.add(windGroup);
 
+  // 校舍建築量體與南北向開窗通風帶（對應 campus-3d.html 實際座標，+X=東, +Z=南）
+  const WIND_BUILDINGS = [
+    {
+      name: 'main',
+      x0: -0.4, x1: 83.1, z0: -0.5, z1: 8.3, yMin: 0.0, yMax: 14.4,
+      // 1F 穿堂（軸線⑦–⑧）完全南北貫通，所有阻擋模式皆允許氣流加速通過
+      breezeway: { x0: 54.0, x1: 63.0, y0: 1.2, y1: 4.8 },
+      // 1F–3F 南北側教室開窗高度帶（窗台 +0.9m ～ 窗頂 +2.9m）
+      windows: [
+        { x0: 1.5, x1: 71.5, y0: 2.05, y1: 4.15 }, // 1F 教室群
+        { x0: 1.5, x1: 71.5, y0: 5.85, y1: 7.95 }, // 2F 教室群（含穿堂上方輔導室）
+        { x0: 1.5, x1: 71.5, y0: 9.65, y1: 11.75 } // 3F 教室群
+      ]
+    },
+    {
+      name: 'east_wing',
+      x0: 71.8, x1: 83.1, z0: 8.3, z1: 16.8, yMin: 0.0, yMax: 13.0,
+      breezeway: null,
+      windows: [] // 東側梯間／機房／浴廁核心（實量體繞流）
+    },
+    {
+      name: 'kitchen_1f',
+      x0: -42.8, x1: -15.2, z0: -6.8, z1: 11.6, yMin: 0.0, yMax: 5.9,
+      breezeway: null,
+      windows: [
+        { x0: -41.0, x1: -16.8, y0: 2.15, y1: 4.05 } // 中央廚房與食育教室開窗對流帶
+      ]
+    },
+    {
+      name: 'kitchen_2f',
+      x0: -36.8, x1: -23.2, z0: -9.6, z1: -3.4, yMin: 5.0, yMax: 9.4,
+      breezeway: null,
+      windows: [] // 廚房 2F 消防機房（實量體繞流）
+    }
+  ];
+
   const MAX_WIND = 360;
   const windSeeds = [];
+  const WINDOW_LEVEL_YS = [3.05, 6.85, 10.65, 3.05];
   for (let i = 0; i < MAX_WIND; i++) {
+    // 45% 粒子配置在 1F–3F 教室開窗高度，其餘分布於 1.5m–16.5m，同時呈現穿堂對流與屋頂爬升
+    const baseY = i < MAX_WIND * 0.45
+      ? WINDOW_LEVEL_YS[i % WINDOW_LEVEL_YS.length] + (Math.random() - 0.5) * 1.1
+      : 1.5 + Math.random() * 15.0;
     windSeeds.push({
       x: -70 + Math.random() * 200,
-      y: 1.6 + Math.random() * 14.5,
+      y: baseY,
+      baseY,
       z: -24 + Math.random() * 124,
-      speed: 13 + Math.random() * 11,
-      len: 4.8 + Math.random() * 5.2
+      speed: 13 + Math.random() * 10,
+      len: 4.5 + Math.random() * 4.8,
+      phase: Math.random() * Math.PI * 2
     });
   }
   // 3D 立體漸縮風箭（+Z 為箭頭尖端），避開 WebGL linewidth=1px 限制
   const windUnitGeo = new THREE.CylinderGeometry(0.06, 0.48, 1, 6);
   if (typeof windUnitGeo.rotateX === 'function') windUnitGeo.rotateX(Math.PI / 2);
+  // 材質基色維持白色，由每個 instance 的 instanceColor 個別呈現季節色／開窗通風色／繞流爬升色
   const windMat = new THREE.MeshBasicMaterial({
-    color: (SEASON_PROFILES[simState.windSeason] || SEASON_PROFILES.WINTER).colorHex,
+    color: 0xffffff,
     transparent: true,
-    opacity: 0.78,
+    opacity: 0.82,
     depthWrite: false
   });
   const windMesh = new THREE.InstancedMesh(windUnitGeo, windMat, MAX_WIND);
@@ -937,6 +984,9 @@ export function initCampusSimulations(ctx) {
   }
   windGroup.add(windMesh);
   const windDummy = new THREE.Object3D();
+  const windColorSeason = new THREE.Color();
+  const windColorIndoor = new THREE.Color(0x5eead4);  // 亮青綠：開窗教室／1F 穿堂對流氣流
+  const windColorDeflect = new THREE.Color(0xe0f2fe); // 亮冰白：遇實牆／屋頂迎風爬升與繞流
 
   function getCalibratedWindVec() {
     // 校準校園軸線偏角 (+2.6° + 使用者旋轉微調)
@@ -946,34 +996,159 @@ export function initCampusSimulations(ctx) {
     return { dx: -Math.sin(fromRad), dz: Math.cos(fromRad) };
   }
 
+  function findOpenWindowBand(b, x, y, allowWindows) {
+    if (b.breezeway && x >= b.breezeway.x0 && x <= b.breezeway.x1 && y >= b.breezeway.y0 && y <= b.breezeway.y1) {
+      return { kind: 'breezeway', yMid: (b.breezeway.y0 + b.breezeway.y1) * 0.5 };
+    }
+    if (allowWindows && b.windows) {
+      for (const w of b.windows) {
+        if (x >= w.x0 && x <= w.x1 && y >= w.y0 && y <= w.y1) {
+          return { kind: 'window', yMid: (w.y0 + w.y1) * 0.5 };
+        }
+      }
+    }
+    return null;
+  }
+
   function tickWind(dt) {
     if (!simState.wind) return;
     const { dx, dz } = getCalibratedWindVec();
-    const rotY = Math.atan2(dx, dz);
     const prof = SEASON_PROFILES[simState.windSeason] || SEASON_PROFILES.WINTER;
-    windMat.color.setHex(prof.colorHex);
+    windColorSeason.setHex(prof.colorHex);
+    const hasInstanceColor = typeof windMesh.setColorAt === 'function';
+    if (!hasInstanceColor) windMat.color.setHex(prof.colorHex);
 
     const activeCount = Math.max(40, Math.min(MAX_WIND, Math.round(simState.windDensity)));
     windMesh.count = activeCount;
     const thick = Math.max(0.12, Math.min(0.85, Number(simState.windThickness) || 0.35));
     const spdMul = Math.max(0.3, Math.min(3.0, Number(simState.windSpeedMul) || 1.2));
+    const mode = simState.windMode || 'ventilate';
+    const allowWindows = mode === 'ventilate';
+    const usePhysics = mode !== 'free';
 
     for (let i = 0; i < activeCount; i++) {
       const s = windSeeds[i];
-      s.x += dx * s.speed * spdMul * dt;
-      s.z += dz * s.speed * spdMul * dt;
-      if (s.x < -75) s.x = 130;
-      if (s.x > 130) s.x = -75;
-      if (s.z < -26) s.z = 102;
-      if (s.z > 102) s.z = -26;
+      const baseSpd = s.speed * spdMul;
+      let vx = dx * baseSpd;
+      let vy = 0;
+      let vz = dz * baseSpd;
+      let stateTag = 'ambient'; // 'ambient' | 'indoor' | 'deflect'
+
+      if (usePhysics) {
+        const margin = 5.5;
+        let blockedBySolid = false;
+
+        for (const b of WIND_BUILDINGS) {
+          const inPadX = s.x >= b.x0 - margin && s.x <= b.x1 + margin;
+          const inPadZ = s.z >= b.z0 - margin && s.z <= b.z1 + margin;
+          const inPadY = s.y >= b.yMin - 0.5 && s.y <= b.yMax + 3.2;
+          if (!inPadX || !inPadZ || !inPadY) continue;
+
+          const opening = findOpenWindowBand(b, s.x, s.y, allowWindows);
+          const insideZ = s.z >= b.z0 - 1.5 && s.z <= b.z1 + 1.5;
+
+          if (opening && insideZ) {
+            // 🪟 開窗通風或 1F 穿堂：氣流被吸入教室／穿堂，沿南北向形成穩定穿堂對流
+            stateTag = 'indoor';
+            const nsSign = dz >= 0 ? 1 : -1;
+            const ventBoost = opening.kind === 'breezeway' ? 1.38 : 0.92;
+            const crossWave = Math.sin(elapsed * 2.6 + s.phase + s.z * 0.25) * 1.4;
+            // 室內受隔間牆導引，南北向對流為主、東西側向減弱
+            vx = vx * (opening.kind === 'breezeway' ? 0.22 : 0.36) + crossWave;
+            vz = (Math.abs(vz) < baseSpd * 0.45 ? nsSign * baseSpd * 0.65 : vz) * ventBoost;
+            vy = (opening.yMid - s.y) * 2.4;
+            continue;
+          }
+
+          // 🏢 實牆／樓板／屋頂／封閉核心：不穿透，迎風向上爬升或向東西兩側繞流
+          if (s.y <= b.yMax + 1.8) {
+            const dxIn = Math.min(s.x - (b.x0 - margin), (b.x1 + margin) - s.x);
+            const dzIn = Math.min(s.z - (b.z0 - margin), (b.z1 + margin) - s.z);
+            const proximity = Math.max(0, Math.min(1, Math.min(dxIn, dzIn) / margin));
+            if (proximity > 0.05) {
+              stateTag = 'deflect';
+              blockedBySolid = true;
+              const distWest = Math.abs(s.x - b.x0);
+              const distEast = Math.abs(b.x1 - s.x);
+              const nearEnd = Math.min(distWest, distEast) < 11.0;
+
+              if (nearEnd && s.y < b.yMax * 0.72) {
+                // 靠近東西山牆端點：向建築外側水平繞流
+                const sideDir = distWest < distEast ? -1 : 1;
+                vx += sideDir * baseSpd * 0.95 * proximity;
+                vz *= (1 - 0.35 * proximity);
+              } else {
+                // 正對建築立面或偏高處：迎風爬升越過屋頂
+                vy += baseSpd * (0.72 + 0.55 * proximity);
+                vz *= (1 - 0.45 * proximity);
+              }
+            }
+          }
+        }
+
+        // 未受阻擋且在室外時，高度緩慢回復基準巡航高度（呈現越過屋頂後的背風下沉弧線）
+        if (!blockedBySolid && stateTag === 'ambient') {
+          vy += (s.baseY - s.y) * 0.42;
+        }
+      }
+
+      // 推進粒子位置
+      s.x += vx * dt;
+      s.y += vy * dt;
+      s.z += vz * dt;
+
+      // 硬性防穿牆保護：確保實牆區域內（非開窗／非穿堂）零粒子穿透
+      if (usePhysics) {
+        for (const b of WIND_BUILDINGS) {
+          if (s.x > b.x0 && s.x < b.x1 && s.z > b.z0 && s.z < b.z1 && s.y >= b.yMin && s.y < b.yMax) {
+            const opening = findOpenWindowBand(b, s.x, s.y, allowWindows);
+            if (!opening) {
+              const dWest = s.x - b.x0;
+              const dEast = b.x1 - s.x;
+              const dTop = b.yMax - s.y;
+              if (dTop <= Math.min(dWest, dEast) + 2.5) {
+                s.y = b.yMax + 0.55;
+                vy = Math.max(vy, 2.5);
+              } else if (dWest < dEast) {
+                s.x = b.x0 - 0.6;
+              } else {
+                s.x = b.x1 + 0.6;
+              }
+              stateTag = 'deflect';
+            }
+          }
+        }
+      }
+
+      // 邊界循環重生
+      let wrapped = false;
+      if (s.x < -75) { s.x = 130; wrapped = true; }
+      else if (s.x > 130) { s.x = -75; wrapped = true; }
+      if (s.z < -26) { s.z = 102; wrapped = true; }
+      else if (s.z > 102) { s.z = -26; wrapped = true; }
+      if (s.y < 1.2) s.y = 1.2;
+      if (s.y > 24.0 || wrapped) s.y = s.baseY;
+
+      const horiz = Math.hypot(vx, vz) || 1e-4;
+      const rotY = Math.atan2(vx, vz);
+      const rotX = -Math.atan2(vy, horiz);
 
       windDummy.position.set(gx(s.x), s.y, gz(s.z));
-      windDummy.rotation.set(0, rotY, 0);
-      windDummy.scale.set(thick, thick, s.len);
+      windDummy.rotation.set(rotX, rotY, 0, 'YXZ');
+      const lenScale = stateTag === 'indoor' ? s.len * 0.85 : s.len;
+      windDummy.scale.set(thick, thick, lenScale);
       windDummy.updateMatrix();
       windMesh.setMatrixAt(i, windDummy.matrix);
+
+      if (hasInstanceColor) {
+        windMesh.setColorAt(
+          i,
+          stateTag === 'indoor' ? windColorIndoor : stateTag === 'deflect' ? windColorDeflect : windColorSeason
+        );
+      }
     }
     if (windMesh.instanceMatrix) windMesh.instanceMatrix.needsUpdate = true;
+    if (windMesh.instanceColor) windMesh.instanceColor.needsUpdate = true;
   }
 
   // =========================================================================
@@ -1552,7 +1727,8 @@ export function initCampusSimulations(ctx) {
     }
     if (simState.wind) {
       const prof = SEASON_PROFILES[simState.windSeason] || SEASON_PROFILES.WINTER;
-      tags.push(`🌬️ ${prof.shortLabel} ${Math.round(simState.windAngleDeg)}° ${degToCompass(simState.windAngleDeg)}`);
+      const modeLabel = simState.windMode === 'ventilate' ? '開窗通風' : simState.windMode === 'deflect' ? '繞流不穿' : '自由風場';
+      tags.push(`🌬️ ${prof.shortLabel}・${modeLabel} ${Math.round(simState.windAngleDeg)}° ${degToCompass(simState.windAngleDeg)}`);
     }
     if (simState.rain) {
       const sc = simState.wraScenario && WRA_SCENARIOS[simState.wraScenario];
@@ -1566,7 +1742,23 @@ export function initCampusSimulations(ctx) {
     hud.innerHTML = tags.map(t => `<span class="px-2 py-0.5 rounded-full bg-slate-800/90 border border-slate-600/70 text-[11px] font-semibold text-slate-100 whitespace-nowrap">${t}</span>`).join('');
   }
 
+  const WIND_MODE_DESCS = {
+    ventilate: '🪟 實牆與屋頂擋風繞流；1～3F 南北教室開窗與 1F 穿堂形成亮青色穿堂對流。',
+    deflect: '🏢 完全不穿過建築量體，氣流遇迎風面爬升越過屋頂或向東西山牆繞流（僅 1F 穿堂貫通）。',
+    free: '🌬️ 大尺度自由季風方向參考流線（不計建物阻擋）。'
+  };
+
   function syncWindUi() {
+    document.querySelectorAll('.sim-wind-mode-btn').forEach((x) => {
+      const active = x.dataset.mode === simState.windMode;
+      x.classList.toggle('bg-teal-500', active);
+      x.classList.toggle('text-white', active);
+      x.classList.toggle('font-semibold', active);
+      x.classList.toggle('bg-slate-800/90', !active);
+    });
+    const modeDesc = document.getElementById('wind-mode-desc');
+    if (modeDesc) modeDesc.textContent = WIND_MODE_DESCS[simState.windMode] || WIND_MODE_DESCS.ventilate;
+
     document.querySelectorAll('.sim-wind-btn').forEach((x) => {
       const active = x.dataset.season === simState.windSeason;
       x.classList.toggle('bg-sky-500', active);
@@ -1806,10 +1998,29 @@ export function initCampusSimulations(ctx) {
       updateHudBanner();
     });
 
-    // 風場：四季按鈕（連動日照）＋ 4 條手動微調滑桿
+    // 風場：物理模式（開窗通風／繞流不穿／自由）＋ 四季按鈕（連動日照）＋ 4 條手動微調滑桿
     bindToggle('toggle-sim-wind', 'wind', 'sim-wind-opts', (on) => {
       windGroup.visible = on;
       if (on) syncWindUi();
+    });
+    document.querySelectorAll('.sim-wind-mode-btn').forEach((b) => {
+      b.addEventListener('click', () => {
+        const m = b.dataset.mode;
+        if (m && WIND_MODE_DESCS[m]) {
+          simState.windMode = m;
+          syncWindUi();
+          updateHudBanner();
+        }
+      });
+    });
+    document.getElementById('btn-wind-toggle-xray')?.addEventListener('click', () => {
+      const xChk = document.getElementById('toggle-xray');
+      if (xChk) {
+        xChk.checked = !xChk.checked;
+        xChk.dispatchEvent(new Event('change'));
+        const btn = document.getElementById('btn-wind-toggle-xray');
+        if (btn) btn.textContent = xChk.checked ? '👁️ 已開啟外牆半透明（點擊還原實牆）' : '👁️ 切換外牆半透明（檢視教室內開窗氣流）';
+      }
     });
     document.querySelectorAll('.sim-wind-btn').forEach((b) => {
       b.addEventListener('click', () => {

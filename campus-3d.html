@@ -536,13 +536,21 @@
               </div>
             </div>
 
-            <!-- 6d. 季節風場與通風（立體風帶＋可調密度／粗細／風速／風向＋四季連動日照） -->
+            <!-- 6d. 季節風場與通風（立體風帶＋繞流不穿牆＋開窗對流＋手動微調＋四季連動日照） -->
             <div class="p-2 rounded-xl bg-sky-500/10 border border-sky-400/30">
               <label class="flex items-center justify-between cursor-pointer">
                 <span class="text-sky-200 font-medium">🌬️ 季節風場 ＆ 教室通風流線</span>
                 <input id="toggle-sim-wind" type="checkbox" class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
               </label>
               <div id="sim-wind-opts" class="hidden mt-1.5 pt-1.5 border-t border-sky-400/20 space-y-1.5 text-[11px]">
+                <div class="grid grid-cols-3 gap-1 text-[10.5px]">
+                  <button type="button" class="sim-wind-mode-btn py-1 rounded-lg bg-teal-500 text-white font-semibold transition" data-mode="ventilate" title="實牆擋風繞流，南北開窗與穿堂形成穿堂對流">🪟 開窗通風</button>
+                  <button type="button" class="sim-wind-mode-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-mode="deflect" title="完全不穿過建築物，呈現迎風爬升與背風繞流">🏢 繞流不穿</button>
+                  <button type="button" class="sim-wind-mode-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-mode="free" title="大尺度季風方向參考流線">🌬️ 自由風場</button>
+                </div>
+                <div id="wind-mode-desc" class="text-[10px] text-teal-200/90 bg-slate-950/50 rounded-lg px-2 py-1 leading-snug">
+                  🪟 實牆與屋頂擋風繞流；1～3F 南北教室開窗與 1F 穿堂形成亮青色穿堂對流。
+                </div>
                 <div class="grid grid-cols-4 gap-1 text-[10.5px]">
                   <button type="button" class="sim-wind-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-season="SPRING">🌱 春</button>
                   <button type="button" class="sim-wind-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-season="SUMMER">☀️ 夏西南</button>
@@ -557,8 +565,8 @@
                   </div>
                   <div class="flex items-center gap-1.5">
                     <span class="w-10 shrink-0">密度</span>
-                    <input id="wind-density-slider" type="range" min="60" max="360" step="20" value="220" class="flex-1 accent-sky-400" />
-                    <span id="wind-density-val" class="font-mono text-sky-200 w-12 text-right">220條</span>
+                    <input id="wind-density-slider" type="range" min="60" max="360" step="20" value="260" class="flex-1 accent-sky-400" />
+                    <span id="wind-density-val" class="font-mono text-sky-200 w-12 text-right">260條</span>
                   </div>
                   <div class="flex items-center gap-1.5">
                     <span class="w-10 shrink-0">粗細</span>
@@ -571,6 +579,7 @@
                     <span id="wind-speed-val" class="font-mono text-sky-200 w-12 text-right">1.2×</span>
                   </div>
                 </div>
+                <button id="btn-wind-toggle-xray" type="button" class="w-full py-1 rounded-lg bg-slate-800/90 hover:bg-teal-600/80 text-teal-200 hover:text-white text-[10.5px] font-semibold border border-teal-400/30 transition">👁️ 切換外牆半透明（檢視教室內開窗氣流）</button>
               </div>
             </div>
 
@@ -7192,7 +7201,7 @@
       function startApp() {
         applyFloorVisibility();
         updateModeButtonsUI();
-        import('./campus-3d-simulations.js?v=5')
+        import('./campus-3d-simulations.js?v=6')
           .then((mod) => {
             if (mod && typeof mod.initCampusSimulations === 'function') {
               simSuite = mod.initCampusSimulations({
