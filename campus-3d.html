@@ -152,6 +152,8 @@
       <span>🚶</span><span>街景漫遊</span>
     </button>
   </div>
+  <!-- Active Simulation HUD Pill Bar -->
+  <div id="sim-hud-bar" class="hidden fixed top-14 left-1/2 -translate-x-1/2 z-30 glass-panel rounded-full px-2.5 py-1 flex items-center gap-1.5 max-w-[92vw] overflow-x-auto"></div>
 
   <!-- Top-Right Summary & Dynamic Compass -->
   <div class="fixed top-3 right-3 z-30 flex items-center gap-2">
@@ -346,23 +348,158 @@
         </div>
       </section>
 
-      <!-- 5. Solar Illumination Simulator -->
-      <section class="pt-3 border-t border-slate-700/50">
-        <div class="flex justify-between items-center mb-1.5">
-          <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider">5. 高雄大樹日照模擬</h2>
-          <span id="sun-time-label" class="text-xs font-mono font-semibold text-amber-300">10:30</span>
+      <!-- 5. 1~12 Month Real Astronomical Solar Simulator -->
+      <section class="pt-3 border-t border-slate-700/50 space-y-2">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider">5. 1～12月真實日照模擬</h2>
+          <span id="sun-time-label" class="text-xs font-mono font-semibold text-amber-300">11月 10:30</span>
         </div>
-        <input id="sun-slider" type="range" min="6" max="18" step="0.25" value="10.5" class="w-full accent-amber-400 cursor-pointer" />
-        <div class="flex justify-between text-[11px] text-slate-400 mt-0.5">
-          <span>06:00 日出</span>
-          <span>12:00 正午</span>
-          <span>18:00 日落</span>
+
+        <div class="bg-slate-900/55 rounded-xl p-2.5 border border-slate-700/40 space-y-2">
+          <div>
+            <div class="flex justify-between text-[11px] mb-1">
+              <span class="text-slate-300">月份（北緯 22.7° 高雄太陽赤緯）</span>
+              <span id="sun-month-label" class="font-mono text-amber-300 font-semibold">11月（21日）</span>
+            </div>
+            <input id="sun-month-slider" type="range" min="1" max="12" step="1" value="11" class="w-full accent-amber-400 cursor-pointer" />
+            <div class="grid grid-cols-4 gap-1 mt-1.5 text-[10.5px]">
+              <button type="button" class="sun-term-btn py-1 rounded-lg bg-slate-800/90 hover:bg-amber-600/80 text-slate-200 font-medium transition" data-month="3" data-hour="12">🌱 3月春分</button>
+              <button type="button" class="sun-term-btn py-1 rounded-lg bg-slate-800/90 hover:bg-amber-600/80 text-amber-200 font-medium transition" data-month="6" data-hour="12">☀️ 6月夏至</button>
+              <button type="button" class="sun-term-btn py-1 rounded-lg bg-slate-800/90 hover:bg-amber-600/80 text-slate-200 font-medium transition" data-month="9" data-hour="12">🍂 9月秋分</button>
+              <button type="button" class="sun-term-btn py-1 rounded-lg bg-slate-800/90 hover:bg-amber-600/80 text-sky-200 font-medium transition" data-month="12" data-hour="12">❄️ 12月冬至</button>
+            </div>
+          </div>
+
+          <div>
+            <input id="sun-slider" type="range" min="5.5" max="18.5" step="0.25" value="10.5" class="w-full accent-amber-400 cursor-pointer" />
+            <div class="flex justify-between text-[10.5px] text-slate-400 mt-0.5">
+              <span>05:30 日出</span>
+              <span>12:00 正午</span>
+              <span>18:30 日落</span>
+            </div>
+          </div>
+
+          <div id="sun-astro-meta" class="text-[11px] text-slate-300 leading-snug bg-slate-950/50 rounded-lg px-2 py-1.5 border border-slate-700/40"></div>
+
+          <div class="flex items-center justify-between gap-1.5">
+            <button id="sun-play-day" type="button" class="flex-1 py-1 rounded-lg bg-amber-600/80 hover:bg-amber-500 text-white text-[11px] font-semibold transition">▶ 播放一日</button>
+            <button id="sun-play-year" type="button" class="flex-1 py-1 rounded-lg bg-sky-600/80 hover:bg-sky-500 text-white text-[11px] font-semibold transition">📅 播放全年</button>
+          </div>
+
+          <label class="flex items-center justify-between text-[11px] text-slate-300 cursor-pointer pt-0.5">
+            <span>顯示 3D 太陽軌跡弧線</span>
+            <input id="toggle-sun-arc" type="checkbox" checked class="w-4 h-4 accent-amber-400 rounded cursor-pointer" />
+          </label>
         </div>
       </section>
 
-      <!-- 6. 3D Model Export -->
+      <!-- 6. Campus Decision Simulations & NLSC Official WMTS Layers -->
+      <section class="pt-3 border-t border-slate-700/50 space-y-2">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider">6. 校園情境模擬 ＆ 官方圖資</h2>
+          <button id="btn-sim-reset-all" type="button" class="text-[10.5px] px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600/60 transition">↺ 重置</button>
+        </div>
+
+        <div id="sim-live-summary" class="text-[11px] text-amber-200 bg-amber-500/10 border border-amber-400/30 rounded-xl px-2.5 py-1.5">
+          📊 戰情連動載入中...
+        </div>
+
+        <!-- 國土測繪雲 NLSC 免申請官方圖層 -->
+        <div class="p-2.5 rounded-xl bg-indigo-500/15 border border-indigo-400/35 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-indigo-200">🗺️ 國土測繪官方圖層 (WMTS)</span>
+            <a id="btn-open-nlsc-portal" href="https://maps.nlsc.gov.tw/T09/mapshow.action" target="_blank" rel="noopener" class="text-[10.5px] text-sky-300 hover:underline font-semibold">開啟圖臺 ↗</a>
+          </div>
+          <select id="nlsc-layer-select" class="w-full bg-slate-900/90 border border-slate-600/80 rounded-lg px-2 py-1 text-[11.5px] text-slate-100"></select>
+          <div class="flex items-center gap-2 text-[10.5px] text-slate-300">
+            <span>套繪濃度</span>
+            <input id="nlsc-opacity" type="range" min="15" max="100" value="85" class="flex-1 accent-indigo-400" />
+            <span id="nlsc-opacity-val" class="font-mono text-indigo-300 w-8 text-right">85%</span>
+          </div>
+          <div id="nlsc-status-msg" class="text-[10.5px] text-slate-400 leading-snug">免申請官方圖資：正射航照／灰階／段籍／等高線／7級坡度</div>
+        </div>
+
+        <!-- 5 大總務決策模擬開關 -->
+        <div class="space-y-1.5 text-xs">
+          <!-- 6a. 防災疏散與消防 -->
+          <div class="p-2 rounded-xl bg-emerald-500/10 border border-emerald-400/30">
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-emerald-200 font-medium">🚨 防災疏散動線 ＆ 消防覆蓋</span>
+              <input id="toggle-sim-evac" type="checkbox" class="w-4 h-4 accent-emerald-400 rounded cursor-pointer" />
+            </label>
+            <div id="sim-evac-opts" class="hidden mt-1.5 pt-1.5 border-t border-emerald-400/20 space-y-1 text-[11px]">
+              <label class="flex items-center justify-between text-slate-300 cursor-pointer">
+                <span>顯示消防栓／滅火器／AED 覆蓋半徑</span>
+                <input id="toggle-sim-evac-radius" type="checkbox" checked class="w-3.5 h-3.5 accent-emerald-400" />
+              </label>
+              <div class="text-slate-400">綠線：各樓層➔操場集合區｜紅帶：外牆落物警戒</div>
+            </div>
+          </div>
+
+          <!-- 6b. 施工圍籬與人車分流 -->
+          <div class="p-2 rounded-xl bg-rose-500/10 border border-rose-400/30">
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-rose-200 font-medium">🚧 工程施工圍籬 ＆ 人車分流</span>
+              <input id="toggle-sim-construction" type="checkbox" class="w-4 h-4 accent-rose-400 rounded cursor-pointer" />
+            </label>
+            <div id="sim-construction-opts" class="hidden mt-1.5 pt-1.5 border-t border-rose-400/20 space-y-1.5 text-[11px]">
+              <select id="sim-construction-zone" class="w-full bg-slate-900/90 border border-slate-600/80 rounded-lg px-2 py-1 text-[11px] text-slate-100">
+                <option value="auto">🔄 自動連動主系統進行中工程</option>
+                <option value="track">🏃 跑道及周邊設施整建（操場鎖區）</option>
+                <option value="restroom">🚻 東側 1~3F 廁所整修圍籬</option>
+                <option value="kitchen">🍳 中央廚房周邊修繕工程</option>
+              </select>
+              <div class="text-slate-400">紅白欄：禁區｜橘線：工程車｜綠線：學生安全通道</div>
+            </div>
+          </div>
+
+          <!-- 6c. 夜間照明與 CCTV -->
+          <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-400/30">
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-amber-200 font-medium">🌙 夜間照明 ＆ 監視器(CCTV)死角</span>
+              <input id="toggle-sim-night" type="checkbox" class="w-4 h-4 accent-amber-400 rounded cursor-pointer" />
+            </label>
+            <div id="sim-night-opts" class="hidden mt-1.5 pt-1.5 border-t border-amber-400/20 space-y-1 text-[11px]">
+              <label class="flex items-center justify-between text-slate-300 cursor-pointer">
+                <span>顯示監視器可視扇形(青)與暗角(橘圈)</span>
+                <input id="toggle-sim-cctv" type="checkbox" checked class="w-3.5 h-3.5 accent-cyan-400" />
+              </label>
+            </div>
+          </div>
+
+          <!-- 6d. 季節風場與通風 -->
+          <div class="p-2 rounded-xl bg-sky-500/10 border border-sky-400/30">
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-sky-200 font-medium">🌬️ 季節風場 ＆ 教室通風流線</span>
+              <input id="toggle-sim-wind" type="checkbox" class="w-4 h-4 accent-sky-400 rounded cursor-pointer" />
+            </label>
+            <div id="sim-wind-opts" class="hidden mt-1.5 pt-1.5 border-t border-sky-400/20 flex gap-1.5 text-[11px]">
+              <button type="button" class="sim-wind-btn flex-1 py-1 rounded-lg bg-sky-500 text-white font-semibold transition" data-season="NE">❄️ 冬季東北季風</button>
+              <button type="button" class="sim-wind-btn flex-1 py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-season="SW">☀️ 夏季西南季風</button>
+            </div>
+          </div>
+
+          <!-- 6e. 豪雨積水與排水 -->
+          <div class="p-2 rounded-xl bg-cyan-500/10 border border-cyan-400/30">
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-cyan-200 font-medium">🌧️ 豪雨積水 ＆ 校園排水路徑</span>
+              <input id="toggle-sim-rain" type="checkbox" class="w-4 h-4 accent-cyan-400 rounded cursor-pointer" />
+            </label>
+            <div id="sim-rain-opts" class="hidden mt-1.5 pt-1.5 border-t border-cyan-400/20 space-y-1.5 text-[11px]">
+              <div class="grid grid-cols-3 gap-1">
+                <button type="button" class="sim-rain-btn py-1 rounded-lg bg-sky-500 text-white font-semibold transition" data-level="heavy">大雨</button>
+                <button type="button" class="sim-rain-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-level="torrential">豪雨</button>
+                <button type="button" class="sim-rain-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-level="typhoon">颱風</button>
+              </div>
+              <div class="text-slate-400">藍面：低窪積水｜藍管：排水方向｜黃錐：沙包/抽水機</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. 3D Model Export -->
       <section class="pt-3 border-t border-slate-700/50">
-        <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">6. 匯出 3D 建築模型</h2>
+        <h2 class="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">7. 匯出 3D 建築模型</h2>
         <div class="grid grid-cols-3 gap-1.5">
           <button id="export-glb" class="py-1.5 rounded-xl bg-sky-600/85 hover:bg-sky-500 text-white text-xs font-semibold transition">.GLB</button>
           <button id="export-obj" class="py-1.5 rounded-xl bg-indigo-600/85 hover:bg-indigo-500 text-white text-xs font-semibold transition">.OBJ</button>
@@ -683,7 +820,8 @@
 
       // Lighting (Kaohsiung Dashu Sun + Hemisphere Sky)
       const hemiLight = new THREE.HemisphereLight(0xeef6ff, 0x5c6b57, 0.78);
-      scene.add(new THREE.AmbientLight(0xffffff, 0.28)); // 讓騎樓、外廊天花不至全黑
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.28);
+      scene.add(ambientLight); // 讓騎樓、外廊天花不至全黑
       scene.add(hemiLight);
 
       const sunLight = new THREE.DirectionalLight(0xfff7e6, 1.55);
@@ -6447,7 +6585,10 @@
         state.showLabels = e.target.checked;
       });
 
-      document.getElementById('sun-slider').addEventListener('input', (e) => updateSunPosition(parseFloat(e.target.value)));
+      // sun-slider 由 campus-3d-simulations.js 1～12月天文日照引擎接管；載入失敗時才退回簡易版
+      document.getElementById('sun-slider').addEventListener('input', (e) => {
+        if (!window.__CAMPUS_SIM__) updateSunPosition(parseFloat(e.target.value));
+      });
 
       // Mode & Google Earth Cluster Buttons
       document.getElementById('mode-btn-earth').addEventListener('click', () => exitStreetView('earth'));
@@ -6838,8 +6979,11 @@
         updateRoomLabels();
         drawMiniMap();
         processHover();
+        if (simSuite) simSuite.tick(dt);
         renderer.render(scene, camera);
       }
+
+      let simSuite = null;
 
       function renderRoomGaLiveStatus(rm) {
         const box = document.getElementById('room-ga-live-box');
@@ -6905,6 +7049,16 @@
       function startApp() {
         applyFloorVisibility();
         updateModeButtonsUI();
+        import('./campus-3d-simulations.js?v=1')
+          .then((mod) => {
+            if (mod && typeof mod.initCampusSimulations === 'function') {
+              simSuite = mod.initCampusSimulations({
+                THREE, scene, sunLight, fillLight, hemiLight, ambientLight,
+                ELEV, gx, gz, GEO, flyToCamera, satOverlayMesh, satOverlayMat
+              });
+            }
+          })
+          .catch((e) => console.warn('[campus-3d-simulations] 載入失敗：', e));
         const overlay = document.getElementById('loading-overlay');
         if (overlay) {
           overlay.classList.add('opacity-0', 'pointer-events-none');

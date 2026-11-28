@@ -421,6 +421,7 @@
             ${showMaintScheduleTools && typeof openBatchScheduleModal === 'function' ? `<button type="button" class="btn-sm" onclick="openBatchScheduleModal('${h(p.project_id)}')">📅 期程推估</button>` : ''}
             ${showMaintScheduleTools && typeof openImportMaintSpecModal === 'function' ? `<button type="button" class="btn-sm" onclick="openImportMaintSpecModal('${h(p.project_id)}')">📥 匯入分期</button>` : ''}
             ${typeof openSaveAsTemplateModal === 'function' ? `<button type="button" class="btn-sm" onclick="openSaveAsTemplateModal('${h(p.project_id)}')">🗂️ 存模板</button>` : ''}
+            ${isEng ? `<a class="btn-sm" style="text-decoration:none" href="./campus-3d.html?sim=construction&focus=${encodeURIComponent(/跑道/.test(p.project_name) ? '跑道' : /廁所/.test(p.project_name) ? '廁所' : /廚房/.test(p.project_name) ? '廚房' : '')}" target="_blank" rel="noopener" title="開啟 3D 校舍施工圍籬與人車分流模擬">🏫 3D施工模擬 ↗</a>` : ''}
             <button type="button" class="btn-sm" onclick="printSingleProjectPDF('${h(p.project_id)}')">🖨️ 甘特PDF</button>
             <button type="button" class="btn-sm" style="color:#B91C1C" title="刪除此標案與所屬檢核項目" onclick="deleteProject('${h(p.project_id)}')">🗑️ 刪除</button>
           </div>
