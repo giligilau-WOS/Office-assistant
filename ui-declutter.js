@@ -880,6 +880,18 @@
     }
     #ud-menu .ud-item:hover { background: var(--brand-soft) !important; }
 
+    /* 超矮視窗保護退場 (vh < 600px) — 遵循 UI_DESIGN_RULES.md §1.1 */
+    @media (max-height: 599px) {
+      html, body, html.nordic-one-screen, body.nordic-one-screen,
+      body.nordic-one-screen #app-shell, body.nordic-one-screen #nordic-main-col,
+      body.nordic-one-screen #main-view, #ga-war-room, .ga-split-shell {
+        height: auto !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+      }
+      body { overflow-x: hidden !important; }
+    }
+
     /* 平板與手機響應式退場 */
     @media (max-width: 1023px) {
       .ga-top-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }

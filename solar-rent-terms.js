@@ -248,7 +248,7 @@
       return `<tr>
         <td style="white-space:nowrap"><strong>第 ${inst.no} 期</strong>${inst.months < 12 ? `<div class="item-meta">${inst.months} 個月折算</div>` : ''}</td>
         <td style="white-space:nowrap">${inst.period_start ? `${rocShort(inst.period_start)} ～ ${rocShort(inst.period_end)}` : '-'}</td>
-        <td style="white-space:nowrap"><strong>${rocShort(inst.due_date)} 前</strong><div class="item-meta">${esc(inst.due_date)}</div></td>
+        <td style="white-space:nowrap" title="${esc(inst.due_date)}"><strong>${rocShort(inst.due_date)} 前</strong></td>
         <td style="white-space:nowrap;text-align:right"><strong>${fmtMoney(inst.amount)}</strong></td>
         <td style="white-space:nowrap">${rocShort(st.stmtDl)} 前</td>
         <td style="white-space:nowrap"><span class="tag ${st.cls}">${esc(st.text)}</span></td>
