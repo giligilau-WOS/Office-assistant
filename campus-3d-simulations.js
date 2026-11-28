@@ -148,8 +148,33 @@ const COLOR_LEGENDS = {
       ['#10b981', '翠綠格網：北側較高坡地（+12m 示意）'],
       ['#0f766e', '深青格網：南／西南側緩降平地（校區維持 0m 水平）']
     ]
+  },
+  wra: {
+    title: '🌊 水利署官方淹水圖資套繪',
+    items: [
+      ['#06b6d4', '淺青面：淺積水（<0.3m）'],
+      ['#2563eb', '深藍面：中度積水（0.3–1.0m）'],
+      ['#7c3aed', '深紫面：嚴重淹水（1.0–2.0m）'],
+      ['#ef4444', '紅面／紅柱：極端淹水或即時警戒點']
+    ]
   }
 };
+
+const WRA_LIVE_KML_URL = 'https://opendata.wra.gov.tw/cloud/5982FloodWarningOfDisasterPreventionInformation/286-%E9%98%B2%E7%81%BD%E8%B3%87%E8%A8%8A_%E6%B7%B9%E6%B0%B4%E8%AD%A6%E6%88%92.kml';
+const WRA_KAOHSIUNG_7Z_URL = 'https://opendata.wra.gov.tw/cloud/25766InundationProbabilityMaps/207-13.7z';
+const WRA_SCENARIOS = {
+  flood_150mm_6hr:  { label: '6hr 150mm',  level: 'heavy',      scaleMul: 0.78, opMul: 0.72 },
+  flood_250mm_6hr:  { label: '6hr 250mm',  level: 'torrential', scaleMul: 1.02, opMul: 0.96 },
+  flood_350mm_6hr:  { label: '6hr 350mm',  level: 'typhoon',    scaleMul: 1.24, opMul: 1.22 },
+  flood_200mm_12hr: { label: '12hr 200mm', level: 'heavy',      scaleMul: 0.88, opMul: 0.82 },
+  flood_300mm_12hr: { label: '12hr 300mm', level: 'torrential', scaleMul: 1.12, opMul: 1.08 },
+  flood_400mm_12hr: { label: '12hr 400mm', level: 'typhoon',    scaleMul: 1.30, opMul: 1.28 },
+  flood_200mm_24hr: { label: '24hr 200mm', level: 'heavy',      scaleMul: 0.84, opMul: 0.78 },
+  flood_350mm_24hr: { label: '24hr 350mm', level: 'torrential', scaleMul: 1.14, opMul: 1.10 },
+  flood_500mm_24hr: { label: '24hr 500mm', level: 'typhoon',    scaleMul: 1.35, opMul: 1.34 },
+  flood_650mm_24hr: { label: '24hr 650mm', level: 'typhoon',    scaleMul: 1.46, opMul: 1.45 }
+};
+
 
 
 /**
@@ -1161,12 +1186,13 @@ export function initCampusSimulations(ctx) {
 
   function applyRainIntensity() {
     rainGroup.visible = simState.rain;
-    const scaleMul = simState.rainLevel === 'typhoon' ? 1.28 : simState.rainLevel === 'torrential' ? 1.08 : 0.82;
-    const opMul = simState.rainLevel === 'typhoon' ? 1.35 : simState.rainLevel === 'torrential' ? 1.05 : 0.72;
+    const sc = simState.wraScenario && WRA_SCENARIOS[simState.wraScenario];
+    const scaleMul = sc ? sc.scaleMul : (simState.rainLevel === 'typhoon' ? 1.28 : simState.rainLevel === 'torrential' ? 1.08 : 0.82);
+    const opMul = sc ? sc.opMul : (simState.rainLevel === 'typhoon' ? 1.35 : simState.rainLevel === 'torrential' ? 1.05 : 0.72);
     puddleMeshes.forEach((m) => {
       const pd = m.userData;
       m.scale.set(pd.rx * scaleMul, pd.rz * scaleMul, 1);
-      m.material.opacity = Math.min(0.68, pd.baseOp * opMul);
+      m.material.opacity = Math.min(0.75, pd.baseOp * opMul);
     });
     if (simState.rain) updateRainFlowFromAspect();
     if (!simState.night) applySolarState();
@@ -1281,8 +1307,179 @@ export function initCampusSimulations(ctx) {
   buildTerrainReliefLayer();
 
   // =========================================================================
-  // 8. 浮動圖例卡片、模擬狀態 HUD、四季連動 ＆ UI 事件綁定
+  // 7c. 🌊 經濟部水利署官方淹水圖資套繪層（即時警戒 KML ／ 淹水潛勢 GeoJSON）
   // =========================================================================
+  const wraGroup = new THREE.Group();
+  wraGroup.name = 'Sim_WRA_Flood_Overlay';
+  wraGroup.visible = false;
+  root.add(wraGroup);
+
+  function wgs84ToCampusXZ(lng, lat) {
+    const mPerDegLat = 110742;
+    const mPerDegLng = 111320 * Math.cos((GEO.lat0 * Math.PI) / 180);
+    const eastM = (lng - GEO.lng0) * mPerDegLng;
+    const southM = (GEO.lat0 - lat) * mPerDegLat;
+    // 依校園軸線偏角 (+2.6° + 使用者微調) 旋回模型本地座標系
+    const theta = -((NLSC_BASE_ROT_DEG + nlscCal.rotDeg) * Math.PI) / 180;
+    const cosT = Math.cos(theta), sinT = Math.sin(theta);
+    const lx = eastM * cosT - southM * sinT;
+    const lz = eastM * sinT + southM * cosT;
+    return { x: GEO.x0 + lx + nlscCal.dx, z: GEO.z0 + lz + nlscCal.dz };
+  }
+
+  function clearWraOverlay() {
+    while (wraGroup.children.length > 0) {
+      const ch = wraGroup.children.pop();
+      if (ch.geometry && typeof ch.geometry.dispose === 'function') ch.geometry.dispose();
+    }
+    wraGroup.visible = false;
+    simState.wraOverlayCount = 0;
+    document.getElementById('btn-wra-clear')?.classList.add('hidden');
+    updateHudBanner();
+  }
+
+  function depthColorHex(depthVal) {
+    const d = Number(depthVal) || 0;
+    if (d >= 2.0) return 0xef4444;
+    if (d >= 1.0) return 0x7c3aed;
+    if (d >= 0.3) return 0x2563eb;
+    return 0x06b6d4;
+  }
+
+  function addWraPolygonRing(lngLatRing, depthVal = 0.5) {
+    if (!Array.isArray(lngLatRing) || lngLatRing.length < 3) return false;
+    // 僅繪製距離校區中心 900m 內之多邊形，避免整縣市資料量過大
+    const pts = [];
+    let nearCampus = false;
+    for (const coord of lngLatRing) {
+      const lng = Number(coord[0]), lat = Number(coord[1]);
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
+      const p = wgs84ToCampusXZ(lng, lat);
+      if (Math.abs(p.x - GEO.x0) < 900 && Math.abs(p.z - GEO.z0) < 900) nearCampus = true;
+      pts.push(p);
+    }
+    if (!nearCampus || pts.length < 3) return false;
+
+    const col = depthColorHex(depthVal);
+    if (typeof THREE.Shape === 'function' && typeof THREE.ShapeGeometry === 'function') {
+      const shape = new THREE.Shape();
+      shape.moveTo(pts[0].x, -pts[0].z);
+      for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i].x, -pts[i].z);
+      shape.closePath();
+      const mesh = new THREE.Mesh(
+        new THREE.ShapeGeometry(shape),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false })
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.y = 0.24;
+      wraGroup.add(mesh);
+    }
+    return true;
+  }
+
+  function addWraWarningPin(lng, lat) {
+    const p = wgs84ToCampusXZ(lng, lat);
+    if (Math.abs(p.x - GEO.x0) > 1500 || Math.abs(p.z - GEO.z0) > 1500) return false;
+    const pin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.6, 1.4, 9, 8),
+      new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.85 })
+    );
+    pin.position.set(p.x, 4.5, p.z);
+    wraGroup.add(pin);
+    return true;
+  }
+
+  function importWraFloodText(text, filename = 'WRA') {
+    clearWraOverlay();
+    let plotted = 0;
+    let totalFeatures = 0;
+    const trimmed = String(text || '').trim();
+
+    if (trimmed.startsWith('<')) {
+      // KML XML 解析
+      if (typeof DOMParser !== 'undefined') {
+        const doc = new DOMParser().parseFromString(trimmed, 'text/xml');
+        const placemarks = Array.from(doc.getElementsByTagName('Placemark'));
+        totalFeatures = placemarks.length;
+        for (const pm of placemarks) {
+          const coordEls = Array.from(pm.getElementsByTagName('coordinates'));
+          const isPoint = pm.getElementsByTagName('Point').length > 0 && pm.getElementsByTagName('Polygon').length === 0;
+          for (const cel of coordEls) {
+            const pairs = (cel.textContent || '').trim().split(/\s+/).map(s => s.split(',').map(Number)).filter(a => a.length >= 2);
+            if (isPoint && pairs[0]) {
+              if (addWraWarningPin(pairs[0][0], pairs[0][1])) plotted++;
+            } else if (pairs.length >= 3) {
+              if (addWraPolygonRing(pairs, 0.8)) plotted++;
+            }
+          }
+        }
+      }
+    } else {
+      // GeoJSON 解析
+      try {
+        const gj = JSON.parse(trimmed);
+        const feats = gj.type === 'FeatureCollection' ? (gj.features || []) : (gj.type === 'Feature' ? [gj] : []);
+        totalFeatures = feats.length;
+        for (const f of feats) {
+          const g = f && f.geometry;
+          if (!g) continue;
+          const props = f.properties || {};
+          const depth = props.DEPTH || props.depth || props.GRIDCODE || props.MAX_DEPTH || props.水深 || 0.5;
+          if (g.type === 'Polygon' && g.coordinates?.[0]) {
+            if (addWraPolygonRing(g.coordinates[0], depth)) plotted++;
+          } else if (g.type === 'MultiPolygon' && Array.isArray(g.coordinates)) {
+            for (const poly of g.coordinates) {
+              if (poly?.[0] && addWraPolygonRing(poly[0], depth)) plotted++;
+            }
+          } else if (g.type === 'Point' && Array.isArray(g.coordinates)) {
+            if (addWraWarningPin(g.coordinates[0], g.coordinates[1])) plotted++;
+          }
+        }
+      } catch {
+        return { ok: false, plotted: 0, totalFeatures: 0, msg: `⚠️ ${filename} 格式無法解析（請確認為有效 .kml 或 .geojson）` };
+      }
+    }
+
+    simState.wraOverlayCount = plotted;
+    wraGroup.visible = plotted > 0;
+    document.getElementById('btn-wra-clear')?.classList.toggle('hidden', plotted === 0);
+    updateHudBanner();
+    return {
+      ok: true,
+      plotted,
+      totalFeatures,
+      msg: plotted > 0
+        ? `✅ 已套繪「${filename}」校區周邊 ${plotted} 處淹水圖徵（檔案共 ${totalFeatures} 筆）`
+        : `ℹ️ 已讀取「${filename}」（共 ${totalFeatures} 筆），校區半徑 1km 內目前無重疊淹水／警戒區域`
+    };
+  }
+
+  async function fetchWraLiveKml() {
+    const statusEl = document.getElementById('wra-status-msg');
+    if (statusEl) statusEl.textContent = '⏳ 正在連線經濟部水利署查詢即時淹水警戒 KML...';
+    try {
+      const resp = await fetch(WRA_LIVE_KML_URL, { mode: 'cors' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const xmlText = await resp.text();
+      const res = importWraFloodText(xmlText, '水利署即時淹水警戒.kml');
+      const hasKaohsiung = /高雄|大樹/.test(xmlText);
+      if (statusEl) {
+        statusEl.textContent = `${res.msg}${hasKaohsiung ? '（含高雄／大樹警戒資訊）' : '（目前高雄大樹無發布警戒）'}`;
+      }
+      return res;
+    } catch {
+      if (statusEl) {
+        statusEl.innerHTML = `⚠️ 水利署開放資料主機限制瀏覽器跨網域直接讀取 (CORS)。請點 <a href="${WRA_LIVE_KML_URL}" target="_blank" rel="noopener" class="text-cyan-300 underline font-semibold">下載即時警戒 KML ↗</a> 後，直接按上方「📂 匯入 KML / GeoJSON」即可立即套繪。`;
+      }
+      return { ok: false, corsBlocked: true };
+    }
+  }
+
+  // =========================================================================
+  // 8. 可收折浮動圖例卡片、模擬狀態 HUD、四季連動 ＆ UI 事件綁定
+  // =========================================================================
+  let legendCollapsed = false;
+
   function renderLegendCard() {
     const card = document.getElementById('sim-legend-card');
     if (!card) return;
@@ -1294,6 +1491,7 @@ export function initCampusSimulations(ctx) {
     if (simState.night) keys.push('night');
     if (simState.wind) keys.push('wind');
     if (simState.rain) keys.push('rain');
+    if (simState.wraOverlayCount > 0) keys.push('wra');
 
     card.classList.toggle('hidden', keys.length === 0);
     if (keys.length === 0) {
@@ -1302,10 +1500,11 @@ export function initCampusSimulations(ctx) {
     }
 
     card.innerHTML = `
-      <div class="flex items-center justify-between border-b border-slate-700/80 pb-1.5 mb-2">
-        <span class="font-bold text-slate-100 text-[11.5px]">🎨 圖層顏色說明（圖例）</span>
-        <span class="text-[10px] text-slate-400">${keys.length} 項作用中</span>
+      <div class="flex items-center justify-between ${legendCollapsed ? '' : 'border-b border-slate-700/80 pb-1.5 mb-2'}">
+        <span class="font-bold text-slate-100 text-[11.5px]">🎨 圖例（${keys.length}）</span>
+        <button id="btn-legend-collapse" type="button" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-200 border border-slate-600/60 transition">${legendCollapsed ? '▾ 展開' : '▴ 收合'}</button>
       </div>
+      ${legendCollapsed ? '' : `
       <div class="space-y-2.5">
         ${keys.map((k) => {
           const lg = COLOR_LEGENDS[k];
@@ -1324,7 +1523,12 @@ export function initCampusSimulations(ctx) {
           `;
         }).join('')}
       </div>
+      `}
     `;
+    document.getElementById('btn-legend-collapse')?.addEventListener('click', () => {
+      legendCollapsed = !legendCollapsed;
+      renderLegendCard();
+    });
   }
 
   function updateHudBanner(spOpt = null) {
@@ -1351,11 +1555,13 @@ export function initCampusSimulations(ctx) {
       tags.push(`🌬️ ${prof.shortLabel} ${Math.round(simState.windAngleDeg)}° ${degToCompass(simState.windAngleDeg)}`);
     }
     if (simState.rain) {
-      const lvTxt = simState.rainLevel === 'typhoon' ? '颱風強降雨' : simState.rainLevel === 'torrential' ? '豪雨積水' : '大雨排水';
+      const sc = simState.wraScenario && WRA_SCENARIOS[simState.wraScenario];
+      const lvTxt = sc ? `水利署 ${sc.label}` : (simState.rainLevel === 'typhoon' ? '颱風強降雨' : simState.rainLevel === 'torrential' ? '豪雨積水' : '大雨排水');
       tags.push(`🌧️ ${lvTxt}${simState.rainUseAspect ? '＋坡向流向' : ''}`);
     }
+    if (simState.wraOverlayCount > 0) tags.push(`🌊 水利署圖資 (${simState.wraOverlayCount})`);
 
-    const activeExtra = simState.evac || simState.construction || simState.night || simState.wind || simState.rain || simState.terrainRelief || simState.nlscLayer !== 'NONE' || !!simState.playMode;
+    const activeExtra = simState.evac || simState.construction || simState.night || simState.wind || simState.rain || simState.terrainRelief || simState.wraOverlayCount > 0 || simState.nlscLayer !== 'NONE' || !!simState.playMode;
     hud.classList.toggle('hidden', !activeExtra);
     hud.innerHTML = tags.map(t => `<span class="px-2 py-0.5 rounded-full bg-slate-800/90 border border-slate-600/70 text-[11px] font-semibold text-slate-100 whitespace-nowrap">${t}</span>`).join('');
   }
@@ -1636,15 +1842,21 @@ export function initCampusSimulations(ctx) {
 
     // 豪雨與坡向水流預測
     bindToggle('toggle-sim-rain', 'rain', 'sim-rain-opts', () => applyRainIntensity());
+    const syncRainBtns = () => {
+      document.querySelectorAll('.sim-rain-btn').forEach(x => {
+        const active = x.dataset.level === simState.rainLevel;
+        x.classList.toggle('bg-sky-500', active);
+        x.classList.toggle('text-white', active);
+        x.classList.toggle('bg-slate-800/90', !active);
+      });
+    };
     document.querySelectorAll('.sim-rain-btn').forEach((b) => {
       b.addEventListener('click', () => {
         simState.rainLevel = b.dataset.level;
-        document.querySelectorAll('.sim-rain-btn').forEach(x => {
-          const active = x.dataset.level === simState.rainLevel;
-          x.classList.toggle('bg-sky-500', active);
-          x.classList.toggle('text-white', active);
-          x.classList.toggle('bg-slate-800/90', !active);
-        });
+        simState.wraScenario = '';
+        const wraSel = document.getElementById('wra-flood-scenario');
+        if (wraSel) wraSel.value = '';
+        syncRainBtns();
         applyRainIntensity();
       });
     });
@@ -1658,9 +1870,79 @@ export function initCampusSimulations(ctx) {
       });
     }
 
+    // 經濟部水利署官方淹水潛勢（10 情境）＆ 即時警戒 KML ／ 本機匯入套繪
+    const wraSel = document.getElementById('wra-flood-scenario');
+    const wraDl = document.getElementById('btn-wra-shp-download');
+    const wraStatus = document.getElementById('wra-status-msg');
+    if (wraSel) {
+      wraSel.addEventListener('change', (e) => {
+        const key = e.target.value;
+        simState.wraScenario = key;
+        if (key && WRA_SCENARIOS[key]) {
+          simState.rainLevel = WRA_SCENARIOS[key].level;
+          syncRainBtns();
+          if (wraDl) {
+            wraDl.href = `https://gic.wra.gov.tw/gis/gic/API/Google/DownLoad.aspx?fname=${key}&filetype=SHP`;
+            wraDl.textContent = `⬇ ${WRA_SCENARIOS[key].label} SHP`;
+          }
+          if (wraStatus) {
+            wraStatus.textContent = `🌊 已套用水利署「${WRA_SCENARIOS[key].label}」定量降雨模擬規模；可按右側下載官方 SHP 轉 GeoJSON 後匯入精準套繪。`;
+          }
+        } else {
+          if (wraDl) {
+            wraDl.href = WRA_KAOHSIUNG_7Z_URL;
+            wraDl.textContent = '⬇ 高雄潛勢圖';
+          }
+        }
+        applyRainIntensity();
+      });
+    }
+    document.getElementById('btn-wra-live-kml')?.addEventListener('click', () => {
+      fetchWraLiveKml();
+    });
+    document.getElementById('wra-file-input')?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const res = importWraFloodText(String(reader.result || ''), file.name);
+        if (wraStatus) wraStatus.textContent = res.msg;
+      };
+      reader.readAsText(file, 'utf-8');
+      e.target.value = '';
+    });
+    document.getElementById('btn-wra-clear')?.addEventListener('click', () => {
+      clearWraOverlay();
+      if (wraStatus) wraStatus.textContent = '已清除水利署套繪圖層。';
+    });
+
+    // 左側控制面板：一鍵全部展開 / 全部收合
+    const toggleAllBtn = document.getElementById('btn-panel-toggle-all');
+    if (toggleAllBtn) {
+      const syncToggleAllLabel = () => {
+        const secs = Array.from(document.querySelectorAll('#control-sections-wrap > details.panel-sec'));
+        const openCount = secs.filter(d => d.open).length;
+        toggleAllBtn.textContent = openCount > secs.length / 2 ? '▴ 全收' : '▾ 全展';
+      };
+      toggleAllBtn.addEventListener('click', () => {
+        const secs = Array.from(document.querySelectorAll('#control-sections-wrap > details.panel-sec'));
+        const openCount = secs.filter(d => d.open).length;
+        const targetOpen = openCount <= secs.length / 2;
+        secs.forEach(d => { d.open = targetOpen; });
+        syncToggleAllLabel();
+      });
+      document.querySelectorAll('#control-sections-wrap > details.panel-sec').forEach(d => {
+        d.addEventListener('toggle', syncToggleAllLabel);
+      });
+      syncToggleAllLabel();
+    }
+
     // 一鍵重置全部模擬
     document.getElementById('btn-sim-reset-all')?.addEventListener('click', () => {
       simState.playMode = null;
+      simState.wraScenario = '';
+      if (wraSel) wraSel.value = '';
+      clearWraOverlay();
       syncPlayBtns();
       ['toggle-sim-evac', 'toggle-sim-construction', 'toggle-sim-night', 'toggle-sim-wind', 'toggle-sim-rain', 'toggle-terrain-relief'].forEach(id => {
         const el = document.getElementById(id);
@@ -1693,6 +1975,8 @@ export function initCampusSimulations(ctx) {
       rain: 'toggle-sim-rain'
     };
     if (map[sim]) {
+      const sec = document.getElementById('sec-campus-sim');
+      if (sec) sec.open = true;
       const el = document.getElementById(map[sim]);
       if (el && !el.checked) {
         el.checked = true;
@@ -1764,6 +2048,9 @@ export function initCampusSimulations(ctx) {
     applySeasonSync,
     updateRainFlowFromAspect,
     renderLegendCard,
+    importWraFloodText,
+    clearWraOverlay,
+    fetchWraLiveKml,
     setMonth(m) {
       simState.month = Math.max(1, Math.min(12, Math.round(m)));
       const ms = document.getElementById('sun-month-slider');
@@ -1780,10 +2067,11 @@ export function initCampusSimulations(ctx) {
     },
     loadNlscLayer,
     getGroups() {
-      return { root, sunArcGroup, evacGroup, constructionGroup, nightGroup, windGroup, rainGroup, terrainGroup };
+      return { root, sunArcGroup, evacGroup, constructionGroup, nightGroup, windGroup, rainGroup, terrainGroup, wraGroup };
     }
   };
   window.__CAMPUS_SIM__ = api;
   return api;
 }
+
 
