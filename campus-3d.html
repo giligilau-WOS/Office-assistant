@@ -557,6 +557,13 @@
                   <button type="button" class="sim-wind-btn py-1 rounded-lg bg-slate-800/90 text-slate-200 font-medium transition" data-season="AUTUMN">🍂 秋</button>
                   <button type="button" class="sim-wind-btn py-1 rounded-lg bg-sky-500 text-white font-semibold transition" data-season="WINTER">❄️ 冬東北</button>
                 </div>
+                <label class="flex items-center justify-between text-[10.5px] text-amber-200 cursor-pointer pt-0.5">
+                  <span>🌗 隨日出日落／日夜切換海陸風・山谷風</span>
+                  <input id="toggle-diurnal-wind" type="checkbox" checked class="w-3.5 h-3.5 accent-amber-400 rounded cursor-pointer" />
+                </label>
+                <div id="wind-diurnal-status" class="text-[10px] text-amber-100/90 bg-slate-950/50 rounded-lg px-2 py-1 leading-snug">
+                  日夜海陸風連動中
+                </div>
                 <div class="space-y-1 text-[10.5px] text-slate-300">
                   <div class="flex items-center gap-1.5">
                     <span class="w-10 shrink-0">風向</span>
@@ -7201,7 +7208,7 @@
       function startApp() {
         applyFloorVisibility();
         updateModeButtonsUI();
-        import('./campus-3d-simulations.js?v=6')
+        import('./campus-3d-simulations.js?v=7')
           .then((mod) => {
             if (mod && typeof mod.initCampusSimulations === 'function') {
               simSuite = mod.initCampusSimulations({

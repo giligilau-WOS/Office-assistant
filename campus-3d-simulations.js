@@ -31,11 +31,59 @@ const NLSC_LAYERS = {
 };
 
 const SEASON_PROFILES = {
-  SPRING: { key: 'SPRING', label: '🌱 春季微風（偏東北東）', shortLabel: '春季微風', month: 3, windFromDeg: 65, colorHex: 0x2dd4bf },
-  SUMMER: { key: 'SUMMER', label: '☀️ 夏季西南季風', shortLabel: '夏季西南季風', month: 6, windFromDeg: 225, colorHex: 0x34d399 },
-  AUTUMN: { key: 'AUTUMN', label: '🍂 秋季轉東北風', shortLabel: '秋季轉東北風', month: 9, windFromDeg: 50, colorHex: 0xfbbf24 },
-  WINTER: { key: 'WINTER', label: '❄️ 冬季東北季風', shortLabel: '冬季東北季風', month: 12, windFromDeg: 35, colorHex: 0x38bdf8 }
+  SPRING: { key: 'SPRING', label: '🌱 春季微風（偏東北東）', shortLabel: '春季微風', month: 3, windFromDeg: 65, monsoonWeight: 0.50, colorHex: 0x2dd4bf },
+  SUMMER: { key: 'SUMMER', label: '☀️ 夏季西南季風', shortLabel: '夏季西南季風', month: 6, windFromDeg: 225, monsoonWeight: 0.72, colorHex: 0x34d399 },
+  AUTUMN: { key: 'AUTUMN', label: '🍂 秋季轉東北風', shortLabel: '秋季轉東北風', month: 9, windFromDeg: 50, monsoonWeight: 0.65, colorHex: 0xfbbf24 },
+  WINTER: { key: 'WINTER', label: '❄️ 冬季東北季風', shortLabel: '冬季東北季風', month: 12, windFromDeg: 35, monsoonWeight: 0.85, colorHex: 0x38bdf8 }
 };
+
+/**
+ * 計算高雄大樹（北緯 22.72°、西臨台灣海峽、東倚中央山脈丘陵）日夜海陸風／山谷風與季風之合成風場：
+ * - 白天（約 10:30–17:30，午後 14:30 最強）：海風／谷風自西南西 (240° WSW) 吹入內陸
+ * - 清晨／夜間（日落後～08:30 或夜間模式）：陸風／山風自東北東 (55° ENE) 沿山谷下沉吹向沿海
+ * - 08:30–10:30 與 17:30–19:00：海陸風轉換微風期
+ */
+export function computeDiurnalWind(seasonKey, hour = 10.5, isNight = false) {
+  const prof = SEASON_PROFILES[seasonKey] || SEASON_PROFILES.WINTER;
+  const effHour = isNight ? 2.0 : Math.max(0, Math.min(24, Number(hour) || 12));
+  // 熱力相位：09:00 為 0，15:00 達峰值 +1（海風／谷風），03:00 達谷值 -1（陸風／山風）
+  const thermal = Math.sin(((effHour - 9.0) / 24) * 2 * Math.PI);
+  const breezeMag = Math.abs(thermal) * 0.88;
+  const breezeFromDeg = thermal >= 0 ? 240 : 55;
+
+  const mRad = (prof.windFromDeg * Math.PI) / 180;
+  const bRad = (breezeFromDeg * Math.PI) / 180;
+  const mx = Math.sin(mRad) * prof.monsoonWeight;
+  const my = Math.cos(mRad) * prof.monsoonWeight;
+  const bx = Math.sin(bRad) * breezeMag;
+  const by = Math.cos(bRad) * breezeMag;
+
+  const rx = mx + bx;
+  const ry = my + by;
+  const mag = Math.hypot(rx, ry);
+  const windFromDeg = mag < 0.08
+    ? prof.windFromDeg
+    : Math.round(((Math.atan2(rx, ry) * 180) / Math.PI + 360) % 360);
+  const speedFactor = Math.max(0.68, Math.min(1.38, 0.58 + mag * 0.48));
+
+  let phaseTag = '轉風微風';
+  let phaseDesc = '⚖️ 上午海陸風轉換期，以季節季風為主';
+  if (isNight || effHour >= 19.5 || effHour < 5.5) {
+    phaseTag = '夜間山陸風';
+    phaseDesc = '🌙 夜間陸風／山風（自東側山谷偏 ENE 下沉吹向沿海）';
+  } else if (thermal < -0.25) {
+    phaseTag = '清晨山陸風';
+    phaseDesc = '🌄 清晨日出前陸風／山風（偏東北東冷空氣下沉）';
+  } else if (thermal > 0.35 && effHour <= 17.2) {
+    phaseTag = '白天海谷風';
+    phaseDesc = '☀️ 白天日照增溫海風／谷風（自西南西海峽吹入內陸）';
+  } else if (effHour > 17.2) {
+    phaseTag = '黃昏轉風期';
+    phaseDesc = '🌇 日落海風減弱，準備轉為夜間山陸風';
+  }
+
+  return { windFromDeg, speedFactor, thermal, phaseTag, phaseDesc };
+}
 
 function monthToSeason(m) {
   const mm = ((Math.round(m) - 1 + 12) % 12) + 1;
@@ -280,6 +328,9 @@ export function initCampusSimulations(ctx) {
     showCctv: true,
     wind: false,
     windMode: 'ventilate', // 'ventilate' (開窗通風) | 'deflect' (繞流不穿牆) | 'free' (自由風場)
+    windDiurnal: true, // 隨日出日落／日夜自動切換海陸風・山谷風
+    windDiurnalSpeedFactor: 1.0,
+    windDiurnalPhase: '',
     windSeason: initSeason, // 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER'
     windAngleDeg: SEASON_PROFILES[initSeason].windFromDeg,
     windDensity: 260,
@@ -424,6 +475,7 @@ export function initCampusSimulations(ctx) {
       metaEl.innerHTML = `仰角 <strong>${Math.max(0, sp.altitudeDeg).toFixed(1)}°</strong>・方位 <strong>${Math.round(sp.azimuthDeg)}° (${azDir})</strong>・日出 ${fmtHour(sp.sunrise)} / 日落 ${fmtHour(sp.sunset)}<div class="text-amber-200/95 mt-0.5">${tip}</div>`;
     }
 
+    if (typeof applyDiurnalWind === 'function') applyDiurnalWind();
     updateHudBanner(sp);
   }
 
@@ -902,6 +954,7 @@ export function initCampusSimulations(ctx) {
     } else {
       applySolarState();
     }
+    if (typeof applyDiurnalWind === 'function') applyDiurnalWind();
     updateHudBanner();
   }
 
@@ -1021,7 +1074,8 @@ export function initCampusSimulations(ctx) {
     const activeCount = Math.max(40, Math.min(MAX_WIND, Math.round(simState.windDensity)));
     windMesh.count = activeCount;
     const thick = Math.max(0.12, Math.min(0.85, Number(simState.windThickness) || 0.35));
-    const spdMul = Math.max(0.3, Math.min(3.0, Number(simState.windSpeedMul) || 1.2));
+    const diurnalMul = simState.windDiurnal ? (Number(simState.windDiurnalSpeedFactor) || 1.0) : 1.0;
+    const spdMul = Math.max(0.3, Math.min(3.2, (Number(simState.windSpeedMul) || 1.2) * diurnalMul));
     const mode = simState.windMode || 'ventilate';
     const allowWindows = mode === 'ventilate';
     const usePhysics = mode !== 'free';
@@ -1728,7 +1782,8 @@ export function initCampusSimulations(ctx) {
     if (simState.wind) {
       const prof = SEASON_PROFILES[simState.windSeason] || SEASON_PROFILES.WINTER;
       const modeLabel = simState.windMode === 'ventilate' ? '開窗通風' : simState.windMode === 'deflect' ? '繞流不穿' : '自由風場';
-      tags.push(`🌬️ ${prof.shortLabel}・${modeLabel} ${Math.round(simState.windAngleDeg)}° ${degToCompass(simState.windAngleDeg)}`);
+      const phaseTxt = simState.windDiurnal && simState.windDiurnalPhase ? `・${simState.windDiurnalPhase}` : '';
+      tags.push(`🌬️ ${prof.shortLabel}${phaseTxt}・${modeLabel} ${Math.round(simState.windAngleDeg)}° ${degToCompass(simState.windAngleDeg)}`);
     }
     if (simState.rain) {
       const sc = simState.wraScenario && WRA_SCENARIOS[simState.wraScenario];
@@ -1748,6 +1803,24 @@ export function initCampusSimulations(ctx) {
     free: '🌬️ 大尺度自由季風方向參考流線（不計建物阻擋）。'
   };
 
+  function applyDiurnalWind() {
+    const statusEl = document.getElementById('wind-diurnal-status');
+    if (!simState.windDiurnal) {
+      simState.windDiurnalSpeedFactor = 1.0;
+      simState.windDiurnalPhase = '';
+      if (statusEl) statusEl.textContent = '🎛️ 已改為手動固定風向（勾選上方可恢復日夜海陸風自動變化）';
+      return;
+    }
+    const dw = computeDiurnalWind(simState.windSeason, simState.hour, simState.night);
+    simState.windAngleDeg = dw.windFromDeg;
+    simState.windDiurnalSpeedFactor = dw.speedFactor;
+    simState.windDiurnalPhase = dw.phaseTag;
+    if (statusEl) {
+      statusEl.textContent = `${dw.phaseDesc}（合成 ${dw.windFromDeg}° ${degToCompass(dw.windFromDeg)}・風速 ${dw.speedFactor.toFixed(2)}×）`;
+    }
+    syncWindUi();
+  }
+
   function syncWindUi() {
     document.querySelectorAll('.sim-wind-mode-btn').forEach((x) => {
       const active = x.dataset.mode === simState.windMode;
@@ -1766,6 +1839,9 @@ export function initCampusSimulations(ctx) {
       x.classList.toggle('font-semibold', active);
       x.classList.toggle('bg-slate-800/90', !active);
     });
+    const dChk = document.getElementById('toggle-diurnal-wind');
+    if (dChk) dChk.checked = !!simState.windDiurnal;
+
     const setSlider = (id, val, txt) => {
       const el = document.getElementById(id);
       const lb = document.getElementById(`${id}-val`);
@@ -1784,12 +1860,20 @@ export function initCampusSimulations(ctx) {
     if (from === 'sun') {
       if (!simState.seasonSync) return;
       simState.windSeason = prof.key;
-      simState.windAngleDeg = prof.windFromDeg;
-      syncWindUi();
+      if (simState.windDiurnal) {
+        applyDiurnalWind();
+      } else {
+        simState.windAngleDeg = prof.windFromDeg;
+        syncWindUi();
+      }
     } else if (from === 'wind') {
       simState.windSeason = prof.key;
-      simState.windAngleDeg = prof.windFromDeg;
-      syncWindUi();
+      if (simState.windDiurnal) {
+        applyDiurnalWind();
+      } else {
+        simState.windAngleDeg = prof.windFromDeg;
+        syncWindUi();
+      }
       if (simState.seasonSync) {
         simState.month = prof.month;
         const ms = document.getElementById('sun-month-slider');
@@ -2028,8 +2112,19 @@ export function initCampusSimulations(ctx) {
         if (SEASON_PROFILES[sKey]) applySeasonSync(sKey, { from: 'wind' });
       });
     });
+    document.getElementById('toggle-diurnal-wind')?.addEventListener('change', (e) => {
+      simState.windDiurnal = e.target.checked;
+      applyDiurnalWind();
+      updateHudBanner();
+    });
     document.getElementById('wind-angle-slider')?.addEventListener('input', (e) => {
       simState.windAngleDeg = Number(e.target.value);
+      if (simState.windDiurnal) {
+        simState.windDiurnal = false;
+        const dChk = document.getElementById('toggle-diurnal-wind');
+        if (dChk) dChk.checked = false;
+        applyDiurnalWind();
+      }
       const lb = document.getElementById('wind-angle-val');
       if (lb) lb.textContent = `${Math.round(simState.windAngleDeg)}° ${degToCompass(simState.windAngleDeg)}`;
       updateHudBanner();
