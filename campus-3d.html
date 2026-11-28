@@ -417,6 +417,35 @@
             <span id="nlsc-opacity-val" class="font-mono text-indigo-300 w-8 text-right">85%</span>
           </div>
           <div id="nlsc-status-msg" class="text-[10.5px] text-slate-400 leading-snug">免申請官方圖資：正射航照／灰階／段籍／等高線／7級坡度</div>
+          <details class="pt-1 border-t border-indigo-400/20">
+            <summary class="text-[10.5px] text-indigo-200 font-semibold cursor-pointer select-none">🎯 圖資對位微調（東西／南北／旋轉／縮放）</summary>
+            <div class="mt-1.5 space-y-1 text-[10.5px] text-slate-300">
+              <div class="flex items-center gap-1.5">
+                <span class="w-11 shrink-0">東西 ΔX</span>
+                <input id="nlsc-cal-dx" type="range" min="-40" max="40" step="0.5" value="0" class="flex-1 accent-indigo-400" />
+                <span id="nlsc-cal-dx-val" class="font-mono text-indigo-200 w-10 text-right">0m</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-11 shrink-0">南北 ΔZ</span>
+                <input id="nlsc-cal-dz" type="range" min="-40" max="40" step="0.5" value="0" class="flex-1 accent-indigo-400" />
+                <span id="nlsc-cal-dz-val" class="font-mono text-indigo-200 w-10 text-right">0m</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-11 shrink-0">旋轉 Δθ</span>
+                <input id="nlsc-cal-rot" type="range" min="-15" max="15" step="0.2" value="0" class="flex-1 accent-indigo-400" />
+                <span id="nlsc-cal-rot-val" class="font-mono text-indigo-200 w-10 text-right">0°</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-11 shrink-0">縮放</span>
+                <input id="nlsc-cal-scale" type="range" min="90" max="110" step="0.5" value="100" class="flex-1 accent-indigo-400" />
+                <span id="nlsc-cal-scale-val" class="font-mono text-indigo-200 w-10 text-right">100%</span>
+              </div>
+              <div class="flex justify-between items-center pt-0.5">
+                <span class="text-[10px] text-slate-400">微調會自動記住（建議開正射圖對齊）</span>
+                <button id="btn-nlsc-cal-reset" type="button" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/60">↺ 歸零</button>
+              </div>
+            </div>
+          </details>
         </div>
 
         <!-- 5 大總務決策模擬開關 -->
@@ -6779,7 +6808,9 @@
       // 18. ANIMATION & RENDER LOOP
       // =========================================================================
       const compassNeedle = document.getElementById('compass-needle');
-      const GEO = { lat0: 22.7190601, lng0: 120.4435042, x0: gx(25), z0: gz(45) };
+      // 精準校準：校地／200m 跑道中心 (rx=10.5, rz=46.5) 對齊學校官方經緯度 (22.7191115°N, 120.442577°E)
+      // （原 120.4435042 為東大門溪埔路 1 號地址點，偏東約 95m）
+      const GEO = { lat0: 22.7191115, lng0: 120.442577, x0: gx(10.5), z0: gz(46.5) };
       const coordsEl = document.getElementById('earth-coords-text');
       const altEl = document.getElementById('earth-alt-text');
       const svEuler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -7049,7 +7080,7 @@
       function startApp() {
         applyFloorVisibility();
         updateModeButtonsUI();
-        import('./campus-3d-simulations.js?v=1')
+        import('./campus-3d-simulations.js?v=2')
           .then((mod) => {
             if (mod && typeof mod.initCampusSimulations === 'function') {
               simSuite = mod.initCampusSimulations({

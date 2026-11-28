@@ -269,8 +269,28 @@ export function initCampusSimulations(ctx) {
   }
 
   // =========================================================================
-  // 2. 🗺️ 國土測繪雲 NLSC 免申請 WMTS 圖層（自動計算經緯度切圖貼合校地）
+  // 2. 🗺️ 國土測繪雲 NLSC 免申請 WMTS 圖層（精準 WGS84 投影 ＋ 即時微調校準）
   // =========================================================================
+  const NLSC_CAL_KEY = 'ga_nlsc_cal_v1';
+  const NLSC_BOUNDS = { rx0: -130, rx1: 185, rz0: -68, rz1: 146 }; // 315m × 214m（中心 rx=27.5, rz=39.0）
+  const NLSC_W = NLSC_BOUNDS.rx1 - NLSC_BOUNDS.rx0;
+  const NLSC_H = NLSC_BOUNDS.rz1 - NLSC_BOUNDS.rz0;
+  const NLSC_CX = gx((NLSC_BOUNDS.rx0 + NLSC_BOUNDS.rx1) * 0.5);
+  const NLSC_CZ = gz((NLSC_BOUNDS.rz0 + NLSC_BOUNDS.rz1) * 0.5);
+
+  let nlscCal = { dx: 0, dz: 0, rotDeg: 0, scalePct: 100 };
+  try {
+    const saved = JSON.parse(localStorage.getItem(NLSC_CAL_KEY) || 'null');
+    if (saved && typeof saved === 'object') {
+      nlscCal = {
+        dx: Number(saved.dx) || 0,
+        dz: Number(saved.dz) || 0,
+        rotDeg: Number(saved.rotDeg) || 0,
+        scalePct: Number(saved.scalePct) || 100
+      };
+    }
+  } catch {}
+
   let nlscMesh = null;
   let nlscMat = null;
   const nlscTexCache = new Map();
@@ -281,6 +301,15 @@ export function initCampusSimulations(ctx) {
     const latRad = (lat * Math.PI) / 180;
     const y = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
     return { x, y };
+  }
+
+  function applyNlscTransform() {
+    if (!nlscMesh) return;
+    nlscMesh.position.set(NLSC_CX + nlscCal.dx, 0.028, NLSC_CZ + nlscCal.dz);
+    nlscMesh.rotation.set(-Math.PI / 2, 0, (nlscCal.rotDeg * Math.PI) / 180, 'XYZ');
+    const sc = nlscCal.scalePct / 100;
+    nlscMesh.scale.set(sc, sc, 1);
+    try { localStorage.setItem(NLSC_CAL_KEY, JSON.stringify(nlscCal)); } catch {}
   }
 
   function ensureNlscMesh() {
@@ -294,13 +323,19 @@ export function initCampusSimulations(ctx) {
       polygonOffset: true,
       polygonOffsetFactor: -2
     });
-    nlscMesh = new THREE.Mesh(new THREE.PlaneGeometry(235, 134), nlscMat);
-    nlscMesh.rotation.x = -Math.PI / 2;
-    nlscMesh.position.set(gx(27.5), 0.028, gz(39.0));
+    nlscMesh = new THREE.Mesh(new THREE.PlaneGeometry(NLSC_W, NLSC_H), nlscMat);
     nlscMesh.receiveShadow = true;
     nlscMesh.visible = false;
     nlscMesh.userData.nonBlocking = true;
+    applyNlscTransform();
     root.add(nlscMesh);
+  }
+
+  function syncNlscSatVisibility(layerId) {
+    if (!satOverlayMesh) return;
+    if (layerId === 'NONE') { satOverlayMesh.visible = true; return; }
+    const isOverlayOnly = ['SCHOOL', 'LANDSECT', 'MOI_CONTOUR_2', 'MOI_SLOPEP_LV7_2', 'MOI_ASPECT'].includes(layerId);
+    satOverlayMesh.visible = isOverlayOnly || simState.nlscOpacity < 0.96;
   }
 
   async function loadNlscLayer(layerId) {
@@ -309,21 +344,21 @@ export function initCampusSimulations(ctx) {
     const statusEl = document.getElementById('nlsc-status-msg');
     if (layerId === 'NONE' || !NLSC_LAYERS[layerId]) {
       nlscMesh.visible = false;
-      if (satOverlayMesh) satOverlayMesh.visible = true;
+      syncNlscSatVisibility('NONE');
       if (statusEl) statusEl.textContent = '目前使用本機高解析衛星底圖';
       updateHudBanner();
       return;
     }
 
     const cfg = NLSC_LAYERS[layerId];
-    const isOverlayOnly = ['SCHOOL', 'LANDSECT', 'MOI_CONTOUR_2', 'MOI_SLOPEP_LV7_2', 'MOI_ASPECT'].includes(layerId);
-    if (satOverlayMesh) satOverlayMesh.visible = isOverlayOnly;
+    syncNlscSatVisibility(layerId);
 
     if (nlscTexCache.has(layerId)) {
       nlscMat.map = nlscTexCache.get(layerId);
       nlscMat.opacity = simState.nlscOpacity;
       nlscMat.needsUpdate = true;
       nlscMesh.visible = true;
+      applyNlscTransform();
       if (statusEl) statusEl.textContent = `✅ 已套繪：${cfg.desc}`;
       updateHudBanner();
       return;
@@ -331,11 +366,13 @@ export function initCampusSimulations(ctx) {
 
     if (statusEl) statusEl.textContent = `⏳ 正在載入國土測繪雲 ${layerId} 圖磚...`;
 
-    // 計算校地貼圖矩形 rx ∈ [-90, 145], rz ∈ [-28, 106] 之經緯度邊界
-    const lngMin = GEO.lng0 + (gx(-90) - GEO.x0) / 102680;
-    const lngMax = GEO.lng0 + (gx(145) - GEO.x0) / 102680;
-    const latMax = GEO.lat0 - (gz(-28) - GEO.z0) / 110770;
-    const latMin = GEO.lat0 - (gz(106) - GEO.z0) / 110770;
+    // 以精準 WGS84 換算係數計算 315m × 214m 校地貼圖矩形之經緯度邊界
+    const mPerDegLat = 110742;
+    const mPerDegLng = 111320 * Math.cos((GEO.lat0 * Math.PI) / 180);
+    const lngMin = GEO.lng0 + (gx(NLSC_BOUNDS.rx0) - GEO.x0) / mPerDegLng;
+    const lngMax = GEO.lng0 + (gx(NLSC_BOUNDS.rx1) - GEO.x0) / mPerDegLng;
+    const latMax = GEO.lat0 - (gz(NLSC_BOUNDS.rz0) - GEO.z0) / mPerDegLat;
+    const latMin = GEO.lat0 - (gz(NLSC_BOUNDS.rz1) - GEO.z0) / mPerDegLat;
 
     const z = cfg.zoom;
     const tl = lonLatToTileF(lngMin, latMax, z);
@@ -377,19 +414,19 @@ export function initCampusSimulations(ctx) {
     await Promise.all(tasks);
     if (okCount === 0) {
       nlscMesh.visible = false;
-      if (satOverlayMesh) satOverlayMesh.visible = true;
+      syncNlscSatVisibility('NONE');
       if (statusEl) statusEl.textContent = `⚠️ 無法連線國土測繪圖磚（可能離線或跨網域受限），已自動維持本機衛星底圖`;
       return;
     }
 
-    // 依精確像素範圍裁切至校地 235×134 比例
+    // 依精確像素範圍裁切至 315×214 比例（高解析 1280px 寬）
     const cropX = (tl.x - tx0) * tileW;
     const cropY = (tl.y - ty0) * tileW;
     const cropW = Math.max(8, (br.x - tl.x) * tileW);
     const cropH = Math.max(8, (br.y - tl.y) * tileW);
     const out = document.createElement('canvas');
-    out.width = 1024;
-    out.height = Math.round(1024 * (134 / 235));
+    out.width = 1280;
+    out.height = Math.round(1280 * (NLSC_H / NLSC_W));
     out.getContext('2d').drawImage(stitch, cropX, cropY, cropW, cropH, 0, 0, out.width, out.height);
 
     const tex = new THREE.CanvasTexture(out);
@@ -402,6 +439,7 @@ export function initCampusSimulations(ctx) {
       nlscMat.opacity = simState.nlscOpacity;
       nlscMat.needsUpdate = true;
       nlscMesh.visible = true;
+      applyNlscTransform();
       if (statusEl) statusEl.textContent = `✅ 已套繪：${cfg.desc}`;
       updateHudBanner();
     }
@@ -974,12 +1012,46 @@ export function initCampusSimulations(ctx) {
         const lbl = document.getElementById('nlsc-opacity-val');
         if (lbl) lbl.textContent = `${e.target.value}%`;
         if (nlscMat) nlscMat.opacity = simState.nlscOpacity;
+        syncNlscSatVisibility(simState.nlscLayer);
       });
     }
     const nlscPortalBtn = document.getElementById('btn-open-nlsc-portal');
     if (nlscPortalBtn) {
       nlscPortalBtn.href = `https://maps.nlsc.gov.tw/T09/mapshow.action?In_type=web&In_x=${GEO.lng0.toFixed(6)}&In_y=${GEO.lat0.toFixed(6)}&In_scale=2500`;
     }
+
+    // 圖資對位微調滑桿（即時移動與記憶）
+    const syncCalUi = () => {
+      const setV = (id, val, txt) => {
+        const el = document.getElementById(id);
+        const lb = document.getElementById(`${id}-val`);
+        if (el) el.value = String(val);
+        if (lb) lb.textContent = txt;
+      };
+      setV('nlsc-cal-dx', nlscCal.dx, `${nlscCal.dx}m`);
+      setV('nlsc-cal-dz', nlscCal.dz, `${nlscCal.dz}m`);
+      setV('nlsc-cal-rot', nlscCal.rotDeg, `${nlscCal.rotDeg}°`);
+      setV('nlsc-cal-scale', nlscCal.scalePct, `${nlscCal.scalePct}%`);
+    };
+    syncCalUi();
+    [
+      ['nlsc-cal-dx', 'dx', v => `${v}m`],
+      ['nlsc-cal-dz', 'dz', v => `${v}m`],
+      ['nlsc-cal-rot', 'rotDeg', v => `${v}°`],
+      ['nlsc-cal-scale', 'scalePct', v => `${v}%`]
+    ].forEach(([id, key, fmt]) => {
+      document.getElementById(id)?.addEventListener('input', (e) => {
+        nlscCal[key] = parseFloat(e.target.value);
+        const lb = document.getElementById(`${id}-val`);
+        if (lb) lb.textContent = fmt(nlscCal[key]);
+        applyNlscTransform();
+      });
+    });
+    document.getElementById('btn-nlsc-cal-reset')?.addEventListener('click', () => {
+      nlscCal = { dx: 0, dz: 0, rotDeg: 0, scalePct: 100 };
+      syncCalUi();
+      applyNlscTransform();
+    });
 
     // 5 大校園情境模擬開關
     const bindToggle = (id, key, subId, onChange) => {
